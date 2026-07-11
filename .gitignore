@@ -1,0 +1,8 @@
+dragon-investors-v2.backup-*.html
+node_modules/
+.DS_Store
+Thumbs.db
+.agents/
+.claude/
+.vscode/
+skills-lock.json
