@@ -6,7 +6,8 @@
 -- ---------- جداول دليل الأكواد (Master Data) ----------
 create table if not exists projects (
   code integer primary key,
-  name text not null unique
+  name text not null unique,
+  capital numeric -- إجمالي التمويل المستهدف للمشروع (لحساب نسبة كل مستثمر تلقائياً لاحقاً)
 );
 
 create table if not exists supplies (
@@ -73,6 +74,8 @@ create table if not exists expense_entries (
   total numeric not null default 0,
   paid numeric not null default 0,
   remaining numeric not null default 0,
+  executed_value numeric, -- القيمة المنفذة فعلياً (المستخلص) لقيود المقاولين فقط: الدين = executed_value - paid
+  custody_id bigint, -- رابط للعهدة المؤقتة إذا نشأ هذا القيد من تسوية عهدة
   date date not null default current_date,
   notes text,
   created_at timestamptz not null default now()
@@ -114,8 +117,10 @@ create table if not exists app_settings (
   value jsonb not null
 );
 
-insert into app_settings (key, value) values ('taxRate', '22.5')
-on conflict (key) do nothing;
+insert into app_settings (key, value) values ('taxRate', '22.5') on conflict (key) do nothing;
+insert into app_settings (key, value) values ('taxes', '[]') on conflict (key) do nothing;
+insert into app_settings (key, value) values ('custodies', '[]') on conflict (key) do nothing;
+insert into app_settings (key, value) values ('investorLiabilities', '[]') on conflict (key) do nothing;
 
 -- ---------- فهارس لتسريع الفلاتر الشائعة ----------
 create index if not exists idx_procurements_project on procurements(project);
@@ -179,3 +184,6 @@ begin
     end;
   end loop;
 end $$;
+
+-- ---------- ترحيل: إضافة عمود custody_id إن لم يكن موجوداً (لقواعد البيانات القديمة) ----------
+alter table expense_entries add column if not exists custody_id bigint;

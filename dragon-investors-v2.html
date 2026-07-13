@@ -11,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 body{font-family:'Cairo',sans-serif;background:#f8fafc;}
 ::-webkit-scrollbar{width:6px;height:6px;}
@@ -138,6 +137,9 @@ html,body{overflow-x:hidden;}
             <button onclick="switchTab('expenses')" id="btn-expenses" class="tab-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
                 <i class="fa-solid fa-file-invoice-dollar text-emerald-500 w-5"></i><span>المصروفات والإيرادات</span>
             </button>
+            <button onclick="switchTab('custody')" id="btn-custody" class="tab-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i class="fa-solid fa-hand-holding text-violet-400 w-5"></i><span>العهد المؤقتة</span>
+            </button>
             <button onclick="switchTab('payments')" id="btn-payments" class="tab-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
                 <i class="fa-solid fa-money-bill-transfer text-cyan-500 w-5"></i><span>مدفوعات الموردين</span>
             </button>
@@ -160,7 +162,10 @@ html,body{overflow-x:hidden;}
         </div>
         <div class="p-4 border-t border-slate-800 flex items-center gap-2.5">
             <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400"><i class="fa-solid fa-user-tie"></i></div>
-            <div><p class="text-xs font-bold text-slate-200">أ. محمد</p><p class="text-[10px] text-slate-500">Financial Accountant</p></div>
+            <div class="flex-1 min-w-0"><p class="text-xs font-bold text-slate-200">أ. محمد</p><p class="text-[10px] text-slate-500">Financial Accountant</p></div>
+            <button onclick="logout()" title="تسجيل الخروج" aria-label="تسجيل الخروج" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </button>
         </div>
     </aside>
 
@@ -169,9 +174,14 @@ html,body{overflow-x:hidden;}
         <!-- DASHBOARD -->
         <div id="tab-dashboard" class="tab-content active flex-col gap-2 h-full">
             <div class="flex justify-between items-center flex-wrap gap-2">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                     <label class="text-xs font-bold text-slate-600">فلترة حسب المشروع:</label>
                     <select id="dashboard-filter-project" onchange="renderAll()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold"></select>
+                    <span class="text-xs font-bold text-slate-500">من</span>
+                    <input id="kpi-date-from" type="date" onchange="renderAll()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                    <span class="text-xs font-bold text-slate-500">إلى</span>
+                    <input id="kpi-date-to" type="date" onchange="renderAll()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                    <button type="button" onclick="document.getElementById('kpi-date-from').value='';document.getElementById('kpi-date-to').value='';renderAll()" class="text-xs text-slate-500 hover:text-slate-800 underline">مسح الفترة</button>
                 </div>
                 <button onclick="printCurrentTab()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-2">
                     <i class="fa-solid fa-print"></i><span>طباعة</span>
@@ -193,6 +203,21 @@ html,body{overflow-x:hidden;}
                 <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
                     <div><p class="text-[10px] font-bold text-slate-500 leading-tight">معدل التكلفة إلى التحصيل</p><h3 id="kpi-ratio" class="text-sm font-bold">-</h3></div>
                     <div class="bg-teal-50 p-1.5 rounded-lg text-teal-600"><i class="fa-solid fa-percentage text-xs"></i></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div class="bg-white p-2 rounded-lg border border-rose-200 shadow-sm flex items-center justify-between">
+                    <div><p class="text-[10px] font-bold text-rose-500 leading-tight">متبقي للموردين (آجل عليك)</p><h3 id="kpi-supplier-debt" class="text-sm font-bold text-rose-600">-</h3></div>
+                    <div class="bg-rose-50 p-1.5 rounded-lg text-rose-500"><i class="fa-solid fa-truck-ramp-box text-xs"></i></div>
+                </div>
+                <div class="bg-white p-2 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between">
+                    <div><p class="text-[10px] font-bold text-amber-600 leading-tight">متبقي للمقاولين (عليك)</p><h3 id="kpi-contractor-debt" class="text-sm font-bold text-amber-600">-</h3></div>
+                    <div class="bg-amber-50 p-1.5 rounded-lg text-amber-500"><i class="fa-solid fa-hard-hat text-xs"></i></div>
+                </div>
+                <div class="bg-white p-2 rounded-lg border border-violet-200 shadow-sm flex items-center justify-between">
+                    <div><p class="text-[10px] font-bold text-violet-600 leading-tight">إجمالي العهد المعلقة</p><h3 id="kpi-custody-pending" class="text-sm font-bold text-violet-600">-</h3></div>
+                    <div class="bg-violet-50 p-1.5 rounded-lg text-violet-500"><i class="fa-solid fa-hand-holding text-xs"></i></div>
                 </div>
             </div>
 
@@ -313,10 +338,22 @@ html,body{overflow-x:hidden;}
                 <form onsubmit="addExpense(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div><label class="block text-xs font-bold text-slate-600 mb-1">التبويب</label><select id="exp-category" required onchange="filterExpenseSubFields()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1">النشاط</label><select id="exp-activity" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
-                    <div><label id="exp-name-label" class="block text-xs font-bold text-slate-600 mb-1">المستفيد</label><select id="exp-name" required onchange="showContractInfo()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
+                    <div><label id="exp-name-label" class="block text-xs font-bold text-slate-600 mb-1">المستفيد</label><select id="exp-name" required onchange="filterActivitiesByName()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label><select id="exp-project" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
                     <div id="exp-contract-info" class="hidden md:col-span-4 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 text-xs text-slate-700"></div>
-                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المبلغ المدفوع/المحصّل</label><input id="exp-paid" type="number" step="any" required placeholder="المبلغ الفعلي" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div id="exp-executed-wrap" class="hidden md:col-span-4">
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-amber-700 mb-1">القيمة المنفذة فعلياً (المستخلص)</label>
+                                <input id="exp-executed" type="number" step="any" placeholder="القيمة المنفذة في هذا المستخلص" oninput="calcContractorRemaining()" class="w-full bg-white border border-amber-200 rounded-lg p-2 text-sm font-bold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-rose-600 mb-1">المتبقي عليك (دين تلقائي)</label>
+                                <input id="exp-remaining-display" type="number" readonly class="w-full bg-rose-50 border border-rose-200 rounded-lg p-2 text-sm font-bold text-rose-700">
+                            </div>
+                        </div>
+                    </div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المبلغ المدفوع/المحصّل</label><input id="exp-paid" type="number" step="any" required oninput="calcContractorRemaining()" placeholder="المبلغ الفعلي" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1">التاريخ</label><input id="exp-date" type="date" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                     <div class="md:col-span-3"><label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input id="exp-notes" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                     <div><button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2.5 rounded-lg text-sm">حفظ الحركة</button></div>
@@ -347,6 +384,63 @@ html,body{overflow-x:hidden;}
                         </tr></thead>
                         <tbody id="tbody-expenses"></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- CUSTODY -->
+        <div id="tab-custody" class="tab-content flex-col gap-6">
+            <div class="bg-white p-5 rounded-xl border border-violet-100 shadow-sm">
+                <h3 class="font-bold text-slate-900 mb-1"><i class="fa-solid fa-hand-holding text-violet-500"></i> تسجيل عهدة مؤقتة</h3>
+                <p class="text-xs text-slate-500 mb-4">العهدة بتظهر كمصروف معلق — لما تتسوّى تتحول لمصروف تشغيلي فعلي في قائمة الدخل</p>
+                <form onsubmit="addCustody(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">اسم صاحب العهدة</label><select id="cust-name" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المبلغ (ج.م)</label><input id="cust-amount" type="number" step="any" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label><select id="cust-project" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">التاريخ</label><input id="cust-date" type="date" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div class="md:col-span-3"><label class="block text-xs font-bold text-slate-600 mb-1">الغرض من العهدة</label><input id="cust-purpose" type="text" placeholder="مثال: شراء مواد، تنقلات، إلخ" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div><button type="submit" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold p-2.5 rounded-lg text-sm">تسجيل العهدة</button></div>
+                </form>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 bg-violet-50 border-b border-violet-100 flex flex-wrap justify-between items-center gap-3">
+                    <h3 class="font-bold text-slate-900">سجل العهد المؤقتة</h3>
+                    <div class="flex gap-2">
+                        <select id="filter-cust-status" onchange="renderCustody()" class="bg-white border border-violet-200 rounded px-2 py-1 text-xs">
+                            <option value="ALL">الكل</option>
+                            <option value="pending">معلقة فقط</option>
+                            <option value="settled">مسوّاة فقط</option>
+                        </select>
+                        <select id="filter-cust-project" onchange="renderCustody()" class="bg-white border border-violet-200 rounded px-2 py-1 text-xs"></select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-72">
+                    <table class="w-full text-sm text-right">
+                        <thead class="bg-slate-800 text-white sticky top-0"><tr>
+                            <th class="p-3">صاحب العهدة</th>
+                            <th class="p-3">المبلغ</th>
+                            <th class="p-3">المشروع</th>
+                            <th class="p-3">التاريخ</th>
+                            <th class="p-3">الغرض</th>
+                            <th class="p-3 text-center">الحالة</th>
+                            <th class="p-3"></th>
+                        </tr></thead>
+                        <tbody id="tbody-custody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                    <p class="text-xs font-bold text-amber-700">إجمالي العهد المعلقة</p>
+                    <p id="cust-total-pending" class="text-2xl font-bold text-amber-600 mt-1">-</p>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                    <p class="text-xs font-bold text-emerald-700">إجمالي المسوّاة (تحولت لمصروف)</p>
+                    <p id="cust-total-settled" class="text-2xl font-bold text-emerald-600 mt-1">-</p>
+                </div>
+                <div class="bg-violet-50 border border-violet-200 rounded-xl p-4 text-center">
+                    <p class="text-xs font-bold text-violet-700">إجمالي كل العهد</p>
+                    <p id="cust-total-all" class="text-2xl font-bold text-violet-600 mt-1">-</p>
                 </div>
             </div>
         </div>
@@ -476,13 +570,39 @@ html,body{overflow-x:hidden;}
                     <i class="fa-solid fa-print"></i><span>طباعة قائمة الدخل</span>
                 </button>
             </div>
+
+            <!-- TAXES MANAGEMENT -->
+            <div class="bg-white rounded-xl border border-red-100 shadow-sm overflow-hidden pl-no-print-hide">
+                <div class="p-4 bg-red-50 border-b border-red-100 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-900 text-sm"><i class="fa-solid fa-percent text-red-500"></i> إدارة الضرائب والرسوم</h3>
+                    <span class="text-xs text-slate-500">الضرائب المُفعّلة تُطبّق تراكمياً وتظهر تلقائياً في قائمة الدخل</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-right">
+                        <thead class="bg-slate-100"><tr>
+                            <th class="p-3">اسم الضريبة</th>
+                            <th class="p-3 w-32">النسبة %</th>
+                            <th class="p-3 w-24 text-center">مفعّلة</th>
+                            <th class="p-3 w-16"></th>
+                        </tr></thead>
+                        <tbody id="tbody-taxes"></tbody>
+                    </table>
+                </div>
+                <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-2 items-center">
+                    <input id="new-tax-name" type="text" placeholder="اسم الضريبة (مثال: ضريبة الدمغة)" class="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                    <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
+                        <input id="new-tax-rate" type="number" step="any" min="0" max="100" placeholder="النسبة" class="w-20 bg-transparent px-3 py-2 text-sm outline-none border-0">
+                        <span class="bg-slate-100 text-slate-600 font-bold px-3 py-2 text-sm select-none">%</span>
+                    </div>
+                    <button onclick="addNewTax()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold">+ إضافة ضريبة</button>
+                </div>
+            </div>
+
             <div id="pl-print-area">
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm w-full">
                     <div class="flex justify-between items-center border-b-2 border-slate-900 pb-4 mb-4 pl-no-print-hide">
                         <h2 class="text-lg font-bold text-slate-900">قائمة الدخل</h2>
                         <div class="flex items-center gap-2 flex-wrap">
-                            <label class="text-xs font-bold text-slate-600">نسبة الضريبة %</label>
-                            <input id="pl-tax-rate" type="number" step="any" value="22.5" onchange="onTaxRateChange()" class="w-16 bg-slate-100 border border-slate-300 rounded px-2 py-1 text-xs font-bold">
                             <label class="text-xs font-bold text-slate-600">من</label>
                             <input id="pl-date-from" type="date" onchange="renderPL()" class="bg-slate-100 border border-slate-300 rounded px-2 py-1 text-xs font-bold">
                             <label class="text-xs font-bold text-slate-600">إلى</label>
@@ -567,16 +687,35 @@ html,body{overflow-x:hidden;}
         <!-- INVESTORS TAB -->
         <div id="tab-investors" class="tab-content flex-col gap-6">
 
+            <!-- PROJECT PROFIT CARDS -->
+            <div class="bg-white rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
+                <div class="p-4 bg-emerald-50 border-b border-emerald-100">
+                    <h3 class="font-bold text-slate-900 text-sm"><i class="fa-solid fa-chart-line text-emerald-600"></i> صافي ربح المشروع (أساس توزيع الأرباح)</h3>
+                </div>
+                <div id="inv-projects-profit-cards" class="grid grid-cols-1 md:grid-cols-3 gap-0 divide-y md:divide-y-0 md:divide-x divide-slate-100"></div>
+            </div>
+
             <!-- FUNDING FORM -->
             <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                 <h3 class="font-bold text-slate-900 mb-1"><i class="fa-solid fa-hand-holding-dollar text-orange-500"></i> ربط مستثمر بمشروع</h3>
-                <p class="text-xs text-slate-500 mb-4">حدد المستثمر والمشروع ونوع التمويل — النظام يحسب حصته من الربح تلقائياً</p>
+                <p class="text-xs text-slate-500 mb-4">حدد المستثمر والمشروع ومبلغ التمويل — النظام يحسب نسبته وحصته من الربح تلقائياً</p>
                 <form onsubmit="addInvestorFunding(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div><label class="block text-xs font-bold text-slate-600 mb-1">المستثمر</label><select id="inv-investor" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
-                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label><select id="inv-project" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
-                    <div><label class="block text-xs font-bold text-slate-600 mb-1">مبلغ التمويل (ج.م)</label><input id="inv-amount" type="number" step="any" placeholder="0 لو هتحدد نسبة فقط" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
-                    <div><label class="block text-xs font-bold text-slate-600 mb-1">نسبة التمويل % (اختياري)</label><input id="inv-pct" type="number" step="any" min="0" max="100" placeholder="مثال: 30" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
-                    <div class="md:col-span-3"><label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input id="inv-notes" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label><select id="inv-project" required onchange="onInvProjectChange()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">مبلغ التمويل (ج.م)</label><input id="inv-amount" type="number" step="any" oninput="calcInvAutoPct()" placeholder="أدخل المبلغ" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-700 mb-1">نسبة المستثمر % <span class="text-slate-400 font-normal">(تلقائية)</span></label>
+                        <div class="flex items-center bg-emerald-50 border border-emerald-200 rounded-lg overflow-hidden">
+                            <input id="inv-auto-pct" type="text" readonly placeholder="---" class="flex-1 bg-transparent px-3 py-2 text-sm font-bold text-emerald-700 outline-none border-0">
+                            <span class="bg-emerald-200 text-emerald-800 font-bold px-3 py-2 text-sm">%</span>
+                        </div>
+                    </div>
+                    <div id="inv-project-info" class="hidden md:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3 grid grid-cols-2 gap-3 text-xs">
+                        <div><p class="text-slate-500 mb-1">صافي ربح المشروع</p><p id="inv-proj-profit" class="font-bold text-emerald-600 text-base">-</p></div>
+                        <div><p class="text-slate-500 mb-1">حصة المستثمر المحسوبة</p><p id="inv-proj-share" class="font-bold text-orange-600 text-base">-</p></div>
+                    </div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">تاريخ الاستثمار</label><input id="inv-date" type="date" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input id="inv-notes" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                     <div><button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold p-2.5 rounded-lg text-sm">حفظ</button></div>
                 </form>
             </div>
@@ -593,27 +732,14 @@ html,body{overflow-x:hidden;}
                 <div class="overflow-x-auto max-h-64">
                     <table class="w-full text-sm text-right">
                         <thead class="bg-slate-800 text-white"><tr>
-                            <th class="p-3">المستثمر</th><th class="p-3">المشروع</th><th class="p-3">مبلغ التمويل</th><th class="p-3 hidden md:table-cell">نسبة التمويل %</th><th class="p-3 hidden md:table-cell">ربح المشروع</th><th class="p-3 text-orange-300">حصته من الربح</th><th class="p-3 hidden md:table-cell">ملاحظات</th><th class="p-3"></th>
+                            <th class="p-3">المستثمر</th><th class="p-3">المشروع</th><th class="p-3">مبلغ التمويل</th><th class="p-3 text-emerald-300">النسبة %</th><th class="p-3 hidden md:table-cell">صافي ربح المشروع</th><th class="p-3 text-orange-300">حصة المستثمر</th><th class="p-3 hidden md:table-cell">تاريخ الاستثمار</th><th class="p-3"></th>
                         </tr></thead>
                         <tbody id="tbody-investor-funding"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- PROFIT DISTRIBUTION -->
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <h3 class="font-bold text-slate-900 mb-4"><i class="fa-solid fa-coins text-yellow-500"></i> تسجيل توزيع أرباح</h3>
-                <form onsubmit="addProfitDistribution(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المستثمر</label><select id="dist-investor" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
-                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label><select id="dist-project" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
-                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المبلغ الموزّع</label><input id="dist-amount" type="number" step="any" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
-                    <div><label class="block text-xs font-bold text-slate-600 mb-1">التاريخ</label><input id="dist-date" type="date" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
-                    <div class="md:col-span-3"><label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input id="dist-notes" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
-                    <div><button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold p-2.5 rounded-lg text-sm">حفظ التوزيع</button></div>
-                </form>
-            </div>
-
-            <!-- INVESTOR SUMMARY -->
+            <!-- INVESTOR SUMMARY + APPROVE -->
             <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-4 bg-yellow-50 border-b border-yellow-100 flex flex-wrap justify-between items-center gap-2">
                     <h3 class="font-bold text-slate-900"><i class="fa-solid fa-chart-pie text-yellow-600"></i> ملخص حسابات المستثمرين</h3>
@@ -622,11 +748,40 @@ html,body{overflow-x:hidden;}
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-right">
                         <thead class="bg-slate-800 text-white"><tr>
-                            <th class="p-3">المستثمر</th><th class="p-3">المشاريع الممولة</th><th class="p-3">إجمالي التمويل</th><th class="p-3">إجمالي الأرباح المستحقة</th><th class="p-3">الموزّع فعلاً</th><th class="p-3 text-yellow-300">المتبقي له</th>
+                            <th class="p-3">المستثمر</th><th class="p-3">المشاريع الممولة</th><th class="p-3">إجمالي التمويل</th><th class="p-3 hidden md:table-cell">النسبة %</th><th class="p-3 hidden md:table-cell">صافي ربح المشروع</th><th class="p-3 text-emerald-300">حصته من الربح</th><th class="p-3">الموزّع فعلاً</th><th class="p-3 text-yellow-300">المتبقي له</th><th class="p-3">اعتماد</th>
                         </tr></thead>
                         <tbody id="tbody-investor-summary"></tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- LIABILITIES TABLE -->
+            <div class="bg-white rounded-xl border border-amber-100 shadow-sm overflow-hidden">
+                <div class="p-4 bg-amber-50 border-b border-amber-100">
+                    <h3 class="font-bold text-slate-900 text-sm"><i class="fa-solid fa-file-invoice-dollar text-amber-600"></i> مستحقات معتمدة للمستثمرين (خصوم)</h3>
+                    <p class="text-xs text-slate-500 mt-1">تسجيلها في المركز المالي كالتزام متداول — تُغلق عند السداد وتُخصم من الخزينة</p>
+                </div>
+                <div class="overflow-x-auto max-h-64">
+                    <table class="w-full text-sm text-right">
+                        <thead class="bg-amber-800 text-white sticky top-0"><tr>
+                            <th class="p-3">المستثمر</th><th class="p-3">المشروع</th><th class="p-3">المبلغ المعتمد</th><th class="p-3">تاريخ الاعتماد</th><th class="p-3 text-center">الحالة</th><th class="p-3"></th>
+                        </tr></thead>
+                        <tbody id="tbody-investor-liabilities"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PROFIT DISTRIBUTION -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-slate-900 mb-4"><i class="fa-solid fa-coins text-yellow-500"></i> تسجيل توزيع أرباح (دفع مباشر)</h3>
+                <form onsubmit="addProfitDistribution(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المستثمر</label><select id="dist-investor" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label><select id="dist-project" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">المبلغ الموزّع</label><input id="dist-amount" type="number" step="any" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">التاريخ</label><input id="dist-date" type="date" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div class="md:col-span-3"><label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input id="dist-notes" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                    <div><button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold p-2.5 rounded-lg text-sm">حفظ التوزيع</button></div>
+                </form>
             </div>
 
             <!-- DISTRIBUTIONS LOG -->
@@ -672,6 +827,31 @@ html,body{overflow-x:hidden;}
     </main>
 </div>
 
+<!-- SETTLEMENT MODAL -->
+<div id="settle-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h3 class="font-bold text-slate-900">تسوية عهدة مؤقتة</h3>
+            <button onclick="closeSettleModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
+        </div>
+        <div class="bg-violet-50 rounded-lg p-3 text-sm">
+            <p class="text-violet-700 font-bold" id="settle-info"></p>
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">المبلغ المُنفق فعلاً (ج.م)</label>
+            <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                <input id="settle-spent" type="number" step="any" min="0" oninput="updateSettlePreview()" class="flex-1 bg-transparent px-3 py-2.5 text-sm outline-none border-0 font-bold">
+                <span class="bg-slate-200 text-slate-600 px-3 py-2.5 text-sm font-bold select-none">ج.م</span>
+            </div>
+        </div>
+        <div id="settle-preview" class="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 flex flex-col gap-1"></div>
+        <div class="flex gap-2">
+            <button onclick="closeSettleModal()" class="flex-1 py-2.5 rounded-lg bg-slate-100 text-slate-700 font-bold text-sm">إلغاء</button>
+            <button onclick="confirmSettle()" class="flex-1 py-2.5 rounded-lg bg-violet-600 text-white font-bold text-sm">✅ تأكيد التسوية</button>
+        </div>
+    </div>
+</div>
+
 <!-- ADD MASTER MODAL -->
 <div id="add-master-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
     <div class="bg-white p-6 rounded-xl border border-slate-200 w-full max-w-md shadow-xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
@@ -710,6 +890,14 @@ html,body{overflow-x:hidden;}
                     <option value="other">مصروفات أخرى</option>
                     <option value="excluded">خارج قائمة الدخل</option>
                 </select>
+                <div class="mt-3">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">المستفيد في هذا التبويب</label>
+                    <select id="master-name-type" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
+                        <option value="names">مقاولين/أفراد (قائمة 6)</option>
+                        <option value="clients">عملاء (قائمة 7)</option>
+                        <option value="any">أي مستفيد</option>
+                    </select>
+                </div>
             </div>
             <div id="master-plbucket-wrap" class="hidden">
                 <label class="block text-xs font-bold text-slate-600 mb-1">يندرج تحت سطر</label>
@@ -723,10 +911,30 @@ html,body{overflow-x:hidden;}
                 <label class="block text-xs font-bold text-slate-600 mb-1">قيمة العقد (اختياري)</label>
                 <input id="master-contract" type="number" step="any" placeholder="القيمة الإجمالية للعقد" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
             </div>
+            <div id="master-capital-wrap" class="hidden">
+                <label class="block text-xs font-bold text-slate-600 mb-1">رأس مال المشروع (اختياري)</label>
+                <input id="master-capital" type="number" step="any" placeholder="إجمالي التمويل المستهدف للمشروع" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
+                <p class="text-[10px] text-slate-400 mt-1">يُستخدم لاحقاً لحساب نسبة كل مستثمر تلقائياً في تاب المستثمرين</p>
+            </div>
             <div id="master-supplier-items-wrap" class="hidden">
                 <label class="block text-xs font-bold text-slate-600 mb-1">المواد التي يوردها هذا المورد</label>
                 <div id="master-supplier-items-list" class="flex flex-wrap gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-32 overflow-y-auto"></div>
                 <p class="text-[10px] text-slate-400 mt-1">اختر الأصناف التي يوردها — هيظهر في قايمة الموردين لما تختار هذا الصنف في التوريدات</p>
+            </div>
+            <div id="master-activity-cats-wrap" class="hidden">
+                <label class="block text-xs font-bold text-slate-600 mb-1">مرتبط بالتبويبات (اختياري)</label>
+                <div id="master-activity-cats-list" class="flex flex-wrap gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-24 overflow-y-auto"></div>
+                <p class="text-[10px] text-slate-400 mt-1">لو ما اخترتيش تبويب، يظهر هذا النشاط في كل التبويبات</p>
+                <div class="mt-3">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">المستفيدين المرتبطين بهذا النشاط (اختياري)</label>
+                    <div id="master-activity-names-list" class="flex flex-wrap gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-24 overflow-y-auto"></div>
+                    <p class="text-[10px] text-slate-400 mt-1">لو ما اخترتيش اسم، يظهر هذا النشاط لأي مستفيد</p>
+                </div>
+            </div>
+            <div id="master-name-activities-wrap" class="hidden">
+                <label class="block text-xs font-bold text-slate-600 mb-1">مرتبط بالأنشطة (اختياري)</label>
+                <div id="master-name-activities-list" class="flex flex-wrap gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-28 overflow-y-auto"></div>
+                <p class="text-[10px] text-slate-400 mt-1">لما تختار هذا المستفيد في المصروفات، تظهر هذه الأنشطة فقط</p>
             </div>
             <div class="flex justify-end gap-2 mt-2">
                 <button type="button" onclick="closeAddMasterModal()" class="px-4 py-2 text-sm font-semibold bg-slate-100 hover:bg-slate-200 rounded-lg">إلغاء</button>
@@ -758,233 +966,165 @@ const BUCKET_LABELS = {
 function seedDb(){
     return {
         projects: [
-            {code:1001,name:'بلوك 195'},{code:1002,name:'بلوك 190'},{code:1003,name:'مسجد 11'},{code:1004,name:'عمارة 25'}
+            {code:1001,name:'بلوك 107'},{code:1002,name:'بلوك 110'},{code:1003,name:'بلوك 190'},
+            {code:1004,name:'بلوك 193'},{code:1005,name:'بلوك 216'},{code:1006,name:'بلوك 195'},
+            {code:1007,name:'بلوك 189'},{code:1008,name:'سانتوريني'}
         ],
         supplies: [
-            {code:2001,name:'طوب أسمنتي',unit:'ألف'},{code:2002,name:'رمل',unit:'م3'},
-            {code:2003,name:'أسمنت',unit:'طن'},{code:2004,name:'حديد',unit:'طن'},{code:2005,name:'خرسانة أسقف',unit:'م3'}
+            {code:2001,name:'الاسمنت',unit:'طن'},{code:2002,name:'حديد',unit:'طن'},
+            {code:2003,name:'رمل',unit:'م3'},{code:2004,name:'سن',unit:'م3'}
         ],
         suppliers: [
-            {code:3001,name:'آل منصور'},{code:3002,name:'ياسر أبو ضلع'},{code:3003,name:'المهدي'}
+            {code:3001,name:'احمد',items:['الاسمنت']}
         ],
         expenses: [
-            {code:4001,name:'مقاولين',plType:'direct'},
-            {code:4002,name:'أجور',plType:'operating',plBucket:'admin'},
-            {code:4003,name:'إيراد',plType:'revenue'},
-            {code:4004,name:'أخرى',plType:'other'},
-            {code:4005,name:'إيجار ومصروفات مرافق',plType:'operating',plBucket:'admin'},
-            {code:4006,name:'استهلاك أصول إدارية',plType:'operating',plBucket:'admin'},
-            {code:4007,name:'مصروفات تسويق',plType:'operating',plBucket:'selling'}
+            {code:4001,name:'إيراد',plType:'revenue',nameType:'clients'},
+            {code:4002,name:'مقاولين',plType:'direct',nameType:'names'},
+            {code:4003,name:'نظافة وبوفيه',plType:'operating',plBucket:'admin',nameType:'any'},
+            {code:4004,name:'ايجار موقع',plType:'operating',plBucket:'admin',nameType:'any'},
+            {code:4005,name:'مصروفات نثرية',plType:'operating',plBucket:'admin',nameType:'any'}
         ],
         activities: [
-            {code:5001,name:'سلفة'},{code:5002,name:'محارة'},{code:5003,name:'بنا'},{code:5004,name:'عمالة'},{code:5005,name:'كهرباء'}
+            {code:5001,name:'كهرباء'},{code:5002,name:'مصروفات تثرية'}
         ],
-        names: [
-            {code:6001,name:'صلاح',contractValue:150000},{code:6002,name:'حسام',contractValue:90000},{code:6003,name:'أحمد'}
+        names: [],
+        clients: [],
+        procurements: [],
+        expensesData: [],
+        payments: [],
+        nextId: {proc:1, exp:1, pay:1, inv:1},
+        taxRate: 1,
+        taxes: [
+            {code:9001,name:'ضريبة الدخل',rate:1,active:true},
+            {code:9002,name:'ضريبة القيمة المضافة (VAT)',rate:14,active:false},
+            {code:9003,name:'ضريبة الدمغة',rate:0.3,active:false}
         ],
-        clients: [
-            {code:7001,name:'شركة النخبة العقارية',contractValue:2200000},{code:7002,name:'أحمد المطيري',contractValue:850000}
-        ],
-        procurements: [
-            {id:1,item:'أسمنت',supplier:'آل منصور',project:'بلوك 195',qty:40,unit:'طن',price:2600,date:'2026-05-10',notes:''}
-        ],
-        expensesData: [
-            {id:1,category:'إيراد',activity:'سلفة',name:'أحمد المطيري',project:'بلوك 195',total:300000,paid:200000,remaining:100000,date:'2026-05-15',notes:'دفعة مقدمة'},
-            {id:2,category:'مقاولين',activity:'بنا',name:'صلاح',project:'بلوك 195',total:150000,paid:70000,remaining:80000,date:'2026-05-20',notes:''}
-        ],
-        payments: [
-            {id:1,supplier:'آل منصور',project:'بلوك 195',amount:80000,date:'2026-05-12',notes:'دفعة أولى'}
-        ],
-        nextId: {proc:2, exp:3, pay:2, inv:1},
-        taxRate: 22.5,
         investors: [],
         investorFunding: [],
-        profitDistributions: []
+        profitDistributions: [],
+        investorLiabilities: [],
+        custodies: []
     };
 }
 
 let db = seedDb();
 let chartCosts=null, chartShare=null;
+let saveTimer = null;
 
-/* ================= SUPABASE CONFIG ================= */
-const SUPABASE_URL = 'https://mzqkeihrddjddhptansd.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_drZOD4yGq47ml8jgiQJJOg_N6mexwbI';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+/* ================= STORAGE (localStorage على هذا الجهاز — بدون قاعدة بيانات مركزية) =================
+   ضع هنا رابط Google Apps Script Web App لو عايز مزامنة بين أجهزة مختلفة، أو سيبه فاضي عشان يشتغل محلي بس */
+const SHEET_API_URL = '';
 
-// أسماء جداول Supabase المقابلة لكل مفتاح في db (شوفي supabase_schema.sql)
-const TABLES = {
-    projects:'projects', supplies:'supplies', suppliers:'suppliers',
-    expenses:'expense_categories', activities:'activities', names:'names',
-    clients:'clients', investors:'investors', procurements:'procurements',
-    expensesData:'expense_entries', payments:'payments',
-    investorFunding:'investor_funding', profitDistributions:'profit_distributions'
+const store = {
+    async set(key, value){
+        if(SHEET_API_URL){
+            try{
+                const ctrl = new AbortController();
+                const t = setTimeout(()=>ctrl.abort(), 4000);
+                await fetch(SHEET_API_URL, {
+                    method:'POST', mode:'no-cors',
+                    headers:{'Content-Type':'text/plain;charset=utf-8'},
+                    body: JSON.stringify({ key, value }),
+                    signal: ctrl.signal
+                });
+                clearTimeout(t);
+            }catch(e){ console.warn('تعذر الحفظ على جوجل شيت، جارٍ الحفظ محلياً فقط:', e); }
+        }
+        if(window.storage){
+            try{ await window.storage.set(key, value, true); }catch(e){}
+        }
+        try{ localStorage.setItem(key, value); }catch(e){}
+    },
+    async get(key){
+        if(SHEET_API_URL){
+            try{
+                const ctrl = new AbortController();
+                const t = setTimeout(()=>ctrl.abort(), 4000);
+                const res = await fetch(SHEET_API_URL + '?key=' + encodeURIComponent(key) + '&t=' + Date.now(), { signal: ctrl.signal });
+                clearTimeout(t);
+                const text = await res.text();
+                if(text) return text;
+            }catch(e){ console.warn('تعذرت القراءة من جوجل شيت، جارٍ استخدام النسخة المحلية:', e); }
+        }
+        if(window.storage){
+            try{
+                const res = await window.storage.get(key, true);
+                if(res) return res.value;
+            }catch(e){}
+        }
+        try{ return localStorage.getItem(key); }catch(e){ return null; }
+    }
 };
 
-/* تحويل بين حقول الجافاسكريبت (camelCase) وأعمدة القاعدة (snake_case) لجداول دليل الأكواد فقط */
-function masterRowToItem(cat, row){
-    if(cat==='expenses') return { code:row.code, name:row.name, plType:row.pl_type, plBucket:row.pl_bucket||undefined };
-    if(cat==='names'||cat==='clients') return { code:row.code, name:row.name, contractValue:row.contract_value||undefined };
-    if(cat==='suppliers') return { code:row.code, name:row.name, items:(row.items&&row.items.length)?row.items:undefined };
-    if(cat==='supplies') return { code:row.code, name:row.name, unit:row.unit||undefined };
-    return { code:row.code, name:row.name };
-}
-function masterItemToRow(cat, item){
-    if(cat==='expenses') return { code:item.code, name:item.name, pl_type:item.plType, pl_bucket:item.plBucket||null };
-    if(cat==='names'||cat==='clients') return { code:item.code, name:item.name, contract_value:item.contractValue||null };
-    if(cat==='suppliers') return { code:item.code, name:item.name, items:item.items||null };
-    if(cat==='supplies') return { code:item.code, name:item.name, unit:item.unit||null };
-    return { code:item.code, name:item.name };
-}
+function scheduleSave(){
+    const ind = document.getElementById('save-indicator');
+    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span><span class="hidden sm:inline">جارٍ الحفظ...</span>';
 
-/* ================= LOAD FROM SUPABASE ================= */
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }catch(err){ console.error('sync save error', err); }
+
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async ()=>{
+        try{
+            await store.set(STORAGE_KEY, JSON.stringify(db));
+            const ind2 = document.getElementById('save-indicator');
+            if(ind2) ind2.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span><span class="hidden sm:inline">محفوظ تلقائياً</span>';
+        }catch(err){
+            const ind2 = document.getElementById('save-indicator');
+            if(ind2) ind2.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span><span class="hidden sm:inline">تعذّر الحفظ</span>';
+            console.error('save error', err);
+        }
+    }, 400);
+}
+function flushSaveNow(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }catch(err){}
+}
+window.addEventListener('beforeunload', flushSaveNow);
+window.addEventListener('pagehide', flushSaveNow);
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) flushSaveNow(); });
+
 async function loadDb(){
     try{
-        const [projRes, supRes, supplierRes, expCatRes, actRes, namesRes, clientsRes, investorsRes,
-               procRes, expDataRes, payRes, invFundRes, distRes, settingsRes] = await Promise.all([
-            sb.from('projects').select('*').order('code'),
-            sb.from('supplies').select('*').order('code'),
-            sb.from('suppliers').select('*').order('code'),
-            sb.from('expense_categories').select('*').order('code'),
-            sb.from('activities').select('*').order('code'),
-            sb.from('names').select('*').order('code'),
-            sb.from('clients').select('*').order('code'),
-            sb.from('investors').select('*').order('code'),
-            sb.from('procurements').select('*').order('id'),
-            sb.from('expense_entries').select('*').order('id'),
-            sb.from('payments').select('*').order('id'),
-            sb.from('investor_funding').select('*').order('id'),
-            sb.from('profit_distributions').select('*').order('id'),
-            sb.from('app_settings').select('*')
-        ]);
-        const allRes = [projRes,supRes,supplierRes,expCatRes,actRes,namesRes,clientsRes,investorsRes,procRes,expDataRes,payRes,invFundRes,distRes,settingsRes];
-        const firstError = allRes.find(r=>r.error);
-        if(firstError) throw firstError.error;
-
-        const newDb = {
-            projects: projRes.data.map(r=>masterRowToItem('projects', r)),
-            supplies: supRes.data.map(r=>masterRowToItem('supplies', r)),
-            suppliers: supplierRes.data.map(r=>masterRowToItem('suppliers', r)),
-            expenses: expCatRes.data.map(r=>masterRowToItem('expenses', r)),
-            activities: actRes.data.map(r=>masterRowToItem('activities', r)),
-            names: namesRes.data.map(r=>masterRowToItem('names', r)),
-            clients: clientsRes.data.map(r=>masterRowToItem('clients', r)),
-            investors: investorsRes.data.map(r=>masterRowToItem('investors', r)),
-            procurements: procRes.data,
-            expensesData: expDataRes.data,
-            payments: payRes.data,
-            investorFunding: invFundRes.data,
-            profitDistributions: distRes.data,
-            taxRate: 22.5
-        };
-        const taxSetting = settingsRes.data && settingsRes.data.find(s=>s.key==='taxRate');
-        if(taxSetting) newDb.taxRate = Number(taxSetting.value) || 22.5;
-
-        db = newDb;
-        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }catch(e){}
-        const ind = document.getElementById('save-indicator');
-        if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span>متصل بـ Supabase</span>';
-    }catch(err){
-        console.error('تعذر الاتصال بـ Supabase، جارٍ استخدام آخر نسخة محفوظة محلياً:', err);
-        try{
-            const v = localStorage.getItem(STORAGE_KEY);
-            if(v) db = JSON.parse(v);
-        }catch(e){}
-        const ind = document.getElementById('save-indicator');
-        if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>غير متصل بقاعدة البيانات</span>';
-    }
-}
-
-function markSaved(){
-    const ind = document.getElementById('save-indicator');
-    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span>محفوظ على Supabase</span>';
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }catch(e){}
-}
-function markSaving(){
-    const ind = document.getElementById('save-indicator');
-    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span><span>جارٍ الحفظ...</span>';
-}
-function markSaveError(err){
-    console.error('save error', err);
-    const ind = document.getElementById('save-indicator');
-    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>تعذّر الحفظ</span>';
-    alert('تعذر حفظ التعديل على Supabase. تأكدي من الاتصال بالإنترنت وحاولي تاني.\n' + (err && err.message ? err.message : ''));
-}
-
-/* ================= LIVE SYNC (Supabase Realtime بدل الـ polling القديم) ================= */
-let realtimeReloadTimer = null;
-function scheduleRealtimeReload(){
-    clearTimeout(realtimeReloadTimer);
-    realtimeReloadTimer = setTimeout(async ()=>{
-        await loadDb();
-        renderMasterData();
-        initDropdowns();
-        renderAll();
-        const ind = document.getElementById('save-indicator');
-        if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span><span>تحديث من مستخدم آخر</span>';
-    }, 500);
-}
-function setupRealtime(){
-    const tables = ['projects','supplies','suppliers','expense_categories','activities','names','clients','investors',
-        'procurements','expense_entries','payments','investor_funding','profit_distributions','app_settings'];
-    const channel = sb.channel('dragon-erp-sync');
-    tables.forEach(t=>{
-        channel.on('postgres_changes', { event:'*', schema:'public', table:t }, scheduleRealtimeReload);
-    });
-    channel.subscribe();
-}
-
-/* ================= ترحيل بيانات قديمة من localStorage إلى Supabase (مرة واحدة فقط) =================
-   افتحي أدوات المطور (F12) في نفس المتصفح اللي كانت بتستخدم النسخة القديمة، وفي الـ Console
-   اكتبي: migrateLocalDataToSupabase()  ثم Enter. شغّليها مرة واحدة بس عشان متتكررش الحركات. */
-async function migrateLocalDataToSupabase(){
-    let old;
-    try{
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if(!raw){ alert('مفيش بيانات قديمة محفوظة في هذا المتصفح.'); return; }
-        old = JSON.parse(raw);
-    }catch(e){ alert('تعذرت قراءة البيانات القديمة.'); return; }
-
-    if(!confirm('هيتم رفع كل البيانات المحفوظة محلياً في هذا المتصفح إلى Supabase. شغّلي العملية دي مرة واحدة بس عشان متتكررش الحركات. متابعة؟')) return;
-
-    const masterCats = ['projects','supplies','suppliers','expenses','activities','names','clients','investors'];
-    for(const cat of masterCats){
-        const rows = (old[cat]||[]).map(it=>masterItemToRow(cat, it));
-        if(rows.length){
-            const { error } = await sb.from(TABLES[cat]).upsert(rows, { onConflict:'code' });
-            if(error){ alert(`فشل ترحيل ${cat}: ${error.message}`); return; }
+        if(window.__EMBEDDED_DB__){
+            db = window.__EMBEDDED_DB__;
+            normalizeDb();
+            await store.set(STORAGE_KEY, JSON.stringify(db));
+            window.__EMBEDDED_DB__ = null;
+            return;
         }
-    }
-
-    const txTables = [
-        ['procurements','procurements'],
-        ['expensesData','expense_entries'],
-        ['payments','payments'],
-        ['investorFunding','investor_funding'],
-        ['profitDistributions','profit_distributions']
+        const val = await store.get(STORAGE_KEY);
+        if(val){
+            db = JSON.parse(val);
+            normalizeDb();
+        }
+    }catch(err){ console.error('تعذرت قراءة البيانات المحفوظة، جارٍ استخدام البيانات الافتراضية:', err); }
+}
+function normalizeDb(){
+    if(!db.procurements) db.procurements = [];
+    if(!db.expensesData) db.expensesData = [];
+    if(!db.payments) db.payments = [];
+    if(!db.nextId) db.nextId = {};
+    if(!db.nextId.proc) db.nextId.proc = db.procurements.reduce((m,p)=>Math.max(m,p.id||0),0)+1;
+    if(!db.nextId.exp) db.nextId.exp = db.expensesData.reduce((m,x)=>Math.max(m,x.id||0),0)+1;
+    if(!db.nextId.pay) db.nextId.pay = db.payments.reduce((m,p)=>Math.max(m,p.id||0),0)+1;
+    if(!db.nextId.inv) db.nextId.inv = 1;
+    if(!db.investors) db.investors = [];
+    if(!db.investorFunding) db.investorFunding = [];
+    if(!db.profitDistributions) db.profitDistributions = [];
+    if(!db.investorLiabilities) db.investorLiabilities = [];
+    if(!db.custodies) db.custodies = [];
+    if(!db.taxes || !db.taxes.length) db.taxes = [
+        {code:9001,name:'ضريبة الدخل',rate:1,active:true},
+        {code:9002,name:'ضريبة القيمة المضافة (VAT)',rate:14,active:false},
+        {code:9003,name:'ضريبة الدمغة',rate:0.3,active:false}
     ];
-    for(const [dbKey, table] of txTables){
-        const rows = (old[dbKey]||[]).map(({id, ...rest})=>rest); // اسيبي القاعدة تولّد id جديد
-        if(rows.length){
-            const { error } = await sb.from(table).insert(rows);
-            if(error){ alert(`فشل ترحيل ${dbKey}: ${error.message}`); return; }
-        }
-    }
-
-    if(typeof old.taxRate === 'number'){
-        await sb.from('app_settings').upsert({ key:'taxRate', value: old.taxRate }, { onConflict:'key' });
-    }
-
-    alert('تم ترحيل البيانات إلى Supabase ✅');
-    await loadDb();
-    renderMasterData();
-    initDropdowns();
-    renderAll();
+    (db.expenses||[]).forEach(c=>{ if(!c.nameType) c.nameType='any'; });
 }
 
 /* ================= ACTIVATION (لمرة واحدة على هذا المتصفح فقط) ================= */
 async function checkActivation(){
     try{
-        if(localStorage.getItem(ACTIVATION_KEY) === 'true'){ document.getElementById('activation-gate').classList.add('hidden'); }
+        const val = await store.get(ACTIVATION_KEY);
+        if(val === 'true'){ document.getElementById('activation-gate').classList.add('hidden'); }
     }catch(err){}
 }
 function normalizeCode(s){
@@ -998,12 +1138,19 @@ async function handleActivation(e){
     e.preventDefault();
     const entered = normalizeCode(document.getElementById('activation-code').value);
     if(entered === normalizeCode(ACTIVATION_CODE)){
-        try{ localStorage.setItem(ACTIVATION_KEY, 'true'); }catch(err){}
+        try{ await store.set(ACTIVATION_KEY, 'true'); }catch(err){}
         document.getElementById('activation-gate').classList.add('hidden');
     }else{
         document.getElementById('activation-error').classList.remove('hidden');
         document.getElementById('activation-code').value='';
     }
+}
+async function logout(){
+    if(!confirm('تسجيل الخروج من النظام؟ هتحتاج تدخل كود التفعيل تاني للدخول من هذا المتصفح.')) return;
+    try{ await store.set(ACTIVATION_KEY, 'false'); }catch(err){}
+    document.getElementById('activation-error').classList.add('hidden');
+    document.getElementById('activation-code').value='';
+    document.getElementById('activation-gate').classList.remove('hidden');
 }
 
 /* ================= UTIL ================= */
@@ -1026,13 +1173,11 @@ window.onload = async function(){
     await checkActivation();
     await loadDb();
     initApp();
-    setupRealtime();
 };
 
 function initApp(){
     renderMasterData();
     initDropdowns();
-    document.getElementById('pl-tax-rate').value = db.taxRate;
     renderAll();
 }
 
@@ -1045,11 +1190,14 @@ function renderAll(){
     renderPaymentsTable();
     renderSupplierAccounts();
     renderTreasury();
+    renderTaxTable();
     renderPL();
+    renderCustody();
     renderLedger();
     renderPartyAccounts();
     renderInvestorFunding();
     renderInvestorSummary();
+    renderInvestorLiabilities();
     renderDistributions();
     renderBalanceSheet();
     requestAnimationFrame(()=>{ setTimeout(()=>renderCharts(dashFp), 50); });
@@ -1060,6 +1208,9 @@ function switchTab(tabId){
     document.getElementById('tab-'+tabId).classList.add('active');
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.getElementById('btn-'+tabId).classList.add('active');
+    if(tabId==='custody'){ renderCustody(); }
+    if(tabId==='pl'){ renderTaxTable(); renderPL(); }
+    if(tabId==='investors'){ renderAllProjectProfits(); }
     closeSidebar();
 }
 
@@ -1162,6 +1313,7 @@ function openAddMasterModal(){
     document.getElementById('master-type').disabled = false;
     document.getElementById('master-name').value = '';
     document.getElementById('master-contract').value = '';
+    document.getElementById('master-capital').value = '';
     document.getElementById('add-master-modal').classList.remove('hidden');
     document.getElementById('add-master-modal').classList.add('flex');
     toggleMasterFields();
@@ -1179,14 +1331,29 @@ function openEditMasterModal(cat, code){
     if(cat==='expenses'){
         document.getElementById('master-pltype').value = item.plType || 'operating';
         if(item.plBucket) document.getElementById('master-plbucket').value = item.plBucket;
+        document.getElementById('master-name-type').value = item.nameType || 'any';
     }
     if(cat==='names'||cat==='clients') document.getElementById('master-contract').value = item.contractValue || '';
+    if(cat==='projects') document.getElementById('master-capital').value = item.capital || '';
     document.getElementById('add-master-modal').classList.remove('hidden');
     document.getElementById('add-master-modal').classList.add('flex');
     toggleMasterFields();
     if(cat==='suppliers'){
         const checks = document.querySelectorAll('.supplier-item-check');
         const assigned = item.items || [];
+        checks.forEach(cb=>{ cb.checked = assigned.includes(cb.value); });
+    }
+    if(cat==='activities'){
+        const checks = document.querySelectorAll('.activity-cat-check');
+        const assigned = item.categories || [];
+        checks.forEach(cb=>{ cb.checked = assigned.includes(cb.value); });
+        const nameChecks = document.querySelectorAll('.activity-names-check');
+        const assignedNames = item.linkedNames || [];
+        nameChecks.forEach(cb=>{ cb.checked = assignedNames.includes(cb.value); });
+    }
+    if(cat==='names'){
+        const checks = document.querySelectorAll('.name-activity-check');
+        const assigned = item.activities || [];
         checks.forEach(cb=>{ cb.checked = assigned.includes(cb.value); });
     }
 }
@@ -1196,6 +1363,7 @@ function closeAddMasterModal(){
     document.getElementById('master-type').disabled = false;
     document.getElementById('master-name').value='';
     document.getElementById('master-contract').value='';
+    document.getElementById('master-capital').value='';
 }
 function toggleMasterFields(){
     const type = document.getElementById('master-type').value;
@@ -1204,7 +1372,10 @@ function toggleMasterFields(){
     const plType = document.getElementById('master-pltype').value;
     document.getElementById('master-plbucket-wrap').classList.toggle('hidden', !(type==='expenses' && plType==='operating'));
     document.getElementById('master-contract-wrap').classList.toggle('hidden', !(type==='names'||type==='clients'));
+    document.getElementById('master-capital-wrap').classList.toggle('hidden', type!=='projects');
     document.getElementById('master-supplier-items-wrap').classList.toggle('hidden', type!=='suppliers');
+    document.getElementById('master-activity-cats-wrap').classList.toggle('hidden', type!=='activities');
+    document.getElementById('master-name-activities-wrap').classList.toggle('hidden', type!=='names');
     if(type==='suppliers'){
         const list = document.getElementById('master-supplier-items-list');
         const currentChecked = [...list.querySelectorAll('input[type=checkbox]:checked')].map(c=>c.value);
@@ -1212,6 +1383,33 @@ function toggleMasterFields(){
             <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
                 <input type="checkbox" value="${esc(s.name)}" ${currentChecked.includes(s.name)?'checked':''} class="supplier-item-check">
                 <span>${esc(s.name)}</span>
+            </label>`).join('');
+    }
+    if(type==='activities'){
+        const list = document.getElementById('master-activity-cats-list');
+        const currentChecked = [...list.querySelectorAll('input[type=checkbox]:checked')].map(c=>c.value);
+        list.innerHTML = db.expenses.map(c=>`
+            <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
+                <input type="checkbox" value="${esc(c.name)}" ${currentChecked.includes(c.name)?'checked':''} class="activity-cat-check">
+                <span>${esc(c.name)}</span>
+            </label>`).join('');
+
+        const namesList = document.getElementById('master-activity-names-list');
+        const currentNamesChecked = [...namesList.querySelectorAll('input[type=checkbox]:checked')].map(c=>c.value);
+        const allPeople = [...db.names, ...db.clients];
+        namesList.innerHTML = allPeople.map(n=>`
+            <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
+                <input type="checkbox" value="${esc(n.name)}" ${currentNamesChecked.includes(n.name)?'checked':''} class="activity-names-check">
+                <span>${esc(n.name)}</span>
+            </label>`).join('');
+    }
+    if(type==='names'){
+        const list = document.getElementById('master-name-activities-list');
+        const currentChecked = [...list.querySelectorAll('input[type=checkbox]:checked')].map(c=>c.value);
+        list.innerHTML = db.activities.map(a=>`
+            <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
+                <input type="checkbox" value="${esc(a.name)}" ${currentChecked.includes(a.name)?'checked':''} class="name-activity-check">
+                <span>${esc(a.name)}</span>
             </label>`).join('');
     }
 }
@@ -1222,7 +1420,7 @@ function nextCode(cat){
     return max+1;
 }
 
-async function saveMasterItem(e){
+function saveMasterItem(e){
     e.preventDefault();
     const type = document.getElementById('master-type').value;
     const name = document.getElementById('master-name').value.trim();
@@ -1234,14 +1432,29 @@ async function saveMasterItem(e){
     if(type==='expenses'){
         item.plType = document.getElementById('master-pltype').value;
         if(item.plType==='operating') item.plBucket = document.getElementById('master-plbucket').value;
+        item.nameType = document.getElementById('master-name-type').value;
     }
     if(type==='suppliers'){
         const checked = [...document.querySelectorAll('.supplier-item-check:checked')].map(cb=>cb.value);
         if(checked.length) item.items = checked;
     }
+    if(type==='activities'){
+        const cats = [...document.querySelectorAll('.activity-cat-check:checked')].map(cb=>cb.value);
+        if(cats.length) item.categories = cats;
+        const names = [...document.querySelectorAll('.activity-names-check:checked')].map(cb=>cb.value);
+        if(names.length) item.linkedNames = names;
+    }
     if(type==='names'||type==='clients'){
         const cv = Number(document.getElementById('master-contract').value);
         if(cv>0) item.contractValue = cv;
+    }
+    if(type==='names'){
+        const acts = [...document.querySelectorAll('.name-activity-check:checked')].map(cb=>cb.value);
+        if(acts.length) item.activities = acts;
+    }
+    if(type==='projects'){
+        const cap = Number(document.getElementById('master-capital').value);
+        if(cap>0) item.capital = cap;
     }
 
     if(editCode){
@@ -1254,20 +1467,12 @@ async function saveMasterItem(e){
                     || db.payments.some(pay=>[pay.supplier,pay.project].includes(oldName));
                 if(inUse && !confirm(`تنبيه: "${oldName}" مستخدم في حركات مسجلة بالفعل. تغيير الاسم لـ "${name}" هيفصل هذه الحركات عنه في التقارير. هل تريد المتابعة؟`)) return;
             }
+            db[type][idx] = item;
         }
-    }
-
-    markSaving();
-    const { error } = await sb.from(TABLES[type]).upsert(masterItemToRow(type, item), { onConflict:'code' });
-    if(error){ markSaveError(error); return; }
-
-    if(editCode){
-        const idx = db[type].findIndex(it=>it.code===Number(editCode));
-        if(idx>-1) db[type][idx] = item;
     }else{
         db[type].push(item);
     }
-    markSaved();
+    scheduleSave();
     renderMasterData();
     initDropdowns();
     closeAddMasterModal();
@@ -1311,11 +1516,16 @@ function initDropdowns(){
     fillSelect('filter-summary-investor', db.investors, 'كل المستثمرين');
     fillSelect('filter-dist-investor', db.investors, 'كل المستثمرين');
     fillSelect('filter-dist-project', db.projects, 'كل المشاريع');
+    fillSelect('cust-name', db.names);
+    fillSelect('cust-project', db.projects, 'بدون مشروع');
+    fillSelect('filter-cust-project', db.projects, 'كل المشاريع');
 
     if(!document.getElementById('proc-date').value) document.getElementById('proc-date').value = todayISO();
     if(!document.getElementById('exp-date').value) document.getElementById('exp-date').value = todayISO();
     if(!document.getElementById('pay-date').value) document.getElementById('pay-date').value = todayISO();
     if(document.getElementById('dist-date') && !document.getElementById('dist-date').value) document.getElementById('dist-date').value = todayISO();
+    if(document.getElementById('inv-date') && !document.getElementById('inv-date').value) document.getElementById('inv-date').value = todayISO();
+    if(document.getElementById('cust-date') && !document.getElementById('cust-date').value) document.getElementById('cust-date').value = todayISO();
 
     updateProcUnit();
     filterExpenseSubFields();
@@ -1356,19 +1566,67 @@ function calcProcTotal(){
 
 function filterExpenseSubFields(){
     const cat = document.getElementById('exp-category').value;
-    fillSelect('exp-activity', db.activities);
+    const catDef = db.expenses.find(c=>c.name===cat);
+    const nameType = catDef?.nameType || 'any';
+
     const label = document.getElementById('exp-name-label');
-    if(cat==='إيراد'){
+    if(nameType==='clients'){
         fillSelect('exp-name', db.clients);
         label.textContent = 'العميل';
-    }else if(cat==='مقاولين'){
+    }else if(nameType==='names'){
         fillSelect('exp-name', db.names);
-        label.textContent = 'المقاول';
+        label.textContent = cat==='مقاولين' ? 'المقاول' : 'المستفيد';
     }else{
-        fillSelect('exp-name', db.names);
+        fillSelect('exp-name', [...db.names, ...db.clients]);
         label.textContent = 'المستفيد';
     }
+    filterActivitiesByName();
+}
+function filterActivitiesByName(){
+    const cat = document.getElementById('exp-category').value;
+    const name = document.getElementById('exp-name').value;
+
+    // الأنشطة المرتبطة بهذا الاسم (من تكويد النشاط - linkedNames)
+    let linkedActivities = db.activities.filter(a=> a.linkedNames && a.linkedNames.includes(name));
+    // لو مفيش ربط بالاسم، جرب الربط بالتبويب
+    if(!linkedActivities.length){
+        linkedActivities = db.activities.filter(a=> !a.categories || a.categories.length===0 || a.categories.includes(cat));
+    }
+
+    const actEl = document.getElementById('exp-activity');
+    const prevVal = actEl.value;
+    fillSelect('exp-activity', linkedActivities.length ? linkedActivities : db.activities);
+
+    if(linkedActivities.length===1){
+        actEl.value = linkedActivities[0].name;
+    }else if([...actEl.options].some(o=>o.value===prevVal)){
+        actEl.value = prevVal;
+    }
+
+    if(cat==='إيراد'){
+        const revenueActDef = db.activities.find(a=>a.categories&&a.categories.includes('إيراد'));
+        if(revenueActDef){
+            const opt = [...actEl.options].find(o=>o.value===revenueActDef.name);
+            if(opt) actEl.value = revenueActDef.name;
+        }
+    }
+
+    const isContractor = cat==='مقاولين';
+    const execWrap = document.getElementById('exp-executed-wrap');
+    if(execWrap) execWrap.classList.toggle('hidden', !isContractor);
+    if(!isContractor){
+        const execInput = document.getElementById('exp-executed');
+        if(execInput) execInput.value = '';
+        const remEl = document.getElementById('exp-remaining-display');
+        if(remEl) remEl.value = '';
+    }
     showContractInfo();
+}
+function calcContractorRemaining(){
+    const executed = Number(document.getElementById('exp-executed')?.value)||0;
+    const paid = Number(document.getElementById('exp-paid')?.value)||0;
+    const rem = document.getElementById('exp-remaining-display');
+    if(rem) rem.value = Math.max(executed - paid, 0);
 }
 function showContractInfo(){
     const cat = document.getElementById('exp-category').value;
@@ -1401,11 +1659,12 @@ function showContractInfo(){
     }
 }
 /* ================= PROCUREMENT ================= */
-async function addProcurement(e){
+function addProcurement(e){
     e.preventDefault();
     const qty = Number(document.getElementById('proc-qty').value)||0;
     const price = Number(document.getElementById('proc-price').value)||0;
     const rec = {
+        id: db.nextId.proc++,
         item: document.getElementById('proc-item').value,
         supplier: document.getElementById('proc-supplier').value,
         project: document.getElementById('proc-project').value,
@@ -1413,18 +1672,14 @@ async function addProcurement(e){
         date: document.getElementById('proc-date').value || todayISO(),
         notes: document.getElementById('proc-notes').value.trim()
     };
-    markSaving();
-    const { data, error } = await sb.from('procurements').insert(rec).select().single();
-    if(error){ markSaveError(error); return; }
-
-    db.procurements.push(data);
+    db.procurements.push(rec);
     e.target.reset();
     document.getElementById('proc-date').value = todayISO();
     updateProcUnit();
-    markSaved();
+    scheduleSave();
     renderAll();
 }
-async function deleteMasterItem(cat, code){
+function deleteMasterItem(cat, code){
     const item = db[cat].find(it=>it.code===code);
     if(!item) return;
     const inUse = db.procurements.some(p=>[p.item,p.supplier,p.project].includes(item.name))
@@ -1433,23 +1688,16 @@ async function deleteMasterItem(cat, code){
     if(inUse && !confirm(`"${item.name}" مستخدم في حركات مسجلة بالفعل. حذفه لن يحذف تلك الحركات لكنها قد تفقد الربط الصحيح بها. هل تريد المتابعة؟`)) return;
     if(!inUse && !confirm(`هل تريد حذف "${item.name}"؟`)) return;
 
-    markSaving();
-    const { error } = await sb.from(TABLES[cat]).delete().eq('code', code);
-    if(error){ markSaveError(error); return; }
-
     db[cat] = db[cat].filter(it=>it.code!==code);
-    markSaved();
+    scheduleSave();
     renderMasterData();
     initDropdowns();
 }
 
-async function deleteProcurement(id){
+function deleteProcurement(id){
     if(!confirm('هل تريد حذف حركة التوريد دي؟')) return;
-    markSaving();
-    const { error } = await sb.from('procurements').delete().eq('id', id);
-    if(error){ markSaveError(error); return; }
     db.procurements = db.procurements.filter(p=>p.id!==id);
-    markSaved();
+    scheduleSave();
     renderAll();
 }
 function renderProcurementsTable(){
@@ -1481,34 +1729,28 @@ function renderProcurementsTable(){
 }
 
 /* ================= PAYMENTS (للموردين) ================= */
-async function addPayment(e){
+function addPayment(e){
     e.preventDefault();
     const amount = Number(document.getElementById('pay-amount').value)||0;
     if(amount<=0){ alert('أدخل مبلغ الدفعة'); return; }
     const rec = {
+        id: db.nextId.pay++,
         supplier: document.getElementById('pay-supplier').value,
         amount,
         project: (document.getElementById('pay-project').value==='ALL' ? null : document.getElementById('pay-project').value) || null,
         date: document.getElementById('pay-date').value || todayISO(),
         notes: document.getElementById('pay-notes').value.trim()
     };
-    markSaving();
-    const { data, error } = await sb.from('payments').insert(rec).select().single();
-    if(error){ markSaveError(error); return; }
-
-    db.payments.push(data);
+    db.payments.push(rec);
     e.target.reset();
     document.getElementById('pay-date').value = todayISO();
-    markSaved();
+    scheduleSave();
     renderAll();
 }
-async function deletePayment(id){
+function deletePayment(id){
     if(!confirm('هل تريد حذف هذه الدفعة؟ سيرتفع رصيد المورد المستحق مرة أخرى.')) return;
-    markSaving();
-    const { error } = await sb.from('payments').delete().eq('id', id);
-    if(error){ markSaveError(error); return; }
     db.payments = db.payments.filter(p=>p.id!==id);
-    markSaved();
+    scheduleSave();
     renderAll();
 }
 function textMatch(fields, term){
@@ -1599,36 +1841,37 @@ function renderSupplierAccounts(){
 }
 
 /* ================= EXPENSES ================= */
-async function addExpense(e){
+function addExpense(e){
     e.preventDefault();
+    const cat = document.getElementById('exp-category').value;
+    const isContractor = cat==='مقاولين';
     const paid = Number(document.getElementById('exp-paid').value)||0;
+    const executedValue = isContractor ? (Number(document.getElementById('exp-executed').value)||0) : 0;
+    const remaining = isContractor ? Math.max(executedValue - paid, 0) : 0;
     const rec = {
-        category: document.getElementById('exp-category').value,
+        id: db.nextId.exp++,
+        category: cat,
         activity: document.getElementById('exp-activity').value,
         name: document.getElementById('exp-name').value,
         project: document.getElementById('exp-project').value,
-        total: paid, paid, remaining: 0,
+        total: executedValue || paid, paid, remaining,
+        executedValue: executedValue || undefined,
         date: document.getElementById('exp-date').value || todayISO(),
         notes: document.getElementById('exp-notes').value.trim()
     };
-    markSaving();
-    const { data, error } = await sb.from('expense_entries').insert(rec).select().single();
-    if(error){ markSaveError(error); return; }
-
-    db.expensesData.push(data);
+    db.expensesData.push(rec);
     e.target.reset();
+    const remEl = document.getElementById('exp-remaining-display');
+    if(remEl) remEl.value = '';
     document.getElementById('exp-date').value = todayISO();
     filterExpenseSubFields();
-    markSaved();
+    scheduleSave();
     renderAll();
 }
-async function deleteExpense(id){
+function deleteExpense(id){
     if(!confirm('هل تريد حذف هذه الحركة؟')) return;
-    markSaving();
-    const { error } = await sb.from('expense_entries').delete().eq('id', id);
-    if(error){ markSaveError(error); return; }
     db.expensesData = db.expensesData.filter(x=>x.id!==id);
-    markSaved();
+    scheduleSave();
     renderAll();
 }
 function renderExpensesTable(){
@@ -1648,6 +1891,7 @@ function renderExpensesTable(){
     }).slice().reverse();
 
     const totalPaid = rows.reduce((s,x)=>s+x.paid,0);
+    const totalDebt = rows.filter(x=>x.category==='مقاولين').reduce((s,x)=>s+(x.remaining||0),0);
     document.getElementById('tbody-expenses').innerHTML =
         rows.map(x=>`
         <tr class="border-b border-slate-50 hover:bg-slate-50">
@@ -1656,7 +1900,13 @@ function renderExpensesTable(){
             <td class="p-3 ${x.remaining>0?'text-rose-600 font-bold':''}">${fmt(x.remaining)}</td><td class="p-3">${esc(x.project)}</td><td class="p-3 text-slate-500">${x.date}</td>
             <td class="p-3"><button onclick="deleteExpense(${x.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
         </tr>`).join('')
-        + (rows.length ? `<tr class="bg-slate-50 font-bold"><td colspan="3" class="p-3">الإجمالي</td><td class="p-3 text-emerald-700">${fmt(totalPaid)}</td><td colspan="5"></td></tr>` : '')
+        + (rows.length ? `<tr class="bg-slate-50 font-bold border-t-2 border-slate-200">
+            <td colspan="3" class="p-3">الإجمالي</td>
+            <td class="p-3 text-emerald-700">${fmt(rows.reduce((s,x)=>s+x.total,0))}</td>
+            <td class="p-3 text-blue-700">${fmt(totalPaid)}</td>
+            <td class="p-3 text-rose-700">${totalDebt>0?fmt(totalDebt):'-'}</td>
+            <td colspan="3"></td>
+        </tr>` : '')
         || '<tr><td colspan="9" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>';
 }
 
@@ -1699,14 +1949,37 @@ function renderTreasury(){
 /* ================= KPIs ================= */
 function calculateKPIs(projectFilter){
     const matchProj = rec => projectFilter==='ALL'||!projectFilter||rec.project===projectFilter;
-    const inflow = db.expensesData.filter(x=>x.category==='إيراد').filter(matchProj).reduce((s,x)=>s+x.paid,0);
-    const outflowExp = db.expensesData.filter(x=>x.category!=='إيراد').filter(matchProj).reduce((s,x)=>s+x.paid,0);
-    const outflowPay = db.payments.filter(matchProj).reduce((s,p)=>s+p.amount,0);
+    const dateFrom = document.getElementById('kpi-date-from')?.value || '';
+    const dateTo = document.getElementById('kpi-date-to')?.value || '';
+    const matchDate = rec => (!dateFrom || rec.date >= dateFrom) && (!dateTo || rec.date <= dateTo);
+    const match = rec => matchProj(rec) && matchDate(rec);
+
+    const inflow = db.expensesData.filter(x=>x.category==='إيراد').filter(match).reduce((s,x)=>s+x.paid,0);
+    const outflowExp = db.expensesData.filter(x=>x.category!=='إيراد').filter(match).reduce((s,x)=>s+x.paid,0);
+    const outflowPay = db.payments.filter(match).reduce((s,p)=>s+p.amount,0);
     const outflow = outflowExp + outflowPay;
     document.getElementById('kpi-inflows').textContent = fmt(inflow);
     document.getElementById('kpi-outflows').textContent = fmt(outflow);
     document.getElementById('kpi-balance').textContent = fmt(inflow-outflow);
     document.getElementById('kpi-ratio').textContent = inflow>0 ? ((outflow/inflow)*100).toFixed(1)+'%' : '-';
+
+    const supplierDebt = db.suppliers.reduce((s,sup)=>{
+        const invoiced = db.procurements.filter(p=>p.supplier===sup.name&&matchProj(p)).reduce((a,p)=>a+(p.qty*p.price),0);
+        const paidS = db.payments.filter(p=>p.supplier===sup.name&&matchProj(p)).reduce((a,p)=>a+p.amount,0);
+        return s+Math.max(invoiced-paidS,0);
+    },0);
+    const contractorDebt = db.names.reduce((s,n)=>{
+        const { remaining } = subcontractorBalance(n.name);
+        return s + remaining;
+    },0);
+    const custodyPending = (db.custodies||[]).filter(c=>c.status==='pending'&&matchProj(c)).reduce((s,c)=>s+c.amount,0);
+
+    const elSD = document.getElementById('kpi-supplier-debt');
+    const elCD = document.getElementById('kpi-contractor-debt');
+    const elCU = document.getElementById('kpi-custody-pending');
+    if(elSD) elSD.textContent = fmt(supplierDebt);
+    if(elCD) elCD.textContent = fmt(contractorDebt);
+    if(elCU) elCU.textContent = fmt(custodyPending);
 }
 
 /* ================= DASHBOARD: FINANCIAL SNAPSHOT + PROJECTS OVERVIEW ================= */
@@ -1865,10 +2138,19 @@ function renderPL(){
 
     html += totalRow('الربح قبل الضريبة', r.profitBeforeTax, r.profitBeforeTax>=0?'bg-emerald-600 text-white':'bg-rose-600 text-white');
 
-    const taxRate = Number(document.getElementById('pl-tax-rate').value) || 0;
-    const taxAmount = r.profitBeforeTax > 0 ? r.profitBeforeTax * (taxRate/100) : 0;
-    const netProfitAfterTax = r.profitBeforeTax - taxAmount;
-    html += totalRow(`الضريبة (${taxRate}%)`, taxAmount, 'bg-slate-100 text-slate-700');
+    const activeTaxes = (db.taxes||[]).filter(t=>t.active && t.rate>0);
+    let totalTaxAmount = 0;
+    if(activeTaxes.length){
+        activeTaxes.forEach(t=>{
+            const tAmount = r.profitBeforeTax > 0 ? r.profitBeforeTax*(t.rate/100) : 0;
+            html += totalRow(`${t.name} (${t.rate}%)`, tAmount, 'bg-slate-100 text-slate-700');
+            totalTaxAmount += tAmount;
+        });
+        if(activeTaxes.length > 1) html += totalRow('إجمالي الضرائب', totalTaxAmount, 'bg-red-50 text-red-700');
+    }else{
+        html += totalRow('الضريبة (0%)', 0, 'bg-slate-100 text-slate-700');
+    }
+    const netProfitAfterTax = r.profitBeforeTax - totalTaxAmount;
     html += totalRow('صافي الربح بعد الضريبة', netProfitAfterTax, netProfitAfterTax>=0?'bg-emerald-700 text-white':'bg-rose-700 text-white');
 
     document.getElementById('pl-content').innerHTML = html;
@@ -1878,13 +2160,65 @@ function clearPLDateFilter(){
     document.getElementById('pl-date-to').value = '';
     renderPL();
 }
-async function onTaxRateChange(){
-    db.taxRate = Number(document.getElementById('pl-tax-rate').value) || 0;
+
+/* ================= TAXES TABLE ================= */
+function renderTaxTable(){
+    const tbody = document.getElementById('tbody-taxes');
+    if(!tbody) return;
+    if(!db.taxes) db.taxes = [];
+    if(!db.taxes.length){
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400 text-xs">لا توجد ضرائب — أضف من الأسفل</td></tr>';
+        return;
+    }
+    tbody.innerHTML = db.taxes.map((t,i)=>`
+        <tr class="border-b border-slate-100 hover:bg-slate-50">
+            <td class="p-3">
+                <input type="text" value="${esc(t.name)}" onchange="updateTaxField(${i},'name',this.value)"
+                    class="w-full bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none py-0.5 text-sm font-semibold">
+            </td>
+            <td class="p-3">
+                <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-slate-50 w-28">
+                    <input type="number" value="${t.rate}" step="any" min="0" max="100"
+                        onchange="updateTaxField(${i},'rate',Number(this.value))"
+                        class="flex-1 bg-transparent px-2 py-1.5 text-sm outline-none border-0 font-bold text-red-700">
+                    <span class="bg-slate-200 text-slate-600 font-bold px-2 py-1.5 text-sm select-none">%</span>
+                </div>
+            </td>
+            <td class="p-3 text-center">
+                <input type="checkbox" ${t.active?'checked':''} onchange="updateTaxField(${i},'active',this.checked)"
+                    style="width:18px;height:18px;cursor:pointer;accent-color:#059669">
+            </td>
+            <td class="p-3 text-center">
+                <button onclick="deleteTaxRow(${i})" class="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`).join('');
+}
+function updateTaxField(idx, field, value){
+    if(!db.taxes[idx]) return;
+    db.taxes[idx][field] = value;
+    scheduleSave();
     renderPL();
-    markSaving();
-    const { error } = await sb.from('app_settings').upsert({ key:'taxRate', value: db.taxRate }, { onConflict:'key' });
-    if(error){ markSaveError(error); return; }
-    markSaved();
+}
+function addNewTax(){
+    const name = document.getElementById('new-tax-name').value.trim();
+    const rate = Number(document.getElementById('new-tax-rate').value);
+    if(!name){ alert('اكتب اسم الضريبة'); return; }
+    if(!rate || rate<=0){ alert('اكتب النسبة %'); return; }
+    if(!db.taxes) db.taxes = [];
+    const maxCode = db.taxes.reduce((m,t)=>Math.max(m,t.code||9000), 9000);
+    db.taxes.push({ code: maxCode+1, name, rate, active: true });
+    document.getElementById('new-tax-name').value = '';
+    document.getElementById('new-tax-rate').value = '';
+    scheduleSave();
+    renderTaxTable();
+    renderPL();
+}
+function deleteTaxRow(idx){
+    if(!confirm('حذف هذه الضريبة؟')) return;
+    db.taxes.splice(idx, 1);
+    scheduleSave();
+    renderTaxTable();
+    renderPL();
 }
 
 /* ================= LEDGER ================= */
@@ -1953,9 +2287,11 @@ function renderLedger(){
 }
 
 function subcontractorBalance(name){
-    const paid = db.expensesData.filter(x=>x.category==='مقاولين'&&x.name===name).reduce((a,x)=>a+x.paid,0);
+    const recs = db.expensesData.filter(x=>x.category==='مقاولين'&&x.name===name);
+    const totalExecuted = recs.reduce((a,x)=>a+(x.executed_value||x.paid),0);
+    const paid = recs.reduce((a,x)=>a+x.paid,0);
     const cv = (db.names.find(n=>n.name===name)||{}).contractValue || 0;
-    return { contractValue: cv, paid, remaining: cv-paid };
+    return { contractValue: cv, totalExecuted, paid, remaining: Math.max(totalExecuted-paid,0) };
 }
 function clientBalance(name){
     const collected = db.expensesData.filter(x=>x.category==='إيراد'&&x.name===name).reduce((a,x)=>a+x.paid,0);
@@ -2070,10 +2406,18 @@ function exportPLExcel(){
         ] : []),
         ['الربح قبل الضريبة', r.profitBeforeTax]
     ];
-    const taxRate = Number(document.getElementById('pl-tax-rate').value) || 0;
-    const taxAmount = r.profitBeforeTax > 0 ? r.profitBeforeTax * (taxRate/100) : 0;
-    rows.push([`الضريبة (${taxRate}%)`, taxAmount]);
-    rows.push(['صافي الربح بعد الضريبة', r.profitBeforeTax - taxAmount]);
+    const activeTaxes = (db.taxes||[]).filter(t=>t.active && t.rate>0);
+    let totalTaxAmount = 0;
+    if(activeTaxes.length){
+        activeTaxes.forEach(t=>{
+            const tAmount = r.profitBeforeTax > 0 ? r.profitBeforeTax*(t.rate/100) : 0;
+            rows.push([`${t.name} (${t.rate}%)`, tAmount]);
+            totalTaxAmount += tAmount;
+        });
+    }else{
+        rows.push(['الضريبة (0%)', 0]);
+    }
+    rows.push(['صافي الربح بعد الضريبة', r.profitBeforeTax - totalTaxAmount]);
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{wch:40},{wch:20}];
     const wb = XLSX.utils.book_new();
@@ -2153,9 +2497,8 @@ function exportLedgerExcel(){
     ws['!cols'] = [{wch:12},{wch:14},{wch:24},{wch:18},{wch:18},{wch:14}];
 
     const subRows = db.names.map(n=>{
-        const paid = db.expensesData.filter(x=>x.category==='مقاولين'&&x.name===n.name).reduce((a,x)=>a+x.paid,0);
-        const cv = n.contractValue||0;
-        return [n.name, cv||'', paid, cv?(cv-paid):''];
+        const { contractValue:cv, paid, remaining } = subcontractorBalance(n.name);
+        return [n.name, cv||'', paid, remaining||''];
     });
     const ws2 = XLSX.utils.aoa_to_sheet([['المقاول','قيمة العقد','المدفوع له','المتبقي له'], ...subRows]);
     ws2['!cols'] = [{wch:18},{wch:14},{wch:14},{wch:14}];
@@ -2204,80 +2547,144 @@ function projectProfitForInvestor(projectName){
     return r ? r.profitBeforeTax : 0;
 }
 
-function investorShareForProject(funding){
-    // إجمالي تمويل المشروع من كل المستثمرين
-    const allFunding = db.investorFunding.filter(f=>f.project===funding.project);
-    const totalFunding = allFunding.reduce((s,f)=>s+(f.amount||0),0);
-    if(totalFunding<=0) return 0;
-    const profit = projectProfitForInvestor(funding.project);
-    if(profit<=0) return 0;
-    const share = funding.pct
-        ? (funding.pct/100) * profit
-        : (funding.amount/totalFunding) * profit;
-    return Math.max(share, 0);
+function investorAutoPct(funding){
+    if(funding.pct) return funding.pct;
+    const totalFunding = db.investorFunding.filter(f=>f.project===funding.project).reduce((s,f)=>s+(f.amount||0),0);
+    if(!totalFunding) return 0;
+    return (funding.amount/totalFunding)*100;
 }
 
-async function addInvestorFunding(e){
+function investorShareForProject(funding){
+    const pct = investorAutoPct(funding);
+    if(!pct) return 0;
+    const profit = projectProfitForInvestor(funding.project);
+    return (pct/100)*profit; // يظهر سواء كان ربح أو خسارة
+}
+
+function onInvProjectChange(){
+    const project = document.getElementById('inv-project')?.value;
+    const infoEl = document.getElementById('inv-project-info');
+    if(!project || !infoEl){ if(infoEl) infoEl.classList.add('hidden'); return; }
+    const profit = projectProfitForInvestor(project);
+    infoEl.classList.remove('hidden');
+    document.getElementById('inv-proj-profit').textContent = fmt(profit);
+    calcInvAutoPct();
+}
+
+function calcInvAutoPct(){
+    const amount = Number(document.getElementById('inv-amount')?.value)||0;
+    const project = document.getElementById('inv-project')?.value;
+    const pctEl = document.getElementById('inv-auto-pct');
+    const shareEl = document.getElementById('inv-proj-share');
+    if(!pctEl) return;
+    if(!project || !amount){ pctEl.value=''; if(shareEl) shareEl.textContent='-'; return; }
+    const existingFunding = db.investorFunding.filter(f=>f.project===project).reduce((s,f)=>s+(f.amount||0),0);
+    const total = existingFunding + amount;
+    const pct = total>0 ? (amount/total*100) : 0;
+    pctEl.value = pct.toFixed(1);
+    if(shareEl){
+        const profit = projectProfitForInvestor(project);
+        shareEl.textContent = fmt(profit*(pct/100));
+    }
+}
+
+function renderAllProjectProfits(){
+    const el = document.getElementById('inv-projects-profit-cards');
+    if(!el) return;
+    if(!db.projects.length){ el.innerHTML='<div class="p-4 text-center text-slate-400 text-xs">لا توجد مشاريع</div>'; return; }
+    el.innerHTML = db.projects.map(p=>{
+        const profit = projectProfitForInvestor(p.name);
+        const totalFunding = db.investorFunding.filter(f=>f.project===p.name).reduce((s,f)=>s+(f.amount||0),0);
+        const invCount = db.investorFunding.filter(f=>f.project===p.name).length;
+        return `<div class="p-4 border-b border-r border-slate-100">
+            <p class="text-xs font-bold text-slate-700 mb-2 truncate">${esc(p.name)}</p>
+            <p class="text-base font-bold ${profit>=0?'text-emerald-600':'text-rose-600'}">${fmt(profit)}</p>
+            <p class="text-[10px] text-slate-400 mt-1">تمويل: ${fmt(totalFunding)} | ${invCount} مستثمر</p>
+        </div>`;
+    }).join('');
+}
+
+function addInvestorFunding(e){
     e.preventDefault();
     const investor = document.getElementById('inv-investor').value;
     const project = document.getElementById('inv-project').value;
     const amount = Number(document.getElementById('inv-amount').value)||0;
-    const pct = Number(document.getElementById('inv-pct').value)||0;
     if(!investor||!project){ alert('اختر المستثمر والمشروع'); return; }
-    if(!amount && !pct){ alert('أدخل مبلغ التمويل أو النسبة %'); return; }
-    const rec = { investor, project, amount, pct, notes: document.getElementById('inv-notes').value.trim() };
-
-    markSaving();
-    const { data, error } = await sb.from('investor_funding').insert(rec).select().single();
-    if(error){ markSaveError(error); return; }
-
-    db.investorFunding.push(data);
+    if(!amount){ alert('أدخل مبلغ التمويل'); return; }
+    db.investorFunding.push({
+        id: db.nextId.inv++, investor, project, amount,
+        date: document.getElementById('inv-date')?.value || todayISO(),
+        notes: document.getElementById('inv-notes').value.trim()
+    });
     e.target.reset();
-    markSaved();
+    if(document.getElementById('inv-date')) document.getElementById('inv-date').value = todayISO();
+    if(document.getElementById('inv-auto-pct')) document.getElementById('inv-auto-pct').value = '';
+    scheduleSave();
     renderAll();
     initDropdowns();
 }
 
-async function deleteInvestorFunding(id){
+function deleteInvestorFunding(id){
     if(!confirm('حذف هذا الربط؟')) return;
-    markSaving();
-    const { error } = await sb.from('investor_funding').delete().eq('id', id);
-    if(error){ markSaveError(error); return; }
     db.investorFunding = db.investorFunding.filter(f=>f.id!==id);
-    markSaved();
+    scheduleSave();
     renderAll();
 }
 
-async function addProfitDistribution(e){
+function approveInvestorDistribution(investor, project, amount){
+    if(!confirm(`اعتماد ${fmt(amount)} مستحق للمستثمر ${investor}؟\nسيظهر في المركز المالي كالتزام متداول.`)) return;
+    if(!db.investorLiabilities) db.investorLiabilities = [];
+    db.investorLiabilities.push({
+        id: db.nextId.inv++, investor, project, amount,
+        date: todayISO(), status: 'pending'
+    });
+    scheduleSave();
+    renderAll();
+}
+
+function payInvestorLiability(id){
+    if(!db.investorLiabilities) return;
+    const lib = db.investorLiabilities.find(l=>l.id===id);
+    if(!lib) return;
+    if(!confirm(`تأكيد صرف ${fmt(lib.amount)} للمستثمر ${lib.investor}؟\nسيُخصم من الخزينة ويُقفل الالتزام.`)) return;
+    lib.status = 'paid';
+    lib.paidDate = todayISO();
+    db.profitDistributions.push({
+        id: db.nextId.inv++, investor: lib.investor, project: lib.project,
+        amount: lib.amount, date: todayISO(), notes: 'سداد التزام معتمد'
+    });
+    scheduleSave();
+    renderAll();
+}
+
+function deleteInvestorLiability(id){
+    if(!confirm('إلغاء هذا الاعتماد؟')) return;
+    db.investorLiabilities = (db.investorLiabilities||[]).filter(l=>l.id!==id);
+    scheduleSave();
+    renderAll();
+}
+
+function addProfitDistribution(e){
     e.preventDefault();
     const investor = document.getElementById('dist-investor').value;
     const project = document.getElementById('dist-project').value;
     const amount = Number(document.getElementById('dist-amount').value)||0;
     if(!amount){ alert('أدخل المبلغ'); return; }
-    const rec = {
-        investor, project: project||'ALL', amount,
+    db.profitDistributions.push({
+        id: db.nextId.inv++, investor, project: project||'ALL', amount,
         date: document.getElementById('dist-date').value || todayISO(),
         notes: document.getElementById('dist-notes').value.trim()
-    };
-
-    markSaving();
-    const { data, error } = await sb.from('profit_distributions').insert(rec).select().single();
-    if(error){ markSaveError(error); return; }
-
-    db.profitDistributions.push(data);
+    });
     e.target.reset();
     document.getElementById('dist-date').value = todayISO();
-    markSaved();
+    scheduleSave();
     renderAll();
 }
 
-async function deleteDistribution(id){
+function deleteDistribution(id){
     if(!confirm('حذف هذا التوزيع؟')) return;
-    markSaving();
-    const { error } = await sb.from('profit_distributions').delete().eq('id', id);
-    if(error){ markSaveError(error); return; }
     db.profitDistributions = db.profitDistributions.filter(d=>d.id!==id);
-    markSaved();
+    scheduleSave();
     renderAll();
 }
 
@@ -2291,16 +2698,17 @@ function renderInvestorFunding(){
     const totalShare = rows.reduce((s,f)=>s+investorShareForProject(f),0);
     document.getElementById('tbody-investor-funding').innerHTML =
         rows.map(f=>{
+            const pct = investorAutoPct(f);
             const profit = projectProfitForInvestor(f.project);
             const share = investorShareForProject(f);
             return `<tr class="border-b border-slate-50 hover:bg-slate-50">
                 <td class="p-3 font-bold">${esc(f.investor)}</td>
                 <td class="p-3">${esc(f.project)}</td>
                 <td class="p-3">${f.amount?fmt(f.amount):'-'}</td>
-                <td class="p-3 hidden md:table-cell">${f.pct?f.pct+'%':'-'}</td>
+                <td class="p-3 font-bold text-emerald-600">${pct>0?pct.toFixed(1)+'%':'-'}</td>
                 <td class="p-3 hidden md:table-cell ${profit>=0?'text-emerald-600':'text-rose-600'}">${fmt(profit)}</td>
-                <td class="p-3 font-bold text-orange-600">${fmt(share)}</td>
-                <td class="p-3 hidden md:table-cell text-slate-500">${esc(f.notes||'')}</td>
+                <td class="p-3 font-bold ${share>=0?'text-orange-600':'text-rose-600'}">${fmt(share)}</td>
+                <td class="p-3 hidden md:table-cell text-slate-500">${f.date||''}</td>
                 <td class="p-3"><button onclick="deleteInvestorFunding(${f.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
             </tr>`;
         }).join('')
@@ -2325,6 +2733,8 @@ function renderInvestorSummary(){
         if(!fundings.length) return '';
         const projects = [...new Set(fundings.map(f=>f.project))].join('، ');
         const totalFunding = fundings.reduce((s,f)=>s+(f.amount||0), 0);
+        const allProjFunding = db.investorFunding.reduce((s,f)=>s+(f.amount||0),0);
+        const overallPct = allProjFunding>0 ? (totalFunding/allProjFunding*100) : 0;
         const totalShare = fundings.reduce((s,f)=>s+investorShareForProject(f), 0);
         const totalDistributed = db.profitDistributions.filter(d=>d.investor===inv.name).reduce((s,d)=>s+d.amount, 0);
         const remaining = totalShare - totalDistributed;
@@ -2332,23 +2742,46 @@ function renderInvestorSummary(){
         totalDistAll+=totalDistributed; totalRemAll+=remaining;
         return `<tr class="border-b border-slate-50 hover:bg-slate-50">
             <td class="p-3 font-bold">${esc(inv.name)}</td>
-            <td class="p-3 text-xs text-slate-500">${esc(projects||'-')}</td>
+            <td class="p-3 text-xs text-slate-500 truncate max-w-[120px]">${esc(projects||'-')}</td>
             <td class="p-3">${totalFunding?fmt(totalFunding):'-'}</td>
-            <td class="p-3 font-bold text-emerald-600">${fmt(totalShare)}</td>
+            <td class="p-3 hidden md:table-cell font-bold text-emerald-600">${overallPct>0?overallPct.toFixed(1)+'%':'-'}</td>
+            <td class="p-3 hidden md:table-cell">${fmt(fundings.reduce((s,f)=>s+projectProfitForInvestor(f.project),0))}</td>
+            <td class="p-3 font-bold text-emerald-700">${fmt(totalShare)}</td>
             <td class="p-3">${fmt(totalDistributed)}</td>
             <td class="p-3 font-bold ${remaining>0?'text-orange-600':'text-slate-500'}">${fmt(remaining)}</td>
+            <td class="p-3">${remaining>0?`<button onclick="approveInvestorDistribution('${esc(inv.name)}','${esc(projects)}',${remaining.toFixed(2)})" style="background:#f59e0b;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer">✅ اعتماد</button>`:'-'}</td>
         </tr>`;
     }).filter(Boolean);
     tbody.innerHTML = (rows.length
         ? rows.join('') + `<tr class="bg-yellow-50 font-bold border-t-2 border-yellow-200">
-            <td class="p-3" colspan="2">الإجمالي</td>
-            <td class="p-3">${fmt(totalFundingAll)}</td>
+            <td class="p-3" colspan="3">الإجمالي</td>
+            <td class="p-3 hidden md:table-cell"></td>
+            <td class="p-3 hidden md:table-cell"></td>
             <td class="p-3 text-emerald-700">${fmt(totalShareAll)}</td>
             <td class="p-3">${fmt(totalDistAll)}</td>
             <td class="p-3 text-orange-700">${fmt(totalRemAll)}</td>
+            <td class="p-3"></td>
         </tr>`
-        : '<tr><td colspan="6" class="p-4 text-center text-slate-400">أضف مستثمرين من دليل الأكواد أولاً</td></tr>'
+        : '<tr><td colspan="9" class="p-4 text-center text-slate-400">أضف مستثمرين من دليل الأكواد أولاً</td></tr>'
     );
+}
+
+function renderInvestorLiabilities(){
+    const tbody = document.getElementById('tbody-investor-liabilities');
+    if(!tbody) return;
+    const rows = [...(db.investorLiabilities||[])].reverse();
+    const pendingTotal = rows.filter(l=>l.status==='pending').reduce((s,l)=>s+l.amount,0);
+    tbody.innerHTML = rows.length
+        ? rows.map(l=>`<tr class="border-b border-slate-50 ${l.status==='paid'?'opacity-50':''}">
+            <td class="p-3 font-bold">${esc(l.investor)}</td>
+            <td class="p-3">${esc(l.project)}</td>
+            <td class="p-3 font-bold text-amber-700">${fmt(l.amount)}</td>
+            <td class="p-3 text-slate-500">${l.date}</td>
+            <td class="p-3 text-center"><span style="padding:2px 8px;border-radius:5px;font-size:11px;font-weight:bold;background:${l.status==='paid'?'#d1fae5':'#fef3c7'};color:${l.status==='paid'?'#065f46':'#92400e'}">${l.status==='paid'?'✅ مسدد':'⏳ معتمد'}</span></td>
+            <td class="p-3 flex gap-1">${l.status==='pending'?`<button onclick="payInvestorLiability(${l.id})" style="background:#059669;color:#fff;border:none;padding:3px 8px;border-radius:5px;font-size:11px;cursor:pointer">💵 سداد</button>`:''}<button onclick="deleteInvestorLiability(${l.id})" class="text-red-400 hover:text-red-600 text-xs">🗑</button></td>
+        </tr>`).join('')
+        + (pendingTotal>0?`<tr class="bg-amber-50 font-bold border-t-2 border-amber-200"><td class="p-3" colspan="2">إجمالي غير مسدد</td><td class="p-3 text-amber-800">${fmt(pendingTotal)}</td><td colspan="3"></td></tr>`:'')
+        : '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد مستحقات معتمدة — اضغط "اعتماد" من الملخص أعلاه</td></tr>';
 }
 
 function renderDistributions(){
@@ -2408,24 +2841,27 @@ function computeBalanceSheet(asOf){
     },0);
 
     const subcontractorPayables = db.names.reduce((s,n)=>{
-        const paid = db.expensesData.filter(x=>x.category==='مقاولين'&&x.name===n.name).filter(upTo).reduce((a,x)=>a+x.paid,0);
-        const cv = n.contractValue||0;
-        return s+Math.max(cv-paid,0);
+        const recs = db.expensesData.filter(x=>x.category==='مقاولين'&&x.name===n.name).filter(upTo);
+        const totalExecuted = recs.reduce((a,x)=>a+(x.executedValue||x.paid),0);
+        const paid = recs.reduce((a,x)=>a+x.paid,0);
+        return s+Math.max(totalExecuted-paid,0);
     },0);
 
-    const profitsDue = db.investors.reduce((s,inv)=>{
-        const totalShare = db.investorFunding.filter(f=>f.investor===inv.name).reduce((a,f)=>a+investorShareForProject(f),0);
-        const distributed = db.profitDistributions.filter(d=>d.investor===inv.name).filter(upTo).reduce((a,d)=>a+d.amount,0);
-        return s+Math.max(totalShare-distributed,0);
-    },0);
+    // المستحقات المعتمدة غير المسددة = التزام متداول فعلي
+    const approvedLiabilities = (db.investorLiabilities||[]).filter(l=>l.status==='pending').filter(upTo).reduce((s,l)=>s+l.amount,0);
+    // الموزّع فعلاً (دفع مباشر أو سداد التزام معتمد)
+    const paidDistributions = db.profitDistributions.filter(upTo).reduce((s,d)=>s+d.amount,0);
 
     const r = computePL('ALL', null, asOf || null);
-    const retainedEarnings = r ? r.profitBeforeTax : 0;
+    const grossProfit = r ? r.profitBeforeTax : 0;
+    const retainedEarnings = grossProfit - paidDistributions - approvedLiabilities;
+    const profitsDue = approvedLiabilities;
+
     const totalAssets = cash + clientReceivables;
     const totalLiabilities = supplierPayables + subcontractorPayables + profitsDue;
-    const equity = investorCapital + retainedEarnings - profitsDue;
+    const equity = investorCapital + retainedEarnings;
 
-    return { cash, clientReceivables, investorCapital, supplierPayables, subcontractorPayables, profitsDue, retainedEarnings, totalAssets, totalLiabilities, equity };
+    return { cash, clientReceivables, investorCapital, supplierPayables, subcontractorPayables, profitsDue, grossProfit, paidDistributions, retainedEarnings, totalAssets, totalLiabilities, equity };
 }
 
 function renderBalanceSheet(){
@@ -2442,7 +2878,7 @@ function renderBalanceSheet(){
             : 'لقطة لحظية للأصول والخصوم وحقوق الملكية بناءً على الأرصدة الحالية';
     }
 
-    const { cash, clientReceivables, investorCapital, supplierPayables, subcontractorPayables, profitsDue, retainedEarnings, totalAssets, totalLiabilities, equity } = computeBalanceSheet(asOf);
+    const { cash, clientReceivables, investorCapital, supplierPayables, subcontractorPayables, profitsDue, grossProfit, paidDistributions, retainedEarnings, totalAssets, totalLiabilities, equity } = computeBalanceSheet(asOf);
 
     const section = (title, color) => `<div class="font-bold text-white text-sm px-3 py-2 rounded-lg mt-3 ${color}">${title}</div>`;
     const line = (label, val, bold) => `<div class="flex justify-between px-3 py-1.5 border-b border-slate-100 ${bold?'font-bold bg-slate-50':''}"><span>${label}</span><span>${fmt(val)}</span></div>`;
@@ -2454,15 +2890,18 @@ function renderBalanceSheet(){
         ${line('ذمم مدينة (عملاء)', clientReceivables)}
         ${total('إجمالي الأصول', totalAssets, 'bg-blue-50 text-blue-800')}
 
-        ${section('الخصوم', 'bg-rose-700')}
+        ${section('الخصوم المتداولة', 'bg-rose-700')}
         ${line('ذمم دائنة (موردين)', supplierPayables)}
         ${line('ذمم دائنة (مقاولي باطن)', subcontractorPayables)}
-        ${line('أرباح مستحقة للمستثمرين', profitsDue)}
+        ${line('أرباح مستحقة للمستثمرين (معتمدة/غير مسددة)', profitsDue)}
         ${total('إجمالي الخصوم', totalLiabilities, 'bg-rose-50 text-rose-800')}
 
         ${section('حقوق الملكية', 'bg-emerald-700')}
         ${line('رأس مال المستثمرين', investorCapital)}
-        ${line('الأرباح المحتجزة (قبل الضريبة)', retainedEarnings)}
+        ${line('إجمالي الأرباح قبل التوزيع', grossProfit)}
+        ${line('خصم: موزّع فعلاً', -paidDistributions)}
+        ${line('خصم: معتمد غير مسدد', -profitsDue)}
+        ${total('صافي الأرباح المحتجزة', retainedEarnings, 'bg-slate-50')}
         ${total('إجمالي حقوق الملكية', equity, 'bg-emerald-50 text-emerald-800')}
 
         ${total('إجمالي الخصوم + حقوق الملكية', totalLiabilities+equity, totalLiabilities+equity===totalAssets?'bg-emerald-600 text-white':'bg-rose-600 text-white')}
@@ -2472,6 +2911,152 @@ function renderBalanceSheet(){
 function clearBalanceDateFilter(){
     document.getElementById('balance-as-of-date').value = '';
     renderBalanceSheet();
+}
+
+/* ================= CUSTODIES (العهد المؤقتة) ================= */
+function addCustody(e){
+    e.preventDefault();
+    if(!db.custodies) db.custodies = [];
+    const name = document.getElementById('cust-name').value;
+    const amount = Number(document.getElementById('cust-amount').value)||0;
+    if(!name||!amount){ alert('أدخل الاسم والمبلغ'); return; }
+    db.custodies.push({
+        id: Date.now(),
+        name,
+        amount,
+        project: document.getElementById('cust-project').value || '-',
+        date: document.getElementById('cust-date').value || todayISO(),
+        purpose: document.getElementById('cust-purpose').value.trim(),
+        status: 'pending'
+    });
+    e.target.reset();
+    document.getElementById('cust-date').value = todayISO();
+    scheduleSave();
+    renderCustody();
+    renderPL();
+}
+
+let __settlingId = null;
+function settleCustody(id){
+    const c = db.custodies.find(x=>x.id===id);
+    if(!c) return;
+    if(c.status==='settled'){
+        if(!confirm('إلغاء تسوية هذه العهدة وإرجاعها لحالة معلقة؟')) return;
+        c.status = 'pending';
+        c.spentAmount = undefined;
+        c.returnedAmount = undefined;
+        db.expensesData = db.expensesData.filter(x=>x.custodyId!==id);
+        scheduleSave();
+        renderCustody();
+        renderAll();
+        return;
+    }
+    __settlingId = id;
+    document.getElementById('settle-info').textContent =
+        `${c.name} — عهدة: ${fmt(c.amount)} | ${c.purpose||''}`;
+    const input = document.getElementById('settle-spent');
+    input.value = c.amount;
+    input.max = c.amount;
+    updateSettlePreview();
+    const modal = document.getElementById('settle-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    input.focus();
+    input.select();
+}
+function updateSettlePreview(){
+    const c = db.custodies.find(x=>x.id===__settlingId);
+    if(!c) return;
+    const spent = Math.min(Number(document.getElementById('settle-spent').value)||0, c.amount);
+    const returned = c.amount - spent;
+    const el = document.getElementById('settle-preview');
+    el.innerHTML = `
+        <div class="flex justify-between"><span>💸 يتحول لمصروف تشغيلي:</span><span class="font-bold text-rose-600">${fmt(spent)}</span></div>
+        <div class="flex justify-between"><span>↩️ مرتجع للخزينة:</span><span class="font-bold text-emerald-600">${fmt(returned)}</span></div>
+    `;
+}
+function closeSettleModal(){
+    document.getElementById('settle-modal').classList.add('hidden');
+    document.getElementById('settle-modal').classList.remove('flex');
+    __settlingId = null;
+}
+function confirmSettle(){
+    const c = db.custodies.find(x=>x.id===__settlingId);
+    if(!c) return;
+    const spent = Math.min(Number(document.getElementById('settle-spent').value)||0, c.amount);
+    const returned = c.amount - spent;
+    c.status = 'settled';
+    c.spentAmount = spent;
+    c.returnedAmount = returned;
+    if(spent > 0){
+        db.expensesData.push({
+            id: db.nextId.exp++,
+            custodyId: c.id,
+            category: 'مصروفات نثرية',
+            name: c.name,
+            project: c.project,
+            total: spent,
+            paid: spent,
+            remaining: 0,
+            date: todayISO(),
+            notes: (c.purpose||'عهدة مؤقتة') + (returned>0 ? ` | مرتجع: ${fmt(returned)}` : '')
+        });
+    }
+    closeSettleModal();
+    scheduleSave();
+    renderCustody();
+    renderAll();
+}
+function deleteCustody(id){
+    if(!confirm('حذف هذه العهدة؟')) return;
+    const c = db.custodies.find(x=>x.id===id);
+    if(c && c.status==='settled'){
+        db.expensesData = db.expensesData.filter(x=>x.custodyId!==id);
+    }
+    db.custodies = db.custodies.filter(x=>x.id!==id);
+    scheduleSave();
+    renderCustody();
+    renderAll();
+}
+function renderCustody(){
+    if(!db.custodies) db.custodies = [];
+    const fp = document.getElementById('filter-cust-project')?.value || 'ALL';
+    const fs = document.getElementById('filter-cust-status')?.value || 'ALL';
+
+    const rows = [...db.custodies].reverse().filter(c=>
+        (fp==='ALL'||c.project===fp) && (fs==='ALL'||c.status===fs)
+    );
+
+    const pending = db.custodies.filter(c=>c.status==='pending').reduce((s,c)=>s+c.amount,0);
+    const settled = db.custodies.filter(c=>c.status==='settled').reduce((s,c)=>s+c.amount,0);
+
+    const el = document.getElementById('tbody-custody');
+    if(el) el.innerHTML = rows.map(c=>`
+        <tr class="border-b border-slate-50 hover:bg-slate-50">
+            <td class="p-3 font-bold">${esc(c.name)}</td>
+            <td class="p-3 font-bold text-violet-700">${fmt(c.amount)}</td>
+            <td class="p-3">${esc(c.project)}</td>
+            <td class="p-3 text-slate-500">${c.date}</td>
+            <td class="p-3 text-slate-500">${esc(c.purpose||'')}</td>
+            <td class="p-3 text-center">
+                <div class="flex flex-col items-center gap-0.5">
+                    <button onclick="settleCustody(${c.id})"
+                        style="padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;border:none;cursor:pointer;background:${c.status==='settled'?'#d1fae5':'#ede9fe'};color:${c.status==='settled'?'#065f46':'#5b21b6'}">
+                        ${c.status==='settled'?'✅ مسوّاة':'⏳ معلقة'}
+                    </button>
+                    ${c.status==='settled'?`<span style="font-size:10px;color:#059669">منفق: ${fmt(c.spentAmount||c.amount)}</span><span style="font-size:10px;color:#6b7280">مرتجع: ${fmt(c.returnedAmount||0)}</span>`:''}
+                </div>
+            </td>
+            <td class="p-3"><button onclick="deleteCustody(${c.id})" class="text-red-400 hover:text-red-600">🗑</button></td>
+        </tr>`).join('')
+    || '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا توجد عهد مسجلة</td></tr>';
+
+    const elP = document.getElementById('cust-total-pending');
+    const elS = document.getElementById('cust-total-settled');
+    const elA = document.getElementById('cust-total-all');
+    if(elP) elP.textContent = fmt(pending);
+    if(elS) elS.textContent = fmt(settled);
+    if(elA) elA.textContent = fmt(pending+settled);
 }
 
 function exportData(){
