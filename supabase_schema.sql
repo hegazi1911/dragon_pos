@@ -26,24 +26,29 @@ create table if not exists expense_categories (
   code integer primary key,
   name text not null unique,
   pl_type text not null check (pl_type in ('revenue','direct','operating','other','excluded')),
-  pl_bucket text check (pl_bucket in ('admin','selling','other_operating'))
+  pl_bucket text check (pl_bucket in ('admin','selling','other_operating')),
+  name_type text default 'any' -- من يظهر في حقل "المستفيد" لهذا التبويب: names / clients / any
 );
 
 create table if not exists activities (
   code integer primary key,
-  name text not null unique
+  name text not null unique,
+  categories text[], -- التبويبات المرتبطة بهذا النشاط (فاضي = يظهر مع كل التبويبات)
+  linked_names text[] -- الأفراد/العملاء المرتبطين بهذا النشاط تحديداً
 );
 
 create table if not exists names (
   code integer primary key,
   name text not null unique,
-  contract_value numeric
+  contract_value numeric,
+  activities text[] -- الأنشطة المرتبطة بهذا الفرد/المقاول
 );
 
 create table if not exists clients (
   code integer primary key,
   name text not null unique,
-  contract_value numeric
+  contract_value numeric,
+  activities text[]
 );
 
 create table if not exists investors (
@@ -187,3 +192,10 @@ end $$;
 
 -- ---------- ترحيل: إضافة عمود custody_id إن لم يكن موجوداً (لقواعد البيانات القديمة) ----------
 alter table expense_entries add column if not exists custody_id bigint;
+
+-- ---------- ترحيل: أعمدة ربط الأنشطة/التبويبات/الأفراد (لدعم دليل الأكواد الموسّع) ----------
+alter table expense_categories add column if not exists name_type text default 'any';
+alter table activities add column if not exists categories text[];
+alter table activities add column if not exists linked_names text[];
+alter table names add column if not exists activities text[];
+alter table clients add column if not exists activities text[];
