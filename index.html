@@ -21,6 +21,16 @@ body{font-family:'Cairo',sans-serif;background:#f8fafc;}
 .tab-content{display:none;}
 .tab-content.active{display:flex;}
 input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);border-color:#2563eb;}
+html,body{overflow-x:hidden;}
+/* Sidebar responsive */
+#sidebar{transition:transform .25s ease-in-out;}
+#sidebar-overlay{transition:opacity .25s ease-in-out;}
+/* Table scroll on mobile */
+@media(max-width:767px){
+    main table th,main table td{padding:.375rem .5rem !important;font-size:.72rem;}
+    main table{font-size:.75rem;}
+    .kpi-number{font-size:1.1rem !important;}
+}
 @media print{
     body *{visibility:hidden;}
     .print-target,.print-target *{visibility:visible;}
@@ -34,7 +44,7 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
 }
 </style>
 </head>
-<body class="h-screen overflow-hidden flex flex-col">
+<body class="min-h-screen md:h-screen md:overflow-hidden flex flex-col">
 
 <!-- ACTIVATION GATE -->
 <div id="activation-gate" class="fixed inset-0 bg-slate-950 flex items-center justify-center z-[100]">
@@ -68,9 +78,13 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
     </div>
 </div>
 
-<header class="bg-slate-900 text-white h-16 px-6 flex items-center justify-between border-b border-slate-800 shrink-0 z-10">
-    <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-sm">
+<header class="bg-slate-900 text-white h-14 md:h-16 px-3 sm:px-6 flex items-center justify-between border-b border-slate-800 shrink-0 z-10">
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <!-- Hamburger for mobile -->
+        <button onclick="toggleSidebar()" class="md:hidden text-slate-300 hover:text-white w-9 h-9 shrink-0 flex items-center justify-center rounded-lg hover:bg-slate-800" aria-label="فتح القائمة">
+            <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg overflow-hidden shrink-0 shadow-sm">
             <svg viewBox="0 0 512 512" class="w-full h-full">
                 <defs>
                     <linearGradient id="headerLogoBg" x1="0" y1="0" x2="1" y2="1">
@@ -85,28 +99,37 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
                 <circle cx="400" cy="140" r="24" fill="#f59e0b"/>
             </svg>
         </div>
-        <div>
-            <h1 class="font-bold text-lg leading-tight">نظام دراكون للمقاولات</h1>
-            <p class="text-xs text-slate-400">نظام إدارة مالية متكامل للمشاريع والتوريدات والمصروفات</p>
+        <div class="min-w-0">
+            <h1 class="font-bold text-sm sm:text-lg leading-tight truncate">نظام دراكون للمقاولات</h1>
+            <p class="text-[10px] sm:text-xs text-slate-400 hidden sm:block">نظام إدارة مالية متكامل للمشاريع والتوريدات والمصروفات</p>
         </div>
     </div>
-    <div class="flex items-center gap-4 text-sm">
-        <div id="save-indicator" class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>محفوظ تلقائياً</span>
+    <div class="flex items-center gap-1.5 sm:gap-4 text-sm shrink-0">
+        <div id="save-indicator" class="bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+            <span class="hidden sm:inline text-xs">محفوظ تلقائياً</span>
         </div>
-        <button onclick="shareViaWhatsApp()" class="bg-[#25D366] hover:brightness-95 transition text-white px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
-            <i class="fa-brands fa-whatsapp"></i><span>مشاركة واتساب</span>
+        <button onclick="shareViaWhatsApp()" title="مشاركة واتساب" class="bg-[#25D366] hover:brightness-95 transition text-white w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-1.5 rounded-lg font-bold flex items-center justify-center gap-2">
+            <i class="fa-brands fa-whatsapp"></i><span class="hidden sm:inline">مشاركة واتساب</span>
         </button>
-        <button onclick="exportData()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
-            <i class="fa-solid fa-file-export"></i><span>تصدير نسخة احتياطية</span>
+        <button onclick="exportData()" title="تصدير نسخة احتياطية" class="bg-blue-600 hover:bg-blue-700 transition text-white w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-1.5 rounded-lg font-bold flex items-center justify-center gap-2">
+            <i class="fa-solid fa-file-export"></i><span class="hidden sm:inline">تصدير نسخة احتياطية</span>
         </button>
     </div>
 </header>
 
-<div class="flex flex-1 overflow-hidden">
-    <aside class="w-64 bg-slate-900 border-l border-slate-800 flex flex-col justify-between shrink-0">
-        <div class="p-3 flex flex-col gap-1 overflow-y-auto">
+<div class="flex flex-1 md:overflow-hidden">
+    <!-- Overlay for mobile sidebar -->
+    <div id="sidebar-overlay" onclick="closeSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"></div>
+    <aside id="sidebar" class="fixed inset-y-0 right-0 z-40 w-72 max-w-[85%] translate-x-full bg-slate-900 border-l border-slate-800 flex flex-col justify-between shrink-0 md:static md:z-auto md:translate-x-0 md:w-64">
+        <!-- Mobile sidebar header -->
+        <div class="flex items-center justify-between p-3 border-b border-slate-800 md:hidden">
+            <span class="font-bold text-sm text-slate-200">القائمة</span>
+            <button onclick="closeSidebar()" class="text-slate-400 hover:text-white w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800" aria-label="إغلاق القائمة">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="p-3 flex flex-col gap-1 overflow-y-auto flex-1">
             <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1 px-3">المتابعة</p>
             <button onclick="switchTab('dashboard')" id="btn-dashboard" class="tab-btn active w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
                 <i class="fa-solid fa-chart-line text-blue-500 w-5"></i><span>لوحة التحكم</span>
@@ -153,7 +176,7 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
         </div>
     </aside>
 
-    <main class="flex-1 p-6 overflow-y-auto">
+    <main class="flex-1 min-w-0 p-3 sm:p-4 md:p-6 overflow-y-auto">
 
         <!-- DASHBOARD -->
         <div id="tab-dashboard" class="tab-content active flex-col gap-6">
@@ -170,45 +193,45 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
                     <i class="fa-solid fa-print"></i><span>طباعة</span>
                 </button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div><p class="text-xs font-bold text-slate-500">إجمالي الإيرادات المحصّلة</p><h3 id="kpi-inflows" class="text-2xl font-bold mt-1">-</h3></div>
-                    <div class="bg-blue-50 p-3 rounded-lg text-blue-600"><i class="fa-solid fa-arrow-trend-up text-xl"></i></div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+                <div class="bg-white p-3 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div><p class="text-[10px] sm:text-xs font-bold text-slate-500 leading-tight">إجمالي الإيرادات المحصّلة</p><h3 id="kpi-inflows" class="kpi-number text-lg sm:text-2xl font-bold mt-1">-</h3></div>
+                    <div class="bg-blue-50 p-2 sm:p-3 rounded-lg text-blue-600"><i class="fa-solid fa-arrow-trend-up text-sm sm:text-xl"></i></div>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div><p class="text-xs font-bold text-slate-500">إجمالي المدفوعات والمصروفات</p><h3 id="kpi-outflows" class="text-2xl font-bold mt-1">-</h3></div>
-                    <div class="bg-rose-50 p-3 rounded-lg text-rose-600"><i class="fa-solid fa-receipt text-xl"></i></div>
+                <div class="bg-white p-3 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div><p class="text-[10px] sm:text-xs font-bold text-slate-500 leading-tight">إجمالي المدفوعات والمصروفات</p><h3 id="kpi-outflows" class="kpi-number text-lg sm:text-2xl font-bold mt-1">-</h3></div>
+                    <div class="bg-rose-50 p-2 sm:p-3 rounded-lg text-rose-600"><i class="fa-solid fa-receipt text-sm sm:text-xl"></i></div>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div><p class="text-xs font-bold text-slate-500">رصيد الخزينة الحالي</p><h3 id="kpi-balance" class="text-2xl font-bold mt-1">-</h3></div>
-                    <div class="bg-emerald-50 p-3 rounded-lg text-emerald-600"><i class="fa-solid fa-sack-dollar text-xl"></i></div>
+                <div class="bg-white p-3 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div><p class="text-[10px] sm:text-xs font-bold text-slate-500 leading-tight">رصيد الخزينة الحالي</p><h3 id="kpi-balance" class="kpi-number text-lg sm:text-2xl font-bold mt-1">-</h3></div>
+                    <div class="bg-emerald-50 p-2 sm:p-3 rounded-lg text-emerald-600"><i class="fa-solid fa-sack-dollar text-sm sm:text-xl"></i></div>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div><p class="text-xs font-bold text-slate-500">معدل التكلفة إلى التحصيل</p><h3 id="kpi-ratio" class="text-2xl font-bold mt-1">-</h3></div>
-                    <div class="bg-teal-50 p-3 rounded-lg text-teal-600"><i class="fa-solid fa-percentage text-xl"></i></div>
+                <div class="bg-white p-3 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div><p class="text-[10px] sm:text-xs font-bold text-slate-500 leading-tight">معدل التكلفة إلى التحصيل</p><h3 id="kpi-ratio" class="kpi-number text-lg sm:text-2xl font-bold mt-1">-</h3></div>
+                    <div class="bg-teal-50 p-2 sm:p-3 rounded-lg text-teal-600"><i class="fa-solid fa-percentage text-sm sm:text-xl"></i></div>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-5 rounded-xl border border-rose-200 shadow-sm flex items-center justify-between">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6">
+                <div class="bg-white p-3 sm:p-5 rounded-xl border border-rose-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-bold text-rose-500">متبقي للموردين (آجل علينا)</p>
-                        <h3 id="kpi-supplier-debt" class="text-2xl font-bold mt-1 text-rose-600">-</h3>
+                        <p class="text-[10px] sm:text-xs font-bold text-rose-500">متبقي للموردين (آجل علينا)</p>
+                        <h3 id="kpi-supplier-debt" class="kpi-number text-lg sm:text-2xl font-bold mt-1 text-rose-600">-</h3>
                     </div>
-                    <div class="bg-rose-50 p-3 rounded-lg text-rose-500"><i class="fa-solid fa-truck-ramp-box text-xl"></i></div>
+                    <div class="bg-rose-50 p-2 sm:p-3 rounded-lg text-rose-500"><i class="fa-solid fa-truck-ramp-box text-sm sm:text-xl"></i></div>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-amber-200 shadow-sm flex items-center justify-between">
+                <div class="bg-white p-3 sm:p-5 rounded-xl border border-amber-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-bold text-amber-600">متبقي للمقاولين (علينا)</p>
-                        <h3 id="kpi-contractor-debt" class="text-2xl font-bold mt-1 text-amber-600">-</h3>
+                        <p class="text-[10px] sm:text-xs font-bold text-amber-600">متبقي للمقاولين (علينا)</p>
+                        <h3 id="kpi-contractor-debt" class="kpi-number text-lg sm:text-2xl font-bold mt-1 text-amber-600">-</h3>
                     </div>
-                    <div class="bg-amber-50 p-3 rounded-lg text-amber-500"><i class="fa-solid fa-hard-hat text-xl"></i></div>
+                    <div class="bg-amber-50 p-2 sm:p-3 rounded-lg text-amber-500"><i class="fa-solid fa-hard-hat text-sm sm:text-xl"></i></div>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-violet-200 shadow-sm flex items-center justify-between">
+                <div class="bg-white p-3 sm:p-5 rounded-xl border border-violet-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-bold text-violet-600">إجمالي العهد المعلقة</p>
-                        <h3 id="kpi-custody-pending" class="text-2xl font-bold mt-1 text-violet-600">-</h3>
+                        <p class="text-[10px] sm:text-xs font-bold text-violet-600">إجمالي العهد المعلقة</p>
+                        <h3 id="kpi-custody-pending" class="kpi-number text-lg sm:text-2xl font-bold mt-1 text-violet-600">-</h3>
                     </div>
-                    <div class="bg-violet-50 p-3 rounded-lg text-violet-500"><i class="fa-solid fa-hand-holding text-xl"></i></div>
+                    <div class="bg-violet-50 p-2 sm:p-3 rounded-lg text-violet-500"><i class="fa-solid fa-hand-holding text-sm sm:text-xl"></i></div>
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1368,6 +1391,24 @@ function renderAll(){
     requestAnimationFrame(()=>{ setTimeout(()=>renderCharts(dashFp), 50); });
 }
 
+function toggleSidebar(){
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebar-overlay');
+    const isOpen = !sb.classList.contains('translate-x-full');
+    if(isOpen){ closeSidebar(); }
+    else {
+        sb.classList.remove('translate-x-full');
+        ov.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+function closeSidebar(){
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebar-overlay');
+    sb.classList.add('translate-x-full');
+    ov.classList.add('hidden');
+    document.body.style.overflow = '';
+}
 function switchTab(tabId){
     document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
     document.getElementById('tab-'+tabId).classList.add('active');
@@ -1377,6 +1418,8 @@ function switchTab(tabId){
     if(tabId==='custody'){ renderCustody(); }
     if(tabId==='assets'){ renderAssets(); }
     if(tabId==='investors'){ renderAllProjectProfits(); }
+    // إغلاق الـ sidebar تلقائياً على الموبايل بعد اختيار التبويب
+    if(window.innerWidth < 768) closeSidebar();
 }
 
 /* ================= MASTER DATA ================= */
@@ -1781,6 +1824,7 @@ function calcContractorRemaining(){
 function filterActivitiesByName(){
     const cat = document.getElementById('exp-category').value;
     const name = document.getElementById('exp-name').value;
+    const isContractor = cat==='مقاولين';
 
     // الأنشطة المرتبطة بهذا الاسم (من تكويد النشاط - linkedNames)
     let linkedActivities = db.activities.filter(a=>
@@ -1796,13 +1840,35 @@ function filterActivitiesByName(){
 
     const actEl = document.getElementById('exp-activity');
     const prevVal = actEl.value;
-    fillSelect('exp-activity', linkedActivities.length ? linkedActivities : db.activities);
 
-    // لو في نشاط واحد بس → اختاره تلقائياً
-    if(linkedActivities.length === 1){
+    // مقاولين + مستفيد محدد + في أنشطة مرتبطة → نعرضها أولاً مع ✓ ثم الباقي
+    if(isContractor && name && linkedActivities.length > 0){
+        const linkedSet = new Set(linkedActivities.map(a=>a.name));
+        const otherActivities = db.activities.filter(a=> !linkedSet.has(a.name));
+
+        let html = '';
+        // الأنشطة المرتبطة بالمقاول أولاً مع علامة ✓ وبالأخضر
+        linkedActivities.forEach(it => {
+            html += `<option value="${esc(it.name)}" style="font-weight:bold;color:#059669;">✓ ${it.code} - ${esc(it.name)}</option>`;
+        });
+        // فاصل بصري ثم باقي الأنشطة
+        if(otherActivities.length){
+            html += `<option disabled>─────────────────</option>`;
+            otherActivities.forEach(it => {
+                html += `<option value="${esc(it.name)}">${it.code} - ${esc(it.name)}</option>`;
+            });
+        }
+        actEl.innerHTML = html;
+        // تحديد أول نشاط مرتبط تلقائياً
         actEl.value = linkedActivities[0].name;
-    } else if([...actEl.options].some(o=>o.value===prevVal)){
-        actEl.value = prevVal;
+    } else {
+        fillSelect('exp-activity', linkedActivities.length ? linkedActivities : db.activities);
+        // لو في نشاط واحد بس → اختاره تلقائياً
+        if(linkedActivities.length === 1){
+            actEl.value = linkedActivities[0].name;
+        } else if([...actEl.options].some(o=>o.value===prevVal)){
+            actEl.value = prevVal;
+        }
     }
 
     // إيراد: اختار نشاط الإيراد تلقائياً
@@ -1814,7 +1880,6 @@ function filterActivitiesByName(){
         }
     }
 
-    const isContractor = cat==='مقاولين';
     const execWrap = document.getElementById('exp-executed-wrap');
     if(execWrap) execWrap.classList.toggle('hidden', !isContractor);
     // غيّر تسمية حقل المدفوع
