@@ -348,11 +348,16 @@ html,body{overflow-x:hidden;}
             <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
                 <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
                     <span class="font-bold text-slate-800">سجل المصروفات والإيرادات</span>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap gap-2 items-center">
                         <select id="filter-exp-project" onchange="renderExpensesTable()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs"></select>
                         <select id="filter-exp-category" onchange="renderExpensesTable()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs"></select>
                         <select id="filter-exp-name" onchange="renderExpensesTable()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs"></select>
-                        <input id="filter-exp-date" type="date" onchange="renderExpensesTable()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
+                        <input id="filter-exp-date-from" type="date" onchange="renderExpensesTable()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs" title="من تاريخ">
+                        <span class="text-[10px] text-slate-400">إلى</span>
+                        <input id="filter-exp-date-to" type="date" onchange="renderExpensesTable()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs" title="إلى تاريخ">
+                        <button onclick="clearExpensesFilters()" title="مسح الفلاتر" class="text-slate-400 hover:text-slate-700 text-xs px-2 py-1 border border-slate-200 bg-white rounded flex items-center gap-1">
+                            <i class="fa-solid fa-filter-circle-xmark"></i>
+                        </button>
                         <button onclick="exportExpensesExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5">
                             <i class="fa-solid fa-file-excel"></i><span>إكسيل</span>
                         </button>
@@ -364,7 +369,10 @@ html,body{overflow-x:hidden;}
                 <div class="overflow-x-auto max-h-96">
                     <table class="w-full text-sm text-right">
                         <thead class="bg-slate-100 sticky top-0"><tr>
-                            <th class="p-3">التبويب</th><th class="p-3">النشاط</th><th class="p-3">المستفيد</th><th class="p-3">الإجمالي</th><th class="p-3">المدفوع</th><th class="p-3">المتبقي</th><th class="p-3">المشروع</th><th class="p-3">التاريخ</th><th class="p-3"></th>
+                            <th class="p-3 text-slate-400 font-normal">#</th>
+                            <th class="p-3">التبويب</th><th class="p-3">النشاط</th><th class="p-3">المستفيد</th>
+                            <th class="p-3">الإجمالي</th><th class="p-3">المدفوع</th><th class="p-3">المتبقي</th>
+                            <th class="p-3">المشروع</th><th class="p-3">التاريخ</th><th class="p-3">ملاحظات</th><th class="p-3"></th>
                         </tr></thead>
                         <tbody id="tbody-expenses"></tbody>
                     </table>
@@ -2161,45 +2169,77 @@ async function deleteExpense(id){
     markSaved();
     renderAll();
 }
+// ألوان badges ديناميكية حسب plType من دليل الأكواد
+const PL_TYPE_COLORS = {
+    'revenue':   'bg-emerald-100 text-emerald-800',
+    'direct':    'bg-amber-100 text-amber-800',
+    'operating': 'bg-blue-100 text-blue-700',
+    'other':     'bg-slate-100 text-slate-600'
+};
+function expCatBadge(cat){
+    const def = db.expenses?.find(e=>e.name===cat);
+    const cls = PL_TYPE_COLORS[def?.plType] || 'bg-slate-100 text-slate-600';
+    return `<span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${cls}">${esc(cat)}</span>`;
+}
+function clearExpensesFilters(){
+    ['filter-exp-project','filter-exp-category','filter-exp-name'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.value = el.options[0]?.value || 'ALL';
+    });
+    const df = document.getElementById('filter-exp-date-from');
+    const dt = document.getElementById('filter-exp-date-to');
+    if(df) df.value = '';
+    if(dt) dt.value = '';
+    renderExpensesTable();
+}
 function renderExpensesTable(){
     const fp = document.getElementById('filter-exp-project').value;
     const fc = document.getElementById('filter-exp-category')?.value || 'ALL';
     const fn = document.getElementById('filter-exp-name')?.value || 'ALL';
-    const fFrom = document.getElementById('filter-exp-date')?.value || '';
-    const fTo = fFrom; // نفس اليوم
+    const fFrom = document.getElementById('filter-exp-date-from')?.value || '';
+    const fTo   = document.getElementById('filter-exp-date-to')?.value   || '';
 
     const rows = db.expensesData.filter(x=>{
         if(fp!=='ALL' && fp && x.project!==fp) return false;
         if(fc!=='ALL' && fc && x.category!==fc) return false;
         if(fn!=='ALL' && fn && x.name!==fn) return false;
         if(fFrom && x.date < fFrom) return false;
-        if(fTo && x.date > fTo) return false;
+        if(fTo   && x.date > fTo)   return false;
         return true;
     }).slice().reverse();
 
-    const totalPaid = rows.reduce((s,x)=>s+x.paid,0);
-    const totalDebt = rows.filter(x=>x.category==='مقاولين').reduce((s,x)=>s+(x.remaining||0),0);
+    const totalPaid   = rows.reduce((s,x)=>s+x.paid,0);
+    const totalExec   = rows.reduce((s,x)=>s+(x.executedValue||x.paid),0);
+    const totalDebt   = rows.filter(x=>x.category==='مقاولين').reduce((s,x)=>s+(x.remaining||0),0);
+
     document.getElementById('tbody-expenses').innerHTML =
-        rows.map(x=>`
-        <tr class="border-b border-slate-50 hover:bg-slate-50">
-            <td class="p-3">${esc(x.category)}</td>
-            <td class="p-3">${esc(x.activity)}</td>
-            <td class="p-3">${esc(x.name)}</td>
-            <td class="p-3 font-bold">${x.executedValue ? fmt(x.executedValue) : fmt(x.paid)}</td>
-            <td class="p-3">${fmt(x.paid)}</td>
-            <td class="p-3 ${x.remaining>0?'text-rose-600 font-bold':'text-slate-400'}">${x.remaining>0?fmt(x.remaining):'-'}</td>
-            <td class="p-3">${esc(x.project)}</td>
-            <td class="p-3 text-slate-500">${x.date}</td>
-            <td class="p-3"><button onclick="deleteExpense(${x.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+        rows.map((x,i)=>`
+        <tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+            <td class="p-3 text-slate-400 text-xs">${rows.length - i}</td>
+            <td class="p-3">${expCatBadge(x.category)}</td>
+            <td class="p-3 text-slate-600">${esc(x.activity)}</td>
+            <td class="p-3 font-semibold">${esc(x.name)}</td>
+            <td class="p-3 font-bold text-slate-800">${fmt(x.executedValue||x.paid)}</td>
+            <td class="p-3 text-blue-700">${fmt(x.paid)}</td>
+            <td class="p-3 ${x.remaining>0?'text-rose-600 font-bold':'text-slate-300'}">${x.remaining>0?fmt(x.remaining):'-'}</td>
+            <td class="p-3 text-slate-500 text-xs">${esc(x.project)}</td>
+            <td class="p-3 text-slate-400 text-xs whitespace-nowrap">${x.date}</td>
+            <td class="p-3 text-slate-400 text-xs max-w-[120px] truncate" title="${esc(x.notes||'')}">${x.notes ? esc(x.notes) : '<span class="text-slate-200">—</span>'}</td>
+            <td class="p-3">
+                <button onclick="deleteExpense(${x.id})" class="text-slate-300 hover:text-red-500 transition-colors" title="حذف">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+            </td>
         </tr>`).join('')
-        + (rows.length ? `<tr class="bg-slate-50 font-bold border-t-2 border-slate-200">
-            <td colspan="3" class="p-3">الإجمالي</td>
-            <td class="p-3 text-emerald-700">${fmt(rows.reduce((s,x)=>s+(x.executedValue||x.paid),0))}</td>
+        + (rows.length ? `<tr class="bg-slate-50 font-bold border-t-2 border-slate-300 text-sm">
+            <td class="p-3 text-slate-400 text-xs">${rows.length}</td>
+            <td colspan="3" class="p-3 text-slate-700">الإجمالي</td>
+            <td class="p-3 text-emerald-700">${fmt(totalExec)}</td>
             <td class="p-3 text-blue-700">${fmt(totalPaid)}</td>
             <td class="p-3 text-rose-700">${totalDebt>0?fmt(totalDebt):'-'}</td>
-            <td colspan="3"></td>
+            <td colspan="4"></td>
         </tr>` : '')
-        || '<tr><td colspan="9" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>';
+        || '<tr><td colspan="11" class="p-6 text-center text-slate-400">لا توجد حركات</td></tr>';
 }
 
 /* ================= TREASURY ================= */
@@ -2684,14 +2724,26 @@ function exportProcurementExcel(){
 }
 
 function exportExpensesExcel(){
-    const fp = document.getElementById('filter-exp-project').value;
-    const rows = db.expensesData.filter(x=>fp==='ALL'||!fp||x.project===fp);
+    // يحترم كل الفلاتر الحالية
+    const fp    = document.getElementById('filter-exp-project')?.value  || 'ALL';
+    const fc    = document.getElementById('filter-exp-category')?.value || 'ALL';
+    const fn    = document.getElementById('filter-exp-name')?.value     || 'ALL';
+    const fFrom = document.getElementById('filter-exp-date-from')?.value || '';
+    const fTo   = document.getElementById('filter-exp-date-to')?.value   || '';
+    const rows = db.expensesData.filter(x=>{
+        if(fp!=='ALL' && fp && x.project!==fp) return false;
+        if(fc!=='ALL' && fc && x.category!==fc) return false;
+        if(fn!=='ALL' && fn && x.name!==fn) return false;
+        if(fFrom && x.date < fFrom) return false;
+        if(fTo   && x.date > fTo)   return false;
+        return true;
+    });
     const data = [
-        ['التبويب','النشاط','المستفيد','الإجمالي','المدفوع','المتبقي','المشروع','التاريخ','ملاحظات'],
-        ...rows.map(x=>[x.category,x.activity,x.name,x.total,x.paid,x.remaining,x.project,x.date,x.notes||''])
+        ['#','التبويب','النشاط','المستفيد','الإجمالي','المدفوع','المتبقي','المشروع','التاريخ','ملاحظات'],
+        ...rows.map((x,i)=>[i+1, x.category, x.activity, x.name, x.executedValue||x.paid, x.paid, x.remaining||0, x.project, x.date, x.notes||''])
     ];
     const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!cols'] = [{wch:14},{wch:14},{wch:18},{wch:14},{wch:12},{wch:12},{wch:18},{wch:12},{wch:24}];
+    ws['!cols'] = [{wch:5},{wch:14},{wch:14},{wch:18},{wch:14},{wch:12},{wch:12},{wch:18},{wch:12},{wch:28}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'المصروفات والإيرادات');
     XLSX.writeFile(wb, `سجل-المصروفات-${todayISO()}.xlsx`);
