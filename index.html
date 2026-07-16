@@ -950,12 +950,34 @@
                                 <tr>
                                     <th class="p-3">المورد</th>
                                     <th class="p-3">الأصناف التي يوردها</th>
-                                    <th class="p-3">إجمالي الفواتير</th>
+                                    <th class="p-3">القيمة المنفذة (قابلة للتعديل)</th>
                                     <th class="p-3">المدفوع له</th>
                                     <th class="p-3 text-rose-300">المتبقي له</th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-payments-summary"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CONTRACTOR ACCOUNTS -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 bg-amber-50 border-b border-amber-100 flex flex-wrap justify-between items-center gap-3">
+                        <h3 class="font-bold text-slate-900"><i class="fa-solid fa-hard-hat text-amber-600"></i>
+                            أرصدة المقاولين — المتبقي عليك</h3>
+                    </div>
+                    <div class="overflow-x-auto max-h-72">
+                        <table class="w-full text-sm text-right">
+                            <thead class="bg-slate-800 text-white sticky top-0">
+                                <tr>
+                                    <th class="p-3">المقاول</th>
+                                    <th class="p-3"></th>
+                                    <th class="p-3">القيمة المنفذة (قابلة للتعديل)</th>
+                                    <th class="p-3">المدفوع له</th>
+                                    <th class="p-3">الرصيد</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-contractor-accounts-payments"></tbody>
                         </table>
                     </div>
                 </div>
@@ -1310,7 +1332,7 @@
                                         <tr>
                                             <th class="p-3">المورد</th>
                                             <th class="p-3">الأصناف</th>
-                                            <th class="p-3">إجمالي الفواتير</th>
+                                            <th class="p-3">القيمة المنفذة (قابلة للتعديل)</th>
                                             <th class="p-3">المدفوع له</th>
                                             <th class="p-3">المتبقي له</th>
                                         </tr>
@@ -1821,7 +1843,8 @@
                 custodies: [],
                 assets: [],
                 contractorPayments: [],
-                refunds: []
+                refunds: [],
+                executedOverrides: { suppliers: {}, contractors: {} }
             };
         }
 
@@ -1932,7 +1955,8 @@
                     investorLiabilities: [],
                     assets: [],
                     contractorPayments: [],
-                    refunds: []
+                    refunds: [],
+                    executedOverrides: { suppliers: {}, contractors: {} }
                 };
 
                 const settings = settingsRes.data || [];
@@ -1950,6 +1974,8 @@
                 if (contractorPaymentsSetting) db.contractorPayments = typeof contractorPaymentsSetting.value === 'string' ? JSON.parse(contractorPaymentsSetting.value) : contractorPaymentsSetting.value;
                 const refundsSetting = settings.find(s => s.key === 'refunds');
                 if (refundsSetting) db.refunds = typeof refundsSetting.value === 'string' ? JSON.parse(refundsSetting.value) : refundsSetting.value;
+                const execOverridesSetting = settings.find(s => s.key === 'executedOverrides');
+                if (execOverridesSetting) db.executedOverrides = typeof execOverridesSetting.value === 'string' ? JSON.parse(execOverridesSetting.value) : execOverridesSetting.value;
 
                 markSaved();
             } catch (err) {
@@ -1964,6 +1990,7 @@
                         if (!db.assets) db.assets = [];
                         if (!db.contractorPayments) db.contractorPayments = [];
                         if (!db.refunds) db.refunds = [];
+                        if (!db.executedOverrides) db.executedOverrides = { suppliers: {}, contractors: {} };
                     }
                 } catch (e) { }
                 const ind = document.getElementById('save-indicator');
@@ -2012,6 +2039,22 @@
             if (error) { markSaveError(error); return false; }
             markSaved();
             return true;
+        }
+        async function saveExecutedOverrides() {
+            markSaving();
+            const { error } = await sb.from('app_settings').upsert({ key: 'executedOverrides', value: db.executedOverrides }, { onConflict: 'key' });
+            if (error) { markSaveError(error); return false; }
+            markSaved();
+            return true;
+        }
+        async function updateExecutedOverride(type, name, value) {
+            if (!db.executedOverrides) db.executedOverrides = { suppliers: {}, contractors: {} };
+            if (!db.executedOverrides[type]) db.executedOverrides[type] = {};
+            const v = value === '' ? null : Number(value);
+            if (v === null || isNaN(v)) delete db.executedOverrides[type][name];
+            else db.executedOverrides[type][name] = v;
+            await saveExecutedOverrides();
+            renderAll();
         }
 
         /* ================= LIVE SYNC (Supabase Realtime) ================= */
@@ -2124,6 +2167,7 @@
             renderCustody();
             renderAssets();
             renderContractorPayments();
+            renderContractorAccountsPayments();
             renderRefunds();
             requestAnimationFrame(() => { setTimeout(() => renderCharts(dashFp), 50); });
         }
@@ -2937,7 +2981,9 @@
                 + (rows.length ? `<tr class="bg-slate-50 font-bold"><td class="p-3">الإجمالي</td><td class="p-3 text-cyan-700">${fmt(total)}</td><td colspan="4"></td></tr>` : '');
         }
         function supplierBalance(name) {
-            const totalInvoices = db.procurements.filter(p => p.supplier === name).reduce((a, p) => a + (p.qty * p.price), 0);
+            const invoiced = db.procurements.filter(p => p.supplier === name).reduce((a, p) => a + (p.qty * p.price), 0);
+            const override = db.executedOverrides?.suppliers?.[name];
+            const totalInvoices = (override !== undefined && override !== null) ? Number(override) : invoiced;
             const totalPaid = db.payments.filter(pay => pay.supplier === name).reduce((a, pay) => a + pay.amount, 0);
             const totalRefunded = (db.refunds || []).filter(r => r.partyType === 'supplier' && r.name === name).reduce((a, r) => a + r.amount, 0);
             return { totalInvoices, totalPaid, refunded: totalRefunded, remaining: totalInvoices - totalPaid + totalRefunded };
@@ -2948,11 +2994,15 @@
             if (status === 'ADVANCE') return rows.filter(r => r.remaining < 0);
             return rows;
         }
-        function accountRowsHtml(rows) {
+        function accountRowsHtml(rows, type) {
             return rows.map(r => `<tr class="border-b border-slate-50">
         <td class="p-3 font-bold">${esc(r.name)}</td>
         <td class="p-3 text-xs text-slate-500">${esc(r.items || '-')}</td>
-        <td class="p-3">${r.contract ? fmt(r.contract) : '-'}</td>
+        <td class="p-3">
+            <input type="number" step="any" value="${r.contract || 0}"
+                onchange="updateExecutedOverride('${type}', '${esc(r.name)}', this.value)"
+                class="w-28 bg-amber-50 border border-amber-200 rounded px-2 py-1 text-xs font-bold text-amber-800">
+        </td>
         <td class="p-3">${fmt(r.paid)}</td>
         <td class="p-3">${balanceCell(r.remaining)}</td>
     </tr>`).join('')
@@ -2969,18 +3019,27 @@
 
             const ledgerTerm = document.getElementById('search-ledger-suppliers')?.value || '';
             const elLedger = document.getElementById('tbody-supplier-accounts');
-            if (elLedger) elLedger.innerHTML = accountRowsHtml(allRows.filter(r => textMatch([r.name], ledgerTerm)));
+            if (elLedger) elLedger.innerHTML = accountRowsHtml(allRows.filter(r => textMatch([r.name], ledgerTerm)), 'suppliers');
 
             const statusEl = document.getElementById('payments-supplier-status');
             const status = statusEl ? statusEl.value : 'CREDIT';
             const nameFilter = document.getElementById('search-supplier-accounts')?.value || 'ALL';
             const elPayments = document.getElementById('tbody-payments-summary');
             if (elPayments) elPayments.innerHTML = accountRowsHtml(
-                filterAccountRows(allRows.filter(r => nameFilter === 'ALL' || r.name === nameFilter), status)
+                filterAccountRows(allRows.filter(r => nameFilter === 'ALL' || r.name === nameFilter), status), 'suppliers'
             );
 
             // update balance info if form is open
             showPaymentSupplierBalance();
+        }
+        function renderContractorAccountsPayments() {
+            const el = document.getElementById('tbody-contractor-accounts-payments');
+            if (!el) return;
+            const rows = db.names.map(n => {
+                const { totalExecuted, paid, remaining } = subcontractorBalance(n.name);
+                return { name: n.name, contract: totalExecuted, paid, remaining };
+            }).filter(r => r.contract || r.paid);
+            el.innerHTML = accountRowsHtml(rows, 'contractors');
         }
 
         /* ================= EXPENSES ================= */
@@ -3161,11 +3220,7 @@
             document.getElementById('kpi-ratio').textContent = inflow > 0 ? ((outflow / inflow) * 100).toFixed(1) + '%' : '-';
 
             // متبقي للموردين
-            const supplierDebt = db.suppliers.reduce((s, sup) => {
-                const invoiced = db.procurements.filter(p => p.supplier === sup.name && matchProj(p)).reduce((a, p) => a + (p.qty * p.price), 0);
-                const paid = db.payments.filter(p => p.supplier === sup.name && matchProj(p)).reduce((a, p) => a + p.amount, 0);
-                return s + Math.max(invoiced - paid, 0);
-            }, 0);
+            const supplierDebt = db.suppliers.reduce((s, sup) => s + Math.max(supplierBalance(sup.name).remaining, 0), 0);
 
             // متبقي للمقاولين = إجمالي المنفذ - المدفوع (بيتجاهل أي زيادة مدفوعة، دي بتتحسب كأصل في المركز المالي)
             const contractorDebt = db.names.reduce((s, n) => {
@@ -3433,7 +3488,9 @@
 
         function subcontractorBalance(name) {
             const recs = db.expensesData.filter(x => x.category === 'مقاولين' && x.name === name);
-            const totalExecuted = recs.reduce((a, x) => a + (x.executedValue || x.paid), 0);
+            const calcExecuted = recs.reduce((a, x) => a + (x.executedValue || x.paid), 0);
+            const override = db.executedOverrides?.contractors?.[name];
+            const totalExecuted = (override !== undefined && override !== null) ? Number(override) : calcExecuted;
             const totalPaidFromExpenses = recs.reduce((a, x) => a + x.paid, 0);
             const totalPaidExtra = (db.contractorPayments || []).filter(p => p.name === name).reduce((a, p) => a + p.amount, 0);
             const totalPaid = totalPaidFromExpenses + totalPaidExtra;
