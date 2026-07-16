@@ -878,7 +878,7 @@
                                 class="bg-cyan-50 border border-cyan-200 rounded-lg px-4 py-2 text-sm flex flex-wrap gap-4">
                                 <span>📋 إجمالي الفواتير: <b id="pay-info-invoices" class="text-slate-800"></b></span>
                                 <span>✅ المدفوع: <b id="pay-info-paid" class="text-emerald-700"></b></span>
-                                <span>🔴 المتبقي له: <b id="pay-info-remaining" class="text-rose-700"></b></span>
+                                <span>الرصيد الحالي: <b id="pay-info-remaining" class="text-rose-700"></b></span>
                             </div>
                         </div>
                         <div class="md:col-span-3"><label
@@ -940,6 +940,7 @@
                                 <option value="CREDIT">آجل (متبقي له)</option>
                                 <option value="ALL">الكل</option>
                                 <option value="CASH">مسدد بالكامل</option>
+                                <option value="ADVANCE">مقدّم منك (ليك عنده)</option>
                             </select>
                         </div>
                     </div>
@@ -955,6 +956,120 @@
                                 </tr>
                             </thead>
                             <tbody id="tbody-payments-summary"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CONTRACTOR DEBT REPAYMENT -->
+                <div class="bg-white p-5 rounded-xl border border-amber-200 shadow-sm">
+                    <h3 class="font-bold text-slate-900 mb-1"><i class="fa-solid fa-hand-holding-dollar text-amber-500"></i> سداد مستحقات مقاول</h3>
+                    <p class="text-xs text-slate-500 mb-4">سجّل أي دفعة تُخصم من رصيد المقاول المستحق، من غير ما تحتاج تسجّل قيمة منفذة جديدة</p>
+                    <form onsubmit="addContractorPayment(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">المقاول</label>
+                            <select id="cpay-name" required onchange="showContractorPaymentBalance()"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        </div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">المبلغ المسدد</label><input
+                                id="cpay-amount" type="number" step="any" required
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع (اختياري)</label><select
+                                id="cpay-project"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        </div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">التاريخ</label><input
+                                id="cpay-date" type="date" required
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div class="md:col-span-4" id="cpay-balance-info" style="display:none">
+                            <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm flex flex-wrap gap-4">
+                                <span>📋 إجمالي المنفذ: <b id="cpay-info-executed" class="text-slate-800"></b></span>
+                                <span>✅ المدفوع له: <b id="cpay-info-paid" class="text-emerald-700"></b></span>
+                                <span>الرصيد الحالي: <b id="cpay-info-remaining" class="text-rose-700"></b></span>
+                            </div>
+                        </div>
+                        <div class="md:col-span-3"><label
+                                class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input id="cpay-notes"
+                                type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div><button type="submit"
+                                class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold p-2.5 rounded-lg text-sm">تسجيل السداد</button></div>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                        <span class="font-bold text-slate-800">سجل سداد المقاولين</span>
+                    </div>
+                    <div class="overflow-x-auto max-h-64">
+                        <table class="w-full text-sm text-right">
+                            <thead class="bg-slate-100 sticky top-0">
+                                <tr>
+                                    <th class="p-3">المقاول</th>
+                                    <th class="p-3">المبلغ</th>
+                                    <th class="p-3">المشروع</th>
+                                    <th class="p-3">التاريخ</th>
+                                    <th class="p-3">ملاحظات</th>
+                                    <th class="p-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-contractor-payments"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- REFUNDS -->
+                <div class="bg-white p-5 rounded-xl border border-emerald-200 shadow-sm">
+                    <h3 class="font-bold text-slate-900 mb-1"><i class="fa-solid fa-rotate-left text-emerald-500"></i> استرداد مبلغ من مورد/مقاول</h3>
+                    <p class="text-xs text-slate-500 mb-4">سجّل هنا لما فعلاً تسترد فلوس نقدًا من مورد أو مقاول كان ليك عنده رصيد مقدّم (نتيجة إنك دفعتله زيادة عن المستحق)</p>
+                    <form onsubmit="addRefund(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">النوع</label>
+                            <select id="refund-type" onchange="fillRefundNames(); showRefundBalance();"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
+                                <option value="supplier">مورد</option>
+                                <option value="contractor">مقاول</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">الاسم</label>
+                            <select id="refund-name" required onchange="showRefundBalance()"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        </div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">المبلغ المسترد</label><input
+                                id="refund-amount" type="number" step="any" required
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">التاريخ</label><input
+                                id="refund-date" type="date" required
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div class="md:col-span-4" id="refund-balance-info" style="display:none">
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2 text-sm flex flex-wrap gap-4">
+                                <span>الرصيد الحالي: <b id="refund-info-remaining"></b></span>
+                            </div>
+                        </div>
+                        <div class="md:col-span-3"><label
+                                class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input id="refund-notes"
+                                type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div><button type="submit"
+                                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2.5 rounded-lg text-sm">تسجيل الاسترداد</button></div>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                        <span class="font-bold text-slate-800">سجل الاسترداد</span>
+                    </div>
+                    <div class="overflow-x-auto max-h-64">
+                        <table class="w-full text-sm text-right">
+                            <thead class="bg-slate-100 sticky top-0">
+                                <tr>
+                                    <th class="p-3">النوع</th>
+                                    <th class="p-3">الاسم</th>
+                                    <th class="p-3">المبلغ</th>
+                                    <th class="p-3">التاريخ</th>
+                                    <th class="p-3">ملاحظات</th>
+                                    <th class="p-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-refunds"></tbody>
                         </table>
                     </div>
                 </div>
@@ -1704,7 +1819,9 @@
                 profitDistributions: [],
                 investorLiabilities: [],
                 custodies: [],
-                assets: []
+                assets: [],
+                contractorPayments: [],
+                refunds: []
             };
         }
 
@@ -1813,7 +1930,9 @@
                     ],
                     custodies: [],
                     investorLiabilities: [],
-                    assets: []
+                    assets: [],
+                    contractorPayments: [],
+                    refunds: []
                 };
 
                 const settings = settingsRes.data || [];
@@ -1827,6 +1946,10 @@
                 if (invLiabSetting) db.investorLiabilities = typeof invLiabSetting.value === 'string' ? JSON.parse(invLiabSetting.value) : invLiabSetting.value;
                 const assetsSetting = settings.find(s => s.key === 'assets');
                 if (assetsSetting) db.assets = typeof assetsSetting.value === 'string' ? JSON.parse(assetsSetting.value) : assetsSetting.value;
+                const contractorPaymentsSetting = settings.find(s => s.key === 'contractorPayments');
+                if (contractorPaymentsSetting) db.contractorPayments = typeof contractorPaymentsSetting.value === 'string' ? JSON.parse(contractorPaymentsSetting.value) : contractorPaymentsSetting.value;
+                const refundsSetting = settings.find(s => s.key === 'refunds');
+                if (refundsSetting) db.refunds = typeof refundsSetting.value === 'string' ? JSON.parse(refundsSetting.value) : refundsSetting.value;
 
                 markSaved();
             } catch (err) {
@@ -1839,6 +1962,8 @@
                         if (!db.custodies) db.custodies = [];
                         if (!db.investorLiabilities) db.investorLiabilities = [];
                         if (!db.assets) db.assets = [];
+                        if (!db.contractorPayments) db.contractorPayments = [];
+                        if (!db.refunds) db.refunds = [];
                     }
                 } catch (e) { }
                 const ind = document.getElementById('save-indicator');
@@ -1870,6 +1995,20 @@
         async function saveAssets() {
             markSaving();
             const { error } = await sb.from('app_settings').upsert({ key: 'assets', value: db.assets }, { onConflict: 'key' });
+            if (error) { markSaveError(error); return false; }
+            markSaved();
+            return true;
+        }
+        async function saveContractorPayments() {
+            markSaving();
+            const { error } = await sb.from('app_settings').upsert({ key: 'contractorPayments', value: db.contractorPayments }, { onConflict: 'key' });
+            if (error) { markSaveError(error); return false; }
+            markSaved();
+            return true;
+        }
+        async function saveRefunds() {
+            markSaving();
+            const { error } = await sb.from('app_settings').upsert({ key: 'refunds', value: db.refunds }, { onConflict: 'key' });
             if (error) { markSaveError(error); return false; }
             markSaved();
             return true;
@@ -1934,6 +2073,11 @@
         const fmt = n => (Number(n) || 0).toLocaleString('ar-EG') + ' ج.م';
         const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const todayISO = () => new Date().toISOString().slice(0, 10);
+        function balanceCell(remaining, oweLabel = 'مستحق عليك', creditLabel = 'مقدّم منك (ليك)') {
+            if (remaining > 0) return `<span class="text-rose-600 font-bold" title="${oweLabel}">${fmt(remaining)}</span>`;
+            if (remaining < 0) return `<span class="text-emerald-600 font-bold" title="${creditLabel}">↩️ ${fmt(-remaining)} ${creditLabel}</span>`;
+            return `<span class="text-slate-400">مسدد بالكامل</span>`;
+        }
 
         function fillSelect(id, items, allLabel) {
             const el = document.getElementById(id);
@@ -1979,6 +2123,8 @@
             renderBalanceSheet();
             renderCustody();
             renderAssets();
+            renderContractorPayments();
+            renderRefunds();
             requestAnimationFrame(() => { setTimeout(() => renderCharts(dashFp), 50); });
         }
 
@@ -2041,8 +2187,8 @@
                         const { remaining, contractRemaining } = subcontractorBalance(it.name);
                         contractLine = `<div class="w-full bg-amber-50 border border-amber-200 rounded-lg p-2.5 mt-1.5 text-xs flex flex-col gap-1">
                     <div class="flex items-center justify-between"><span class="text-slate-600">قيمة العقد:</span> <b class="text-slate-900">${fmt(it.contractValue)}</b></div>
-                    <div class="flex items-center justify-between"><span class="text-slate-600">مستحق (منفذ):</span> <b class="text-rose-700">${fmt(remaining)}</b></div>
-                    <div class="flex items-center justify-between"><span class="text-slate-600">باقي العقد:</span> <b class="text-amber-700">${contractRemaining !== undefined ? fmt(contractRemaining) : '-'}</b></div>
+                    <div class="flex items-center justify-between"><span class="text-slate-600">مستحق (منفذ):</span> ${balanceCell(remaining)}</div>
+                    <div class="flex items-center justify-between"><span class="text-slate-600">باقي العقد:</span> ${contractRemaining !== undefined ? balanceCell(contractRemaining) : '-'}</div>
                 </div>`;
                     }
                     if (cat === 'clients' && it.contractValue) {
@@ -2317,6 +2463,10 @@
             fillSelect('search-payments', db.suppliers, 'كل الموردين');
             fillSelect('search-supplier-accounts', db.suppliers, 'كل الموردين');
 
+            fillSelect('cpay-name', db.names);
+            fillSelect('cpay-project', db.projects, 'بدون مشروع محدد');
+            fillSelect('refund-name', db.suppliers);
+
             fillSelect('treasury-filter-project', db.projects, 'كل المشاريع');
             fillSelect('pl-filter-project', db.projects, 'إجمالي كل المشاريع');
             fillSelect('dashboard-filter-project', db.projects, 'كل المشاريع');
@@ -2346,6 +2496,8 @@
             if (!document.getElementById('proc-date').value) document.getElementById('proc-date').value = todayISO();
             if (!document.getElementById('exp-date').value) document.getElementById('exp-date').value = todayISO();
             if (!document.getElementById('pay-date').value) document.getElementById('pay-date').value = todayISO();
+            if (document.getElementById('cpay-date') && !document.getElementById('cpay-date').value) document.getElementById('cpay-date').value = todayISO();
+            if (document.getElementById('refund-date') && !document.getElementById('refund-date').value) document.getElementById('refund-date').value = todayISO();
             if (document.getElementById('dist-date') && !document.getElementById('dist-date').value) document.getElementById('dist-date').value = todayISO();
 
             updateProcUnit();
@@ -2499,22 +2651,23 @@
                 const n = db.names.find(n => n.name === name);
                 if (n && n.contractValue) {
                     const { paid, remaining, contractRemaining } = subcontractorBalance(name);
-                    info = { label: 'عقد المقاول', cv: n.contractValue, done: paid, doneLabel: 'مدفوع', remaining, contractRemaining };
+                    info = { label: 'عقد المقاول', cv: n.contractValue, done: paid, doneLabel: 'مدفوع', remaining, contractRemaining, signed: true };
                 }
             }
             if (info) {
                 const debtColor = info.remaining > 0 ? 'text-rose-600 font-bold' : 'text-emerald-600 font-bold';
-                const crColor = (info.contractRemaining ?? 0) > 0 ? 'text-amber-600 font-bold' : 'text-emerald-600 font-bold';
                 box.innerHTML = `
             <i class="fa-solid fa-file-contract text-indigo-500"></i>
             <span class="font-bold">${info.label}:</span> ${fmt(info.cv)}
             <span class="text-slate-300 mx-1">│</span>
             ${info.doneLabel}: <span class="font-semibold">${fmt(info.done)}</span>
             <span class="text-slate-300 mx-1">│</span>
-            <span class="${debtColor}">ℹ️ مستحق عن شغل منفّذ: ${fmt(info.remaining)}</span>
+            ${info.signed
+                        ? `<span>ℹ️ مستحق عن شغل منفّذ: ${balanceCell(info.remaining, 'مستحق عليك', 'مقدّم منك (سلفة)')}</span>`
+                        : `<span class="${debtColor}">ℹ️ المتبقي: ${fmt(info.remaining)}</span>`}
             ${info.contractRemaining !== undefined ? `
             <span class="text-slate-300 mx-1">│</span>
-            <span class="${crColor}">📌 باقي من قيمة العقد: ${fmt(info.contractRemaining)}</span>` : ''}
+            <span>📌 باقي من قيمة العقد: ${balanceCell(info.contractRemaining, 'باقي عليك', 'دفعت أكتر من العقد')}</span>` : ''}
         `;
                 box.classList.remove('hidden');
             } else {
@@ -2643,8 +2796,117 @@
             const { totalInvoices, totalPaid, remaining } = supplierBalance(name);
             document.getElementById('pay-info-invoices').textContent = fmt(totalInvoices);
             document.getElementById('pay-info-paid').textContent = fmt(totalPaid);
-            document.getElementById('pay-info-remaining').textContent = fmt(remaining);
+            document.getElementById('pay-info-remaining').innerHTML = balanceCell(remaining);
             document.getElementById('pay-supplier-balance-info').style.display = 'block';
+        }
+        function showContractorPaymentBalance() {
+            const name = document.getElementById('cpay-name').value;
+            if (!name) { document.getElementById('cpay-balance-info').style.display = 'none'; return; }
+            const { totalExecuted, paid, remaining } = subcontractorBalance(name);
+            document.getElementById('cpay-info-executed').textContent = fmt(totalExecuted);
+            document.getElementById('cpay-info-paid').textContent = fmt(paid);
+            document.getElementById('cpay-info-remaining').innerHTML = balanceCell(remaining);
+            document.getElementById('cpay-balance-info').style.display = 'block';
+        }
+        async function addContractorPayment(e) {
+            e.preventDefault();
+            if (!db.contractorPayments) db.contractorPayments = [];
+            const name = document.getElementById('cpay-name').value;
+            const amount = Number(document.getElementById('cpay-amount').value) || 0;
+            if (!name || amount <= 0) { alert('اختر المقاول وأدخل المبلغ'); return; }
+            const rec = {
+                id: Date.now(),
+                name,
+                amount,
+                project: (document.getElementById('cpay-project').value === 'ALL' ? null : document.getElementById('cpay-project').value) || null,
+                date: document.getElementById('cpay-date').value || todayISO(),
+                notes: document.getElementById('cpay-notes').value.trim()
+            };
+            db.contractorPayments.push(rec);
+            e.target.reset();
+            document.getElementById('cpay-date').value = todayISO();
+            document.getElementById('cpay-balance-info').style.display = 'none';
+            await saveContractorPayments();
+            renderAll();
+        }
+        async function deleteContractorPayment(id) {
+            if (!confirm('هل تريد حذف دفعة السداد دي؟ سيرتفع رصيد المقاول المستحق مرة أخرى.')) return;
+            db.contractorPayments = (db.contractorPayments || []).filter(p => p.id !== id);
+            await saveContractorPayments();
+            renderAll();
+        }
+        function renderContractorPayments() {
+            const tbody = document.getElementById('tbody-contractor-payments');
+            if (!tbody) return;
+            const rows = [...(db.contractorPayments || [])].reverse();
+            const total = rows.reduce((s, p) => s + p.amount, 0);
+            tbody.innerHTML = (rows.length ? rows.map(p => `
+        <tr class="border-b border-slate-50 hover:bg-slate-50">
+            <td class="p-3 font-semibold">${esc(p.name)}</td><td class="p-3 font-bold">${fmt(p.amount)}</td>
+            <td class="p-3">${esc(p.project || '-')}</td><td class="p-3 text-slate-500">${p.date}</td><td class="p-3">${esc(p.notes || '')}</td>
+            <td class="p-3"><button onclick="deleteContractorPayment(${p.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد دفعات سداد مسجلة</td></tr>')
+                + (rows.length ? `<tr class="bg-slate-50 font-bold"><td class="p-3">الإجمالي</td><td class="p-3 text-amber-700">${fmt(total)}</td><td colspan="4"></td></tr>` : '');
+        }
+        function fillRefundNames() {
+            const type = document.getElementById('refund-type').value;
+            fillSelect('refund-name', type === 'supplier' ? db.suppliers : db.names);
+        }
+        function refundPartyBalance(type, name) {
+            return type === 'supplier' ? supplierBalance(name) : subcontractorBalance(name);
+        }
+        function showRefundBalance() {
+            const type = document.getElementById('refund-type').value;
+            const name = document.getElementById('refund-name').value;
+            const box = document.getElementById('refund-balance-info');
+            if (!name) { box.style.display = 'none'; return; }
+            const { remaining } = refundPartyBalance(type, name);
+            document.getElementById('refund-info-remaining').innerHTML = balanceCell(remaining);
+            box.style.display = 'block';
+        }
+        async function addRefund(e) {
+            e.preventDefault();
+            if (!db.refunds) db.refunds = [];
+            const partyType = document.getElementById('refund-type').value;
+            const name = document.getElementById('refund-name').value;
+            const amount = Number(document.getElementById('refund-amount').value) || 0;
+            if (!name || amount <= 0) { alert('اختر الاسم وأدخل المبلغ'); return; }
+            const rec = {
+                id: Date.now(),
+                partyType,
+                name,
+                amount,
+                date: document.getElementById('refund-date').value || todayISO(),
+                notes: document.getElementById('refund-notes').value.trim()
+            };
+            db.refunds.push(rec);
+            e.target.reset();
+            document.getElementById('refund-date').value = todayISO();
+            document.getElementById('refund-balance-info').style.display = 'none';
+            await saveRefunds();
+            renderAll();
+        }
+        async function deleteRefund(id) {
+            if (!confirm('هل تريد حذف عملية الاسترداد دي؟ سيرجع الرصيد المقدّم زي ما كان.')) return;
+            db.refunds = (db.refunds || []).filter(r => r.id !== id);
+            await saveRefunds();
+            renderAll();
+        }
+        function renderRefunds() {
+            const tbody = document.getElementById('tbody-refunds');
+            if (!tbody) return;
+            const rows = [...(db.refunds || [])].reverse();
+            const total = rows.reduce((s, r) => s + r.amount, 0);
+            tbody.innerHTML = (rows.length ? rows.map(r => `
+        <tr class="border-b border-slate-50 hover:bg-slate-50">
+            <td class="p-3">${r.partyType === 'supplier' ? 'مورد' : 'مقاول'}</td>
+            <td class="p-3 font-semibold">${esc(r.name)}</td>
+            <td class="p-3 font-bold text-emerald-700">${fmt(r.amount)}</td>
+            <td class="p-3 text-slate-500">${r.date}</td>
+            <td class="p-3">${esc(r.notes || '')}</td>
+            <td class="p-3"><button onclick="deleteRefund(${r.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد عمليات استرداد مسجلة</td></tr>')
+                + (rows.length ? `<tr class="bg-slate-50 font-bold"><td colspan="2" class="p-3">الإجمالي</td><td class="p-3 text-emerald-700">${fmt(total)}</td><td colspan="3"></td></tr>` : '');
         }
         function renderPaymentsTable() {
             const nameFilter = document.getElementById('search-payments')?.value || 'ALL';
@@ -2677,11 +2939,13 @@
         function supplierBalance(name) {
             const totalInvoices = db.procurements.filter(p => p.supplier === name).reduce((a, p) => a + (p.qty * p.price), 0);
             const totalPaid = db.payments.filter(pay => pay.supplier === name).reduce((a, pay) => a + pay.amount, 0);
-            return { totalInvoices, totalPaid, remaining: totalInvoices - totalPaid };
+            const totalRefunded = (db.refunds || []).filter(r => r.partyType === 'supplier' && r.name === name).reduce((a, r) => a + r.amount, 0);
+            return { totalInvoices, totalPaid, refunded: totalRefunded, remaining: totalInvoices - totalPaid + totalRefunded };
         }
         function filterAccountRows(rows, status) {
-            if (status === 'CASH') return rows.filter(r => r.remaining <= 0);
+            if (status === 'CASH') return rows.filter(r => r.remaining === 0);
             if (status === 'CREDIT') return rows.filter(r => r.remaining > 0);
+            if (status === 'ADVANCE') return rows.filter(r => r.remaining < 0);
             return rows;
         }
         function accountRowsHtml(rows) {
@@ -2690,7 +2954,7 @@
         <td class="p-3 text-xs text-slate-500">${esc(r.items || '-')}</td>
         <td class="p-3">${r.contract ? fmt(r.contract) : '-'}</td>
         <td class="p-3">${fmt(r.paid)}</td>
-        <td class="p-3 ${r.remaining > 0 ? 'text-rose-600 font-bold' : 'text-emerald-600'}">${fmt(r.remaining)}</td>
+        <td class="p-3">${balanceCell(r.remaining)}</td>
     </tr>`).join('')
                 || `<tr><td colspan="5" class="p-4 text-center text-slate-400">لا توجد بيانات</td></tr>`;
         }
@@ -2847,6 +3111,12 @@
             db.payments.forEach(pay => {
                 events.push({ date: pay.date, desc: `دفعة لمورد: ${pay.supplier}`, project: pay.project || '-', inflow: 0, outflow: pay.amount });
             });
+            (db.contractorPayments || []).forEach(p => {
+                events.push({ date: p.date, desc: `سداد مقاول: ${p.name}`, project: p.project || '-', inflow: 0, outflow: p.amount });
+            });
+            (db.refunds || []).forEach(r => {
+                events.push({ date: r.date, desc: `استرداد من ${r.partyType === 'supplier' ? 'مورد' : 'مقاول'}: ${r.name}`, project: '-', inflow: r.amount, outflow: 0 });
+            });
             return events.sort((a, b) => a.date.localeCompare(b.date)); // chronological for running balance
         }
         function renderTreasury() {
@@ -2878,10 +3148,13 @@
             const matchDate = rec => (!dateFrom || rec.date >= dateFrom) && (!dateTo || rec.date <= dateTo);
             const match = rec => matchProj(rec) && matchDate(rec);
 
-            const inflow = db.expensesData.filter(x => x.category === 'إيراد').filter(match).reduce((s, x) => s + x.paid, 0);
+            const inflowRevenue = db.expensesData.filter(x => x.category === 'إيراد').filter(match).reduce((s, x) => s + x.paid, 0);
+            const inflowRefunds = (db.refunds || []).filter(match).reduce((s, r) => s + r.amount, 0);
+            const inflow = inflowRevenue + inflowRefunds;
             const outflowExp = db.expensesData.filter(x => x.category !== 'إيراد').filter(match).reduce((s, x) => s + x.paid, 0);
             const outflowPay = db.payments.filter(match).reduce((s, p) => s + p.amount, 0);
-            const outflow = outflowExp + outflowPay;
+            const outflowContractorPay = (db.contractorPayments || []).filter(match).reduce((s, p) => s + p.amount, 0);
+            const outflow = outflowExp + outflowPay + outflowContractorPay;
             document.getElementById('kpi-inflows').textContent = fmt(inflow);
             document.getElementById('kpi-outflows').textContent = fmt(outflow);
             document.getElementById('kpi-balance').textContent = fmt(inflow - outflow);
@@ -2894,10 +3167,10 @@
                 return s + Math.max(invoiced - paid, 0);
             }, 0);
 
-            // متبقي للمقاولين = إجمالي المنفذ - المدفوع
+            // متبقي للمقاولين = إجمالي المنفذ - المدفوع (بيتجاهل أي زيادة مدفوعة، دي بتتحسب كأصل في المركز المالي)
             const contractorDebt = db.names.reduce((s, n) => {
                 const { remaining } = subcontractorBalance(n.name);
-                return s + remaining;
+                return s + Math.max(remaining, 0);
             }, 0);
 
             // العهد المعلقة
@@ -3161,11 +3434,15 @@
         function subcontractorBalance(name) {
             const recs = db.expensesData.filter(x => x.category === 'مقاولين' && x.name === name);
             const totalExecuted = recs.reduce((a, x) => a + (x.executedValue || x.paid), 0);
-            const totalPaid = recs.reduce((a, x) => a + x.paid, 0);
-            const debt = Math.max(totalExecuted - totalPaid, 0); // دين = منفذ ولسه مادفع
+            const totalPaidFromExpenses = recs.reduce((a, x) => a + x.paid, 0);
+            const totalPaidExtra = (db.contractorPayments || []).filter(p => p.name === name).reduce((a, p) => a + p.amount, 0);
+            const totalPaid = totalPaidFromExpenses + totalPaidExtra;
+            const totalRefunded = (db.refunds || []).filter(r => r.partyType === 'contractor' && r.name === name).reduce((a, r) => a + r.amount, 0);
+            const netPaid = totalPaid - totalRefunded;
+            const debt = totalExecuted - netPaid; // موجب = عليك له | سالب = دفعت زيادة (ليك عنده)
             const cv = (db.names.find(n => n.name === name) || {}).contractValue || 0;
-            const contractRemaining = cv > 0 ? Math.max(cv - totalPaid, 0) : undefined; // باقي من قيمة العقد الكلية
-            return { contractValue: cv, totalExecuted, paid: totalPaid, remaining: debt, contractRemaining };
+            const contractRemaining = cv > 0 ? (cv - netPaid) : undefined; // موجب = باقي من العقد | سالب = دفعت أكتر من قيمة العقد
+            return { contractValue: cv, totalExecuted, paid: totalPaid, refunded: totalRefunded, remaining: debt, contractRemaining };
         }
         function clientBalance(name) {
             const collected = db.expensesData.filter(x => x.category === 'إيراد' && x.name === name).reduce((a, x) => a + x.paid, 0);
@@ -3181,8 +3458,8 @@
             <td class="p-3 font-bold">${esc(n.name)}</td>
             <td class="p-3">${cv ? fmt(cv) : '-'}</td>
             <td class="p-3">${fmt(paid)}</td>
-            <td class="p-3 ${remaining > 0 ? 'text-rose-600 font-bold' : ''}">${fmt(remaining)}</td>
-            <td class="p-3 ${contractRemaining > 0 ? 'text-amber-600 font-bold' : ''}">${contractRemaining !== undefined ? fmt(contractRemaining) : '-'}</td>
+            <td class="p-3">${balanceCell(remaining, 'مستحق عليك (منفذ)')}</td>
+            <td class="p-3">${contractRemaining === undefined ? '-' : balanceCell(contractRemaining, 'باقي من العقد')}</td>
         </tr>`;
             }).join('') || '<tr><td colspan="5" class="p-4 text-center text-slate-400">لا توجد بيانات</td></tr>';
 
@@ -3375,11 +3652,10 @@
             ws['!cols'] = [{ wch: 12 }, { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 14 }];
 
             const subRows = db.names.map(n => {
-                const paid = db.expensesData.filter(x => x.category === 'مقاولين' && x.name === n.name).reduce((a, x) => a + x.paid, 0);
-                const cv = n.contractValue || 0;
-                return [n.name, cv || '', paid, cv ? (cv - paid) : ''];
+                const { totalExecuted, paid, remaining } = subcontractorBalance(n.name);
+                return [n.name, totalExecuted || '', paid, remaining];
             });
-            const ws2 = XLSX.utils.aoa_to_sheet([['المقاول', 'قيمة العقد', 'المدفوع له', 'المتبقي له'], ...subRows]);
+            const ws2 = XLSX.utils.aoa_to_sheet([['المقاول', 'إجمالي المنفذ', 'المدفوع له', 'مستحق عن شغل منفّذ'], ...subRows]);
             ws2['!cols'] = [{ wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
 
             const clientRows = db.clients.map(c => {
@@ -3970,6 +4246,8 @@
                     else events.push(-x.paid);
                 });
                 db.payments.forEach(p => events.push(-p.amount));
+                (db.contractorPayments || []).forEach(p => events.push(-p.amount));
+                (db.refunds || []).forEach(r => events.push(r.amount));
                 return events.reduce((s, v) => s + v, 0);
             })();
 
@@ -3981,16 +4259,11 @@
 
             const investorCapital = db.investorFunding.reduce((s, f) => s + (f.amount || 0), 0);
 
-            const supplierPayables = db.suppliers.reduce((s, sup) => {
-                const inv = db.procurements.filter(p => p.supplier === sup.name).reduce((a, p) => a + (p.qty * p.price), 0);
-                const paid = db.payments.filter(p => p.supplier === sup.name).reduce((a, p) => a + p.amount, 0);
-                return s + Math.max(inv - paid, 0);
-            }, 0);
+            const supplierPayables = db.suppliers.reduce((s, sup) => s + Math.max(supplierBalance(sup.name).remaining, 0), 0);
+            const supplierReceivables = db.suppliers.reduce((s, sup) => s + Math.max(-supplierBalance(sup.name).remaining, 0), 0);
 
-            const subcontractorPayables = db.names.reduce((s, n) => {
-                const { remaining } = subcontractorBalance(n.name); // الدين = المنفذ فعلياً - المدفوع
-                return s + remaining;
-            }, 0);
+            const subcontractorPayables = db.names.reduce((s, n) => s + Math.max(subcontractorBalance(n.name).remaining, 0), 0);
+            const subcontractorReceivables = db.names.reduce((s, n) => s + Math.max(-subcontractorBalance(n.name).remaining, 0), 0);
 
             // المستحقات المعتمدة غير المسددة = التزام فعلي
             const approvedLiabilities = (db.investorLiabilities || []).filter(l => l.status === 'pending').reduce((s, l) => s + l.amount, 0);
@@ -4003,7 +4276,7 @@
             const retainedEarnings = grossProfit - paidDistributions - approvedLiabilities;
             const profitsDue = approvedLiabilities; // هذا هو الالتزام الفعلي فقط
 
-            const totalAssets = cash + clientReceivables;
+            const totalAssets = cash + clientReceivables + supplierReceivables + subcontractorReceivables;
             const totalLiabilities = supplierPayables + subcontractorPayables + profitsDue;
             const equity = investorCapital + retainedEarnings;
 
@@ -4015,6 +4288,8 @@
         ${section('الأصول', 'bg-blue-700')}
         ${line('النقدية بالخزينة', cash)}
         ${line('ذمم مدينة (عملاء)', clientReceivables)}
+        ${line('مقدّم لموردين (زيادة مدفوعة)', supplierReceivables)}
+        ${line('مقدّم لمقاولين (زيادة مدفوعة)', subcontractorReceivables)}
         ${total('إجمالي الأصول', totalAssets, 'bg-blue-50 text-blue-800')}
 
         ${section('الخصوم المتداولة', 'bg-rose-700')}
