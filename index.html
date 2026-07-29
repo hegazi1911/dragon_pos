@@ -87,8 +87,11 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
     </div>
 </div>
 
-<header class="bg-slate-900 text-white h-16 px-6 flex items-center justify-between border-b border-slate-800 shrink-0 z-10">
-    <div class="flex items-center gap-3">
+<header class="bg-slate-900 text-white h-16 px-3 sm:px-6 flex items-center justify-between border-b border-slate-800 shrink-0 z-10">
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button id="sidebar-toggle" onclick="toggleSidebar()" class="lg:hidden text-white p-2 -m-2 rounded-lg hover:bg-slate-800 shrink-0" aria-label="القائمة">
+            <i class="fa-solid fa-bars text-lg"></i>
+        </button>
         <div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-sm">
             <svg viewBox="0 0 512 512" class="w-full h-full">
                 <defs>
@@ -104,29 +107,34 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
                 <circle cx="400" cy="140" r="24" fill="#f59e0b"/>
             </svg>
         </div>
-        <div>
-            <h1 class="font-bold text-lg leading-tight">نظام DRACON</h1>
-            <p class="text-xs text-slate-400">نظام إدارة مالية متكامل للشركات والمؤسسات</p>
+        <div class="hidden sm:block min-w-0">
+            <h1 class="font-bold text-lg leading-tight truncate">نظام DRACON</h1>
+            <p class="text-xs text-slate-400 truncate">نظام إدارة مالية متكامل للشركات والمؤسسات</p>
         </div>
     </div>
-    <div class="flex items-center gap-4 text-sm">
-        <div id="save-indicator" class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
+    <div class="flex items-center gap-1.5 sm:gap-4 text-sm shrink-0">
+        <div id="save-indicator" class="bg-slate-800 px-2 sm:px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>محفوظ تلقائياً</span>
+            <span class="hidden sm:inline">محفوظ تلقائياً</span>
         </div>
-        <button onclick="shareViaWhatsApp()" class="bg-[#25D366] hover:brightness-95 transition text-white px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
-            <i class="fa-brands fa-whatsapp"></i><span>مشاركة واتساب</span>
+        <button onclick="shareViaWhatsApp()" class="bg-[#25D366] hover:brightness-95 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
+            <i class="fa-brands fa-whatsapp"></i><span class="hidden sm:inline">مشاركة واتساب</span>
         </button>
-        <button onclick="exportData()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
-            <i class="fa-solid fa-file-export"></i><span>تصدير نسخة احتياطية</span>
+        <button onclick="exportData()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
+            <i class="fa-solid fa-file-export"></i><span class="hidden sm:inline">تصدير نسخة احتياطية</span>
         </button>
     </div>
 </header>
 
 <div id="role-banner" class="hidden bg-amber-500 text-slate-900 text-center text-xs font-bold py-1.5"></div>
 
-<div class="flex flex-1 overflow-hidden">
-    <aside class="w-64 bg-slate-900 border-l border-slate-800 flex flex-col justify-between shrink-0">
+<div class="flex flex-1 overflow-hidden relative">
+    <div id="sidebar-backdrop" onclick="closeSidebar()" class="hidden fixed inset-0 bg-black/50 z-30 lg:hidden"></div>
+    <aside id="sidebar" class="fixed inset-y-0 right-0 z-40 w-72 max-w-[85vw] translate-x-full transition-transform duration-200 lg:static lg:translate-x-0 lg:z-auto lg:w-64 lg:max-w-none bg-slate-900 border-l border-slate-800 flex flex-col justify-between shrink-0">
+        <div class="lg:hidden flex justify-between items-center px-4 py-3 border-b border-slate-800 shrink-0">
+            <span class="text-white font-bold text-sm">القائمة</span>
+            <button onclick="closeSidebar()" class="text-slate-400 hover:text-white p-1" aria-label="إغلاق"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
         <div class="p-3 flex flex-col gap-1 overflow-y-auto">
             <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1 px-3">المتابعة</p>
             <button onclick="switchTab('dashboard')" id="btn-dashboard" class="tab-btn active w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
@@ -195,7 +203,7 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
         </div>
     </aside>
 
-    <main class="flex-1 p-6 overflow-y-auto">
+    <main class="flex-1 p-3 sm:p-6 overflow-y-auto min-w-0">
 
         <!-- DASHBOARD -->
         <div id="tab-dashboard" class="tab-content active flex-col gap-6">
@@ -1708,7 +1716,7 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
 
 
 <!-- SETTLEMENT MODAL -->
-<div id="settle-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50">
+<div id="settle-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3">
             <h3 class="font-bold text-slate-900">تسوية قيد يومي</h3>
@@ -1733,7 +1741,7 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
 </div>
 
 <!-- SETTLE EXTERNAL INVESTMENT MODAL -->
-<div id="settle-extinv-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50">
+<div id="settle-extinv-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3">
             <h3 class="font-bold text-slate-900">تسوية استثمار خارجي</h3>
@@ -1759,7 +1767,7 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
 </div>
 
 <!-- PAY INVESTOR LIABILITY (دفعة على دفعات) MODAL -->
-<div id="pay-investor-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50">
+<div id="pay-investor-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3">
             <h3 class="font-bold text-slate-900">صرف دفعة للمستثمر</h3>
@@ -1785,7 +1793,7 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
     </div>
 </div>
 
-<div id="pay-manager-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50">
+<div id="pay-manager-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3">
             <h3 class="font-bold text-slate-900">سداد التزام المدير</h3>
@@ -1813,7 +1821,7 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
 </div>
 
 <!-- PAY OBLIGATION (دفعة على دفعات — متابعة فقط، بدون أي تأثير مالي) MODAL -->
-<div id="pay-oblig-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50">
+<div id="pay-oblig-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3">
             <h3 class="font-bold text-slate-900">تسجيل دفعة من الالتزام</h3>
@@ -1841,7 +1849,7 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
 </div>
 
 <!-- SETTLE ADVANCE MODAL (سداد سلفة يدوياً — في أي وقت وأي شهر) -->
-<div id="settle-advance-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50">
+<div id="settle-advance-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4">
         <div class="flex justify-between items-center border-b border-slate-100 pb-3">
             <h3 class="font-bold text-slate-900">سداد سلفة موظف</h3>
@@ -2136,16 +2144,16 @@ function auditRowToRecord(row){ return { id:row.id, action:row.action, entity:ro
 
 function markSaving(){
     const ind = document.getElementById('save-indicator');
-    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span><span>جارٍ الحفظ...</span>';
+    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span><span class="hidden sm:inline">جارٍ الحفظ...</span>';
 }
 function markSaved(){
     const ind = document.getElementById('save-indicator');
-    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span>محفوظ على Supabase</span>';
+    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span class="hidden sm:inline">محفوظ على Supabase</span>';
 }
 function markSaveError(err){
     console.error('save error', err);
     const ind = document.getElementById('save-indicator');
-    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>تعذّر الحفظ</span>';
+    if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span class="hidden sm:inline">تعذّر الحفظ</span>';
     alert('تعذر حفظ التعديل على Supabase. تأكد من الاتصال بالإنترنت وحاول تاني.\n' + (err && err.message ? err.message : ''));
 }
 
@@ -2232,7 +2240,7 @@ async function loadDb(){
         console.error('تعذر الاتصال بـ Supabase:', err);
         db = seedDb();
         const ind = document.getElementById('save-indicator');
-        if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>غير متصل بقاعدة البيانات</span>';
+        if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span class="hidden sm:inline">غير متصل بقاعدة البيانات</span>';
     }
 }
 
@@ -2261,7 +2269,7 @@ function scheduleRealtimeReload(){
         initDropdowns();
         renderAll();
         const ind = document.getElementById('save-indicator');
-        if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span><span>تحديث من مستخدم آخر</span>';
+        if(ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span><span class="hidden sm:inline">تحديث من مستخدم آخر</span>';
     }, 500);
 }
 function setupRealtime(){
@@ -2468,7 +2476,22 @@ function renderAll(){
     requestAnimationFrame(()=>{ setTimeout(()=>renderCharts(dashFp), 50); });
 }
 
+function openSidebar(){
+    document.getElementById('sidebar')?.classList.remove('translate-x-full');
+    document.getElementById('sidebar-backdrop')?.classList.remove('hidden');
+}
+function closeSidebar(){
+    document.getElementById('sidebar')?.classList.add('translate-x-full');
+    document.getElementById('sidebar-backdrop')?.classList.add('hidden');
+}
+function toggleSidebar(){
+    const aside = document.getElementById('sidebar');
+    if(!aside) return;
+    if(aside.classList.contains('translate-x-full')) openSidebar(); else closeSidebar();
+}
+
 function switchTab(tabId){
+    closeSidebar();
     document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
     document.getElementById('tab-'+tabId).classList.add('active');
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
