@@ -132,7 +132,10 @@ create table if not exists expense_entries (
   account text, -- الحساب البنكي/النقدي المرتبط بالحركة
   date date not null default current_date,
   notes text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- الجدول ده مشترك بين 4 تبويبات مختلفة (مصروفات/رواتب/مبيعات/عهد) — العمود ده بيوضّح
+  -- مصدر كل حركة عشان RLS تقدر تفرض صلاحية التبويب الحقيقي بدل موديول واحد ثابت
+  source_module text not null check (source_module in ('expenses','payroll','sales','custody'))
 );
 
 create table if not exists payments (
@@ -385,7 +388,7 @@ create table if not exists profiles (
   username text not null unique,
   is_admin boolean not null default false,
   active boolean not null default true,
-  permissions jsonb not null default '{}'::jsonb, -- {"dailyentry":{"view":true,"edit":true,"delete":false}, "reports":{...}, "masterdata":{...}}
+  permissions jsonb not null default '{}'::jsonb, -- مفتاح مستقل لكل تبويب: {"procurement":{"view":true,"edit":true,"delete":false}, "sales":{...}, ..., "masterdata":{...}} (18 مفتاح)
   created_at timestamptz not null default now()
 );
 alter table profiles enable row level security;
@@ -418,60 +421,71 @@ create policy "read own or admin" on profiles for select using (id = auth.uid() 
 -- Row Level Security لجداول العمل
 -- القراءة: متاحة لأي مستخدم مسجّل دخول وحسابه مفعّل (شاشات التقارير بتجمع بيانات
 -- من كل الموديولات مع بعض، فمنع القراءة الجزئية هيدّي أرقام غلط بصمت).
--- الكتابة (إضافة/تعديل/حذف): مربوطة فعليًا بصلاحيات المستخدم حسب مجموعته
--- (تسجيل يومي / تقارير ودفاتر / دليل الأكواد) — دي الحماية الحقيقية اللي متقدرش
--- تتخطاها حتى لو حد فتح Console وحاول يستدعي Supabase مباشرة.
+-- الكتابة (إضافة/تعديل/حذف): مربوطة فعليًا بصلاحية التبويب المحدد نفسه (18 تبويب،
+-- كل واحد مفتاح مستقل) — دي الحماية الحقيقية اللي متقدرش تتخطاها حتى لو حد فتح
+-- Console وحاول يستدعي Supabase مباشرة.
 -- ============================================================
 do $$
 declare
-  t text;
-  module text;
-  tables_dailyentry text[] := array['procurements','sales','expense_entries','payments','contractor_payments','refunds','custodies','employee_advances','attendance','assets','daily_journals','obligations'];
-  tables_reports text[] := array['investor_funding','profit_distributions','investor_liabilities','manager_liabilities','manager_payments','external_investments','taxes'];
-  tables_masterdata text[] := array['projects','supplies','suppliers','expense_categories','activities','names','clients','investors','accounts','employees','asset_types'];
+  rec record;
 begin
-  foreach t in array (tables_dailyentry || tables_reports || tables_masterdata) loop
-    execute format('alter table %I enable row level security;', t);
+  for rec in
+    select * from (values
+      ('procurements','procurement'),
+      ('sales','sales'),
+      ('custodies','custody'),
+      ('employee_advances','payroll'),
+      ('attendance','payroll'),
+      ('assets','assets'),
+      ('daily_journals','dailyjournal'),
+      ('payments','payments'),
+      ('contractor_payments','payments'),
+      ('refunds','payments'),
+      ('obligations','payments'),
+      ('investor_funding','investors'),
+      ('profit_distributions','investors'),
+      ('investor_liabilities','investors'),
+      ('manager_liabilities','investors'),
+      ('manager_payments','investors'),
+      ('external_investments','extinvest'),
+      ('taxes','pl'),
+      ('projects','masterdata'),
+      ('supplies','masterdata'),
+      ('suppliers','masterdata'),
+      ('expense_categories','masterdata'),
+      ('activities','masterdata'),
+      ('names','masterdata'),
+      ('clients','masterdata'),
+      ('investors','masterdata'),
+      ('accounts','masterdata'),
+      ('employees','masterdata'),
+      ('asset_types','masterdata')
+    ) as t(tbl, module)
+  loop
+    execute format('alter table %I enable row level security;', rec.tbl);
+    execute format('drop policy if exists "public full access" on %I;', rec.tbl);
+    execute format('drop policy if exists "select_active" on %I;', rec.tbl);
+    execute format('drop policy if exists "insert_module" on %I;', rec.tbl);
+    execute format('drop policy if exists "update_module" on %I;', rec.tbl);
+    execute format('drop policy if exists "delete_module" on %I;', rec.tbl);
+    execute format('create policy "select_active" on %I for select using (is_active_user());', rec.tbl);
+    execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit''));', rec.tbl, rec.module);
+    execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'')) with check (has_permission(%L, ''edit''));', rec.tbl, rec.module, rec.module);
+    execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete''));', rec.tbl, rec.module);
   end loop;
 
-  foreach t in array tables_dailyentry loop
-    module := 'dailyentry';
-    execute format('drop policy if exists "public full access" on %I;', t);
-    execute format('drop policy if exists "select_active" on %I;', t);
-    execute format('drop policy if exists "insert_module" on %I;', t);
-    execute format('drop policy if exists "update_module" on %I;', t);
-    execute format('drop policy if exists "delete_module" on %I;', t);
-    execute format('create policy "select_active" on %I for select using (is_active_user());', t);
-    execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit''));', t, module);
-    execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'')) with check (has_permission(%L, ''edit''));', t, module, module);
-    execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete''));', t, module);
-  end loop;
-
-  foreach t in array tables_reports loop
-    module := 'reports';
-    execute format('drop policy if exists "public full access" on %I;', t);
-    execute format('drop policy if exists "select_active" on %I;', t);
-    execute format('drop policy if exists "insert_module" on %I;', t);
-    execute format('drop policy if exists "update_module" on %I;', t);
-    execute format('drop policy if exists "delete_module" on %I;', t);
-    execute format('create policy "select_active" on %I for select using (is_active_user());', t);
-    execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit''));', t, module);
-    execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'')) with check (has_permission(%L, ''edit''));', t, module, module);
-    execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete''));', t, module);
-  end loop;
-
-  foreach t in array tables_masterdata loop
-    module := 'masterdata';
-    execute format('drop policy if exists "public full access" on %I;', t);
-    execute format('drop policy if exists "select_active" on %I;', t);
-    execute format('drop policy if exists "insert_module" on %I;', t);
-    execute format('drop policy if exists "update_module" on %I;', t);
-    execute format('drop policy if exists "delete_module" on %I;', t);
-    execute format('create policy "select_active" on %I for select using (is_active_user());', t);
-    execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit''));', t, module);
-    execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'')) with check (has_permission(%L, ''edit''));', t, module, module);
-    execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete''));', t, module);
-  end loop;
+  -- expense_entries: مشترك بين 4 تبويبات (مصروفات/رواتب/مبيعات/عهد) — الصلاحية
+  -- تُفحص ديناميكيًا من عمود source_module في كل صف بدل موديول ثابت
+  execute 'alter table expense_entries enable row level security;';
+  execute 'drop policy if exists "public full access" on expense_entries;';
+  execute 'drop policy if exists "select_active" on expense_entries;';
+  execute 'drop policy if exists "insert_module" on expense_entries;';
+  execute 'drop policy if exists "update_module" on expense_entries;';
+  execute 'drop policy if exists "delete_module" on expense_entries;';
+  execute 'create policy "select_active" on expense_entries for select using (is_active_user());';
+  execute 'create policy "insert_module" on expense_entries for insert with check (has_permission(source_module, ''edit''));';
+  execute 'create policy "update_module" on expense_entries for update using (has_permission(source_module, ''edit'')) with check (has_permission(source_module, ''edit''));';
+  execute 'create policy "delete_module" on expense_entries for delete using (has_permission(source_module, ''delete''));';
 end $$;
 
 -- audit_log: أي مستخدم مفعّل يقدر يسجّل حركاته هو (INSERT)، لكن القراءة مقفولة
