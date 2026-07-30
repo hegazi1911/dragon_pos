@@ -324,8 +324,8 @@ create table if not exists audit_log (
   entity_name text,
   old_value jsonb,
   new_value jsonb,
-  user_label text, -- اسم المستخدم الحقيقي وقت الحركة (عرض سريع بدون join)
-  user_id uuid references auth.users(id), -- مرجع حقيقي للمستخدم
+  user_label text, -- اسم المستخدم الحقيقي وقت الحركة (عرض سريع بدون join، وسجل تاريخي يفضل موجود حتى لو المستخدم اتحذف)
+  user_id uuid references auth.users(id) on delete set null, -- مرجع حقيقي للمستخدم؛ يتفرغ لو المستخدم اتحذف بدل ما يمنع حذفه
   created_at timestamptz not null default now()
 );
 

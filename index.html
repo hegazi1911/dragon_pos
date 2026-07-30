@@ -186,10 +186,16 @@
                 <button onclick="closeProfileModal()"
                     class="text-slate-400 hover:text-slate-600 text-xl font-bold">×</button>
             </div>
-            <div class="bg-slate-50 rounded-lg p-3 text-sm">
-                <p class="text-slate-500 text-xs">اسم المستخدم</p>
-                <p id="profile-username" class="font-bold text-slate-900"></p>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">اسم المستخدم</label>
+                <input id="profile-username" type="text" placeholder="حروف/أرقام إنجليزية بدون مسافات"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
             </div>
+            <p id="profile-username-error" class="hidden text-rose-600 text-xs font-bold"></p>
+            <p id="profile-username-success" class="hidden text-emerald-600 text-xs font-bold">تم تغيير اسم المستخدم
+                بنجاح ✓</p>
+            <button onclick="submitUsernameChange()"
+                class="w-full py-2 rounded-lg bg-slate-700 text-white font-bold text-sm">حفظ اسم المستخدم</button>
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-1">كلمة مرور جديدة (8 حروف على الأقل)</label>
                 <input id="profile-new-password" type="password" autocomplete="new-password"
@@ -240,6 +246,11 @@
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span class="hidden sm:inline">محفوظ تلقائياً</span>
             </div>
+            <button id="btn-enable-notifications" onclick="requestNotificationPermission()"
+                class="hidden bg-amber-500 hover:bg-amber-600 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold items-center gap-2"
+                title="فعّل إشعارات المتصفح عشان توصلك أول ما مستخدم تاني يضيف أو يعدّل حاجة">
+                <i class="fa-solid fa-bell"></i><span class="hidden sm:inline">فعّل التنبيهات</span>
+            </button>
             <button onclick="shareViaWhatsApp()"
                 class="bg-[#25D366] hover:brightness-95 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
                 <i class="fa-brands fa-whatsapp"></i><span class="hidden sm:inline">مشاركة واتساب</span>
@@ -378,18 +389,32 @@
             <div id="tab-dashboard" class="tab-content active flex-col gap-6">
                 <div class="flex justify-between items-center flex-wrap gap-2">
                     <div class="flex flex-wrap items-center gap-2">
-                        <select id="dashboard-filter-project" onchange="calculateKPIs(this.value)"
-                            class="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold"></select>
+                        <div class="relative">
+                            <button type="button" id="dashboard-project-filter-btn"
+                                onclick="toggleDashboardProjectDropdown()"
+                                class="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold flex items-center gap-2">
+                                <span id="dashboard-project-filter-label">كل المشاريع</span>
+                                <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                            </button>
+                            <div id="dashboard-project-filter-panel"
+                                class="hidden absolute z-20 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-2 w-60 max-h-72 overflow-y-auto">
+                                <label
+                                    class="flex items-center gap-2 px-2 py-1.5 text-sm font-bold border-b border-slate-100 mb-1 cursor-pointer">
+                                    <input type="checkbox" id="dashboard-project-filter-all" checked
+                                        onchange="toggleAllDashboardProjects(this.checked)">
+                                    كل المشاريع
+                                </label>
+                                <div id="dashboard-project-filter-options"></div>
+                            </div>
+                        </div>
                         <span class="text-xs font-bold text-slate-500">من</span>
-                        <input id="kpi-date-from" type="date"
-                            onchange="calculateKPIs(document.getElementById('dashboard-filter-project').value)"
+                        <input id="kpi-date-from" type="date" onchange="calculateKPIs(getDashboardSelectedProjects())"
                             class="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm">
                         <span class="text-xs font-bold text-slate-500">إلى</span>
-                        <input id="kpi-date-to" type="date"
-                            onchange="calculateKPIs(document.getElementById('dashboard-filter-project').value)"
+                        <input id="kpi-date-to" type="date" onchange="calculateKPIs(getDashboardSelectedProjects())"
                             class="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm">
                         <button
-                            onclick="document.getElementById('kpi-date-from').value='';document.getElementById('kpi-date-to').value='';calculateKPIs(document.getElementById('dashboard-filter-project').value)"
+                            onclick="document.getElementById('kpi-date-from').value='';document.getElementById('kpi-date-to').value='';calculateKPIs(getDashboardSelectedProjects())"
                             class="text-xs text-slate-500 hover:text-slate-800 underline">مسح الفترة</button>
                     </div>
                     <div class="flex gap-2">
@@ -3379,10 +3404,14 @@
                 user_id: currentUser ? currentUser.id : null
             };
             try {
-                const { data, error } = await sb.from('audit_log').insert(row).select().single();
+                // القراءة من audit_log مقفولة على المدير بس (RLS)، فمينفعش نستخدم select().single()
+                // هنا لأي مستخدم عادي — ده كان بيخلي الـ insert كله يترفض بصمت لغير المدير
+                const { error } = await sb.from('audit_log').insert(row);
                 if (error) throw error;
-                db.auditLog.unshift(auditRowToRecord(data));
-                if (db.auditLog.length > 500) db.auditLog.length = 500;
+                if (currentUser && currentUser.isAdmin) {
+                    db.auditLog.unshift(auditRowToRecord({ ...row, id: `local-${Date.now()}`, created_at: new Date().toISOString() }));
+                    if (db.auditLog.length > 500) db.auditLog.length = 500;
+                }
             } catch (err) { console.warn('تعذر تسجيل حركة في سجل التعديلات:', err); }
         }
 
@@ -3409,7 +3438,39 @@
             tables.forEach(t => {
                 channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, scheduleRealtimeReload);
             });
+            // إشعار المدير فورًا (نظام التشغيل/المتصفح) لما مستخدم تاني (غيره) يضيف/يعدّل/يحذف أي حاجة
+            if (currentUser && currentUser.isAdmin) {
+                updateNotificationButtonVisibility();
+                channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_log' }, notifyAdminOfNewActivity);
+            }
             channel.subscribe();
+        }
+
+        // المتصفحات الحديثة بتتجاهل طلب الإذن لو مجاش من ضغطة مستخدم فعلية، فبنعرض زرار
+        // للمدير يفعّل بيه الإشعارات بنفسه بدل محاولة الطلب تلقائيًا وقت تسجيل الدخول
+        function updateNotificationButtonVisibility() {
+            const btn = document.getElementById('btn-enable-notifications');
+            if (!btn) return;
+            const show = currentUser && currentUser.isAdmin && ('Notification' in window) && Notification.permission === 'default';
+            btn.classList.toggle('hidden', !show);
+            btn.classList.toggle('flex', show);
+        }
+        function requestNotificationPermission() {
+            if (!('Notification' in window)) return;
+            Notification.requestPermission().finally(updateNotificationButtonVisibility);
+        }
+        const AUDIT_ACTION_LABELS = { create: 'أضاف', update: 'عدّل', delete: 'حذف' };
+        function notifyAdminOfNewActivity(payload) {
+            const row = payload.new;
+            if (!row || !currentUser || row.user_id === currentUser.id) return; // تجاهل حركات المدير نفسه
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            const who = row.user_label || 'مستخدم';
+            const actionLabel = AUDIT_ACTION_LABELS[row.action] || row.action;
+            const body = `${who} ${actionLabel} ${row.entity}${row.entity_name ? ': ' + row.entity_name : ''}`;
+            try {
+                const notif = new Notification('DRACON — نشاط جديد', { body, tag: 'dracon-audit-' + row.id });
+                notif.onclick = () => { window.focus(); switchTab('audit'); notif.close(); };
+            } catch (err) { console.warn('تعذر عرض الإشعار:', err); }
         }
 
         /* ================= المصادقة والمستخدم الحالي ================= */
@@ -3421,30 +3482,36 @@
         // بنية الصلاحيات: كل مجموعة فيها تبويباتها، وكل تبويب صلاحيته مستقلة (مشاهدة/تعديل/حذف).
         // التبويبات اللي معلّمة viewOnly مفهاش جدول خاص بيها (عرض مجمّع من جداول تانية)، فمالهاش تعديل/حذف حقيقي.
         const PERMISSION_GROUPS = [
-            { key: 'dailyentry', label: 'تسجيل يومي', tabs: [
-                { id: 'procurement', label: 'التوريدات' },
-                { id: 'sales', label: 'المبيعات' },
-                { id: 'expenses', label: 'المصروفات' },
-                { id: 'payroll', label: 'الرواتب' },
-                { id: 'custody', label: 'العهد' },
-                { id: 'dailyjournal', label: 'يومية الموقع' },
-                { id: 'assets', label: 'الأصول' },
-                { id: 'payments', label: 'المدفوعات' }
-            ]},
-            { key: 'reports', label: 'تقارير ودفاتر', tabs: [
-                { id: 'dashboard', label: 'لوحة التحكم', viewOnly: true },
-                { id: 'treasury', label: 'الخزينة', viewOnly: true },
-                { id: 'pl', label: 'قائمة الدخل' },
-                { id: 'ledger', label: 'كشف الحساب', viewOnly: true },
-                { id: 'investors', label: 'المستثمرين' },
-                { id: 'extinvest', label: 'الاستثمارات الخارجية' },
-                { id: 'balance', label: 'المركز المالي', viewOnly: true },
-                { id: 'cashflow', label: 'التدفقات النقدية', viewOnly: true },
-                { id: 'projcompare', label: 'مقارنة المشاريع', viewOnly: true }
-            ]},
-            { key: 'masterdata', label: 'دليل الأكواد الموحد', tabs: [
-                { id: 'masterdata', label: 'دليل الأكواد' }
-            ]}
+            {
+                key: 'dailyentry', label: 'تسجيل يومي', tabs: [
+                    { id: 'procurement', label: 'التوريدات' },
+                    { id: 'sales', label: 'المبيعات' },
+                    { id: 'expenses', label: 'المصروفات' },
+                    { id: 'payroll', label: 'الرواتب' },
+                    { id: 'custody', label: 'العهد' },
+                    { id: 'dailyjournal', label: 'يومية الموقع' },
+                    { id: 'assets', label: 'الأصول' },
+                    { id: 'payments', label: 'المدفوعات' }
+                ]
+            },
+            {
+                key: 'reports', label: 'تقارير ودفاتر', tabs: [
+                    { id: 'dashboard', label: 'لوحة التحكم', viewOnly: true },
+                    { id: 'treasury', label: 'الخزينة', viewOnly: true },
+                    { id: 'pl', label: 'قائمة الدخل' },
+                    { id: 'ledger', label: 'كشف الحساب', viewOnly: true },
+                    { id: 'investors', label: 'المستثمرين' },
+                    { id: 'extinvest', label: 'الاستثمارات الخارجية' },
+                    { id: 'balance', label: 'المركز المالي', viewOnly: true },
+                    { id: 'cashflow', label: 'التدفقات النقدية', viewOnly: true },
+                    { id: 'projcompare', label: 'مقارنة المشاريع', viewOnly: true }
+                ]
+            },
+            {
+                key: 'masterdata', label: 'دليل الأكواد الموحد', tabs: [
+                    { id: 'masterdata', label: 'دليل الأكواد' }
+                ]
+            }
         ];
 
         // خريطة تبويب→موديول: كل تبويب صلاحيته مستقلة الآن، فالموديول هو نفس معرّف التبويب
@@ -3508,11 +3575,13 @@
             location.reload();
         }
 
-        /* ================= الملف الشخصي / تغيير كلمة المرور ================= */
+        /* ================= الملف الشخصي / تغيير اسم المستخدم وكلمة المرور ================= */
         function openProfileModal() {
             if (!currentUser) return;
-            document.getElementById('profile-username').textContent = currentUser.username;
+            document.getElementById('profile-username').value = currentUser.username;
             document.getElementById('profile-new-password').value = '';
+            document.getElementById('profile-username-error').classList.add('hidden');
+            document.getElementById('profile-username-success').classList.add('hidden');
             document.getElementById('profile-password-error').classList.add('hidden');
             document.getElementById('profile-password-success').classList.add('hidden');
             document.getElementById('profile-modal').classList.remove('hidden');
@@ -3521,6 +3590,22 @@
         function closeProfileModal() {
             document.getElementById('profile-modal').classList.add('hidden');
             document.getElementById('profile-modal').classList.remove('flex');
+        }
+        async function submitUsernameChange() {
+            const newUsername = document.getElementById('profile-username').value.trim();
+            const errEl = document.getElementById('profile-username-error');
+            const okEl = document.getElementById('profile-username-success');
+            errEl.classList.add('hidden'); okEl.classList.add('hidden');
+            if (newUsername === currentUser.username) return;
+            try {
+                await callAdminUsers('update_own_username', { username: newUsername });
+                currentUser.username = newUsername;
+                document.getElementById('current-user-name').textContent = newUsername;
+                okEl.classList.remove('hidden');
+            } catch (err) {
+                errEl.textContent = err.message || 'حصل خطأ، حاول تاني';
+                errEl.classList.remove('hidden');
+            }
         }
         async function submitPasswordChange() {
             const pw = document.getElementById('profile-new-password').value;
@@ -3555,6 +3640,7 @@
                     b.classList.remove('opacity-40', 'cursor-not-allowed');
                 });
                 document.getElementById('no-access-screen')?.classList.add('hidden');
+                updateNotificationButtonVisibility();
                 return;
             }
 
@@ -3896,7 +3982,7 @@
         }
 
         function renderAll() {
-            const dashFp = document.getElementById('dashboard-filter-project') ? document.getElementById('dashboard-filter-project').value : 'ALL';
+            const dashFp = document.getElementById('dashboard-project-filter-options') ? getDashboardSelectedProjects() : [];
             calculateKPIs(dashFp);
             renderProcurementsTable();
             renderSalesTable();
@@ -4395,7 +4481,7 @@
             fillSelect('treasury-filter-project', sortedProjects(), 'كل المشاريع');
             fillSelect('pl-filter-project', sortedProjects(), 'إجمالي كل المشاريع');
             fillSelect('cf-project', sortedProjects(), 'كل المشاريع');
-            fillSelect('dashboard-filter-project', sortedProjects(), 'كل المشاريع');
+            renderDashboardProjectFilterOptions();
             fillSelect('ledger-filter-project', sortedProjects(), 'كل المشاريع');
             fillSelect('ledger-filter-supplier', db.suppliers, 'كل الموردين');
             fillSelect('ledger-filter-contractor', db.names, 'كل مقاولي الباطن');
@@ -4475,12 +4561,16 @@
             const date = document.getElementById('proc-date').value || todayISO();
             const notes = document.getElementById('proc-notes').value.trim();
 
-            const lines = [...document.querySelectorAll('#proc-lines .proc-line-row')].map(row => ({
+            const allLines = [...document.querySelectorAll('#proc-lines .proc-line-row')].map(row => ({
                 item: row.querySelector('.proc-line-item')?.value || '',
                 unit: row.querySelector('.proc-line-unit')?.value || '',
                 qty: Number(row.querySelector('.proc-line-qty')?.value) || 0,
                 price: Number(row.querySelector('.proc-line-price')?.value) || 0
-            })).filter(l => l.item && l.qty && l.price);
+            }));
+            // سطر "ناقص" (بعض حقوله متعبّى وبعضها لأ) كان بيتجاهل بصمت من غير ما يترحفظ ولا يتنبّه المستخدم — بنمنع الحفظ ونوضّح للمستخدم بدل كده
+            const incompleteLines = allLines.filter(l => (l.item || l.qty || l.price) && !(l.item && l.qty && l.price));
+            if (incompleteLines.length) { alert(`في ${incompleteLines.length} صنف ناقص بيانات (لازم صنف + كمية + سعر). كمّل البيانات أو احذف السطر قبل الحفظ.`); return; }
+            const lines = allLines.filter(l => l.item && l.qty && l.price);
 
             if (!lines.length) { alert('أضف صنف واحد على الأقل بكمية وسعر'); return; }
 
@@ -5289,8 +5379,55 @@
                 }).join('')
                 : '<div class="p-4 text-center text-slate-400 text-xs">مفيش أي تنبيهات مستحقة دلوقتي 🎉</div>';
         }
+        /* ================= فلتر لوحة التحكم متعدد المشاريع ================= */
+        function renderDashboardProjectFilterOptions() {
+            const container = document.getElementById('dashboard-project-filter-options');
+            if (!container) return;
+            const prevChecked = new Set(getDashboardSelectedProjects());
+            container.innerHTML = sortedProjects().map(p => `
+                <label class="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-slate-50 rounded">
+                    <input type="checkbox" class="dashboard-project-filter-item" value="${esc(p.name)}"
+                        ${prevChecked.has(p.name) ? 'checked' : ''} onchange="onDashboardProjectFilterChange()">
+                    ${esc(p.code)} - ${esc(p.name)}
+                </label>`).join('');
+            updateDashboardProjectFilterLabel();
+        }
+        function getDashboardSelectedProjects() {
+            return [...document.querySelectorAll('.dashboard-project-filter-item:checked')].map(el => el.value);
+        }
+        function toggleDashboardProjectDropdown() {
+            document.getElementById('dashboard-project-filter-panel')?.classList.toggle('hidden');
+        }
+        document.addEventListener('click', (e) => {
+            const wrap = document.getElementById('dashboard-project-filter-btn')?.parentElement;
+            const panel = document.getElementById('dashboard-project-filter-panel');
+            if (wrap && panel && !wrap.contains(e.target)) panel.classList.add('hidden');
+        });
+        function toggleAllDashboardProjects(checked) {
+            if (checked) {
+                document.querySelectorAll('.dashboard-project-filter-item').forEach(el => el.checked = false);
+            }
+            updateDashboardProjectFilterLabel();
+            calculateKPIs(getDashboardSelectedProjects());
+        }
+        function onDashboardProjectFilterChange() {
+            const anyChecked = document.querySelectorAll('.dashboard-project-filter-item:checked').length > 0;
+            const allBox = document.getElementById('dashboard-project-filter-all');
+            if (allBox) allBox.checked = !anyChecked;
+            updateDashboardProjectFilterLabel();
+            calculateKPIs(getDashboardSelectedProjects());
+        }
+        function updateDashboardProjectFilterLabel() {
+            const label = document.getElementById('dashboard-project-filter-label');
+            if (!label) return;
+            const selected = getDashboardSelectedProjects();
+            if (!selected.length) label.textContent = 'كل المشاريع';
+            else if (selected.length === 1) label.textContent = selected[0];
+            else label.textContent = `${selected.length} مشاريع محددة`;
+        }
         function calculateKPIs(projectFilter) {
-            const matchProj = rec => projectFilter === 'ALL' || !projectFilter || rec.project === projectFilter;
+            const selectedProjects = Array.isArray(projectFilter) ? projectFilter : (projectFilter && projectFilter !== 'ALL' ? [projectFilter] : []);
+            const matchProj = rec => selectedProjects.length === 0 || selectedProjects.includes(rec.project);
             const dateFrom = document.getElementById('kpi-date-from')?.value || '';
             const dateTo = document.getElementById('kpi-date-to')?.value || '';
             const matchDate = rec => (!dateFrom || rec.date >= dateFrom) && (!dateTo || rec.date <= dateTo);
@@ -5906,8 +6043,9 @@
             const bar2 = document.getElementById('chartExpenseShare');
             if (!bar1 || !bar2) return;
 
-            const matchProj = rec => projectFilter === 'ALL' || !projectFilter || rec.project === projectFilter;
-            const projectsInScope = (projectFilter === 'ALL' || !projectFilter) ? db.projects : db.projects.filter(p => p.name === projectFilter);
+            const selectedProjects = Array.isArray(projectFilter) ? projectFilter : (projectFilter && projectFilter !== 'ALL' ? [projectFilter] : []);
+            const matchProj = rec => selectedProjects.length === 0 || selectedProjects.includes(rec.project);
+            const projectsInScope = selectedProjects.length === 0 ? db.projects : db.projects.filter(p => selectedProjects.includes(p.name));
             const colors = ['#2563eb', '#059669', '#f59e0b', '#dc2626', '#8b5cf6', '#0ea5e9', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
 
             // ── شارت 1: تكاليف حسب المشروع ──
@@ -6656,13 +6794,16 @@
             const date = document.getElementById('sale-date').value || todayISO();
             const notes = document.getElementById('sale-notes').value.trim();
 
-            const lines = [...document.querySelectorAll('#sale-lines .sale-line-row')].map(row => ({
+            const allLines = [...document.querySelectorAll('#sale-lines .sale-line-row')].map(row => ({
                 isService: true,
                 item: row.querySelector('.sale-line-desc')?.value.trim() || '',
                 unit: '',
                 qty: 1,
                 price: Number(row.querySelector('.sale-line-price')?.value) || 0
-            })).filter(l => l.item && l.price);
+            }));
+            const incompleteLines = allLines.filter(l => (l.item || l.price) && !(l.item && l.price));
+            if (incompleteLines.length) { alert(`في ${incompleteLines.length} بند ناقص بيانات (لازم وصف العمل + القيمة). كمّل البيانات أو احذف البند قبل الحفظ.`); return; }
+            const lines = allLines.filter(l => l.item && l.price);
 
             if (!lines.length) { alert('أضف بند واحد على الأقل بوصف العمل والقيمة'); return; }
 

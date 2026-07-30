@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true });
   }
 
-  // ---------- everything else requires an authenticated, active admin caller ----------
+  // ---------- كل الحاجات التانية محتاجة على الأقل مستخدم مسجّل دخول وحسابه مفعّل ----------
   const authHeader = req.headers.get('Authorization') || '';
   const callerClient = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authHeader } }
@@ -84,9 +84,30 @@ Deno.serve(async (req: Request) => {
     .select('is_admin, active')
     .eq('id', user.id)
     .single();
-  if (callerErr || !callerProfile?.is_admin || !callerProfile.active) {
-    return json({ error: 'forbidden' }, 403);
+  if (callerErr || !callerProfile?.active) return json({ error: 'forbidden' }, 403);
+
+  // ---------- تغيير اسم المستخدم الذاتي: متاح لأي مستخدم مفعّل (مدير أو عادي) لحسابه هو بس ----------
+  if (action === 'update_own_username') {
+    const username = String(body.username || '').trim();
+    if (!isValidUsername(username)) return json({ error: 'invalid username' }, 400);
+
+    const { error: emailErr } = await admin.auth.admin.updateUserById(user.id, {
+      email: `${username}@dracon.local`
+    });
+    if (emailErr) {
+      return json({ error: emailErr.message?.includes('already been registered') ? 'اسم المستخدم ده مستخدم بالفعل' : emailErr.message }, 500);
+    }
+    const { error: profileErr } = await admin.from('profiles').update({ username }).eq('id', user.id);
+    if (profileErr) {
+      // رجّع الإيميل زي ما كان لو فشل تحديث بروفايل عشان الحسابين يفضلوا متطابقين
+      await admin.auth.admin.updateUserById(user.id, { email: user.email });
+      return json({ error: profileErr.message?.includes('duplicate') ? 'اسم المستخدم ده مستخدم بالفعل' : profileErr.message }, 500);
+    }
+    return json({ ok: true });
   }
+
+  // ---------- باقي العمليات (إدارة المستخدمين) محتاجة إن المتصل يكون مدير ----------
+  if (!callerProfile.is_admin) return json({ error: 'forbidden' }, 403);
 
   if (action === 'create_user') {
     const username = String(body.username || '').trim();
@@ -119,16 +140,23 @@ Deno.serve(async (req: Request) => {
   if (action === 'update_permissions') {
     const userId = body.userId;
     if (!userId) return json({ error: 'missing userId' }, 400);
-    const { data: target } = await admin.from('profiles').select('is_admin').eq('id', userId).single();
+    const { data: target } = await admin.from('profiles').select('is_admin, username').eq('id', userId).single();
     if (target?.is_admin) return json({ error: 'cannot modify the admin account' }, 403);
     const patch: Record<string, unknown> = {};
     if (body.permissions && typeof body.permissions === 'object') patch.permissions = body.permissions;
+    let usernameChanged = false;
     if (body.username) {
       const username = String(body.username).trim();
       if (!isValidUsername(username)) return json({ error: 'invalid username' }, 400);
+      if (target && username !== target.username) usernameChanged = true;
       patch.username = username;
     }
     if (Object.keys(patch).length === 0) return json({ error: 'nothing to update' }, 400);
+    // لازم إيميل تسجيل الدخول (auth.users) يتحدّث برضه لما اسم المستخدم يتغيّر، وإلا هيتقفل عليه ميقدرش يدخل تاني
+    if (usernameChanged) {
+      const { error: emailErr } = await admin.auth.admin.updateUserById(userId, { email: `${patch.username}@dracon.local` });
+      if (emailErr) return json({ error: emailErr.message?.includes('already been registered') ? 'اسم المستخدم ده مستخدم بالفعل' : emailErr.message }, 500);
+    }
     const { error } = await admin.from('profiles').update(patch).eq('id', userId);
     if (error) return json({ error: error.message }, 500);
     return json({ ok: true });
