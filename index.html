@@ -56,8 +56,8 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
     <!-- WATERMARK للطباعة -->
     <div id="print-watermark">DRACON</div>
 
-<!-- ACTIVATION GATE -->
-<div id="activation-gate" class="fixed inset-0 bg-slate-950 flex items-center justify-center z-[100]">
+<!-- LOGIN GATE -->
+<div id="login-gate" class="fixed inset-0 bg-slate-950 flex items-center justify-center z-[100] p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-8 flex flex-col items-center gap-4">
         <div class="w-16 h-16 rounded-xl overflow-hidden shadow-sm">
             <svg viewBox="0 0 512 512" class="w-full h-full">
@@ -75,15 +75,41 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
             </svg>
         </div>
         <div class="text-center">
-            <h2 class="font-bold text-lg text-slate-900">تفعيل نظام DRACON</h2>
-            <p class="text-xs text-slate-500 mt-1">أدخل كود التفعيل لمرة واحدة على هذا المتصفح</p>
+            <h2 class="font-bold text-lg text-slate-900">تسجيل الدخول لنظام DRACON</h2>
+            <p class="text-xs text-slate-500 mt-1">أدخل اسم المستخدم وكلمة المرور بتاعتك</p>
         </div>
-        <form id="activation-form" onsubmit="handleActivation(event)" class="w-full flex flex-col gap-3">
-            <input id="activation-code" type="text" required placeholder="كود التفعيل" autocomplete="off"
-                class="w-full text-center tracking-widest font-mono bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">
-            <p id="activation-error" class="hidden text-rose-600 text-xs text-center font-bold">كود غير صحيح، حاول مرة أخرى</p>
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold p-3 rounded-lg text-sm">تفعيل والدخول</button>
+        <form id="login-form" onsubmit="handleLogin(event)" class="w-full flex flex-col gap-3">
+            <input id="login-username" type="text" required placeholder="اسم المستخدم" autocomplete="username"
+                class="w-full text-center bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">
+            <input id="login-password" type="password" required placeholder="كلمة المرور" autocomplete="current-password"
+                class="w-full text-center bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">
+            <p id="login-error" class="hidden text-rose-600 text-xs text-center font-bold">بيانات الدخول غير صحيحة، حاول مرة أخرى</p>
+            <button id="login-submit-btn" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold p-3 rounded-lg text-sm">تسجيل الدخول</button>
         </form>
+    </div>
+</div>
+
+<!-- PROFILE / CHANGE PASSWORD MODAL -->
+<div id="profile-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h3 class="font-bold text-slate-900">الملف الشخصي</h3>
+            <button onclick="closeProfileModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">×</button>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-3 text-sm">
+            <p class="text-slate-500 text-xs">اسم المستخدم</p>
+            <p id="profile-username" class="font-bold text-slate-900"></p>
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">كلمة مرور جديدة (8 حروف على الأقل)</label>
+            <input id="profile-new-password" type="password" autocomplete="new-password" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
+        </div>
+        <p id="profile-password-error" class="hidden text-rose-600 text-xs font-bold"></p>
+        <p id="profile-password-success" class="hidden text-emerald-600 text-xs font-bold">تم تغيير كلمة المرور بنجاح ✓</p>
+        <div class="flex gap-2">
+            <button onclick="closeProfileModal()" class="flex-1 py-2.5 rounded-lg bg-slate-100 text-slate-700 font-bold text-sm">إغلاق</button>
+            <button onclick="submitPasswordChange()" class="flex-1 py-2.5 rounded-lg bg-blue-600 text-white font-bold text-sm">حفظ كلمة المرور</button>
+        </div>
     </div>
 </div>
 
@@ -123,10 +149,12 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
         <button onclick="exportData()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
             <i class="fa-solid fa-file-export"></i><span class="hidden sm:inline">تصدير نسخة احتياطية</span>
         </button>
+        <button onclick="handleLogout()" class="bg-rose-600 hover:bg-rose-700 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold flex items-center gap-2" title="تسجيل الخروج">
+            <i class="fa-solid fa-right-from-bracket"></i><span class="hidden sm:inline">تسجيل الخروج</span>
+        </button>
     </div>
 </header>
 
-<div id="role-banner" class="hidden bg-amber-500 text-slate-900 text-center text-xs font-bold py-1.5"></div>
 
 <div class="flex flex-1 overflow-hidden relative">
     <div id="sidebar-backdrop" onclick="closeSidebar()" class="hidden fixed inset-0 bg-black/50 z-30 lg:hidden"></div>
@@ -193,17 +221,26 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
             <button onclick="switchTab('cashflow')" id="btn-cashflow" class="tab-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
                 <i class="fa-solid fa-money-bill-trend-up text-cyan-400 w-5"></i><span>التدفقات النقدية</span>
             </button>
-            <button onclick="switchTab('audit')" id="btn-audit" class="tab-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
+            <button onclick="switchTab('audit')" id="btn-audit" class="tab-btn hidden w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
                 <i class="fa-solid fa-clock-rotate-left text-slate-400 w-5"></i><span>سجل التعديلات</span>
             </button>
+            <button onclick="switchTab('users')" id="btn-users" class="tab-btn hidden w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i class="fa-solid fa-users-gear text-cyan-300 w-5"></i><span>إدارة المستخدمين</span>
+            </button>
         </div>
-        <div class="p-4 border-t border-slate-800 flex items-center gap-2.5">
+        <div class="p-4 border-t border-slate-800 flex items-center gap-2.5 cursor-pointer hover:bg-slate-800" onclick="openProfileModal()" title="الملف الشخصي / تغيير كلمة المرور">
             <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400"><i class="fa-solid fa-user-tie"></i></div>
-            <div><p class="text-xs font-bold text-slate-200">أ. محمد</p><p class="text-[10px] text-slate-500">Financial Accountant</p></div>
+            <div class="min-w-0"><p id="current-user-name" class="text-xs font-bold text-slate-200 truncate">-</p><p id="current-user-role" class="text-[10px] text-slate-500">-</p></div>
         </div>
     </aside>
 
     <main class="flex-1 p-3 sm:p-6 overflow-y-auto min-w-0">
+
+        <div id="no-access-screen" class="hidden flex-col items-center justify-center gap-3 text-center py-24 text-slate-400">
+            <i class="fa-solid fa-lock text-4xl"></i>
+            <p class="font-bold text-slate-600">مفيش صلاحيات متاحة لحسابك حاليًا</p>
+            <p class="text-xs">تواصل مع مدير النظام عشان يفعّل صلاحياتك</p>
+        </div>
 
         <!-- DASHBOARD -->
         <div id="tab-dashboard" class="tab-content active flex-col gap-6">
@@ -1694,6 +1731,12 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
                         <select id="filter-audit-entity" onchange="renderAuditLog()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
                             <option value="ALL">كل الأنواع</option>
                         </select>
+                        <select id="filter-audit-user" onchange="renderAuditLog()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
+                            <option value="ALL">كل المستخدمين</option>
+                        </select>
+                        <input id="filter-audit-date-from" type="date" onchange="renderAuditLog()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
+                        <span class="text-[10px] text-slate-400 self-center">إلى</span>
+                        <input id="filter-audit-date-to" type="date" onchange="renderAuditLog()" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
                         <button onclick="printCurrentTab()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5">
                             <i class="fa-solid fa-print"></i><span>طباعة</span>
                         </button>
@@ -1711,7 +1754,78 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
             </div>
         </div>
 
+        <!-- USER MANAGEMENT TAB (المدير فقط) -->
+        <div id="tab-users" class="tab-content flex-col gap-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-slate-900">إدارة المستخدمين</h2>
+                <button onclick="openAddUserModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i><span>إضافة مستخدم جديد</span>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500">حساب المدير الأساسي عنده كل الصلاحيات دايمًا ومش قابل للتعديل أو الحذف. أي مستخدم جديد بيتحدد له صلاحيات كل مجموعة بشكل منفصل.</p>
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-right">
+                        <thead class="bg-slate-800 text-white"><tr>
+                            <th class="p-3">اسم المستخدم</th><th class="p-3">الدور</th><th class="p-3">تسجيل يومي</th><th class="p-3">تقارير ودفاتر</th><th class="p-3">دليل الأكواد</th><th class="p-3 text-center">الحالة</th><th class="p-3"></th>
+                        </tr></thead>
+                        <tbody id="tbody-users"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </main>
+</div>
+
+<!-- USER ADD/EDIT MODAL -->
+<div id="user-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h3 class="font-bold text-slate-900" id="user-modal-title">إضافة مستخدم جديد</h3>
+            <button onclick="closeUserModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">×</button>
+        </div>
+        <input type="hidden" id="user-edit-id" value="">
+        <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">اسم المستخدم</label>
+            <input id="user-username" type="text" placeholder="حروف/أرقام إنجليزية بدون مسافات" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1" id="user-password-label">كلمة المرور (8 حروف على الأقل)</label>
+            <input id="user-password" type="text" autocomplete="new-password" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
+        </div>
+        <div class="flex flex-col gap-3">
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-50 px-3 py-2 font-bold text-xs text-slate-700">تسجيل يومي <span class="font-normal text-slate-400">(توريدات، مبيعات، مصروفات، رواتب، عهد، يومية موقع، أصول، مدفوعات)</span></div>
+                <div class="flex gap-4 px-3 py-2 text-xs">
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-dailyentry-view" class="w-4 h-4">مشاهدة</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-dailyentry-edit" class="w-4 h-4">تعديل</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-dailyentry-delete" class="w-4 h-4">حذف</label>
+                </div>
+            </div>
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-50 px-3 py-2 font-bold text-xs text-slate-700">تقارير ودفاتر <span class="font-normal text-slate-400">(لوحة التحكم، خزينة، قائمة دخل، كشف حساب، مستثمرين، استثمارات خارجية، مركز مالي، تدفقات نقدية، مقارنة مشاريع)</span></div>
+                <div class="flex gap-4 px-3 py-2 text-xs">
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-reports-view" class="w-4 h-4">مشاهدة</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-reports-edit" class="w-4 h-4">تعديل</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-reports-delete" class="w-4 h-4">حذف</label>
+                </div>
+            </div>
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-50 px-3 py-2 font-bold text-xs text-slate-700">دليل الأكواد الموحد</div>
+                <div class="flex gap-4 px-3 py-2 text-xs">
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-masterdata-view" class="w-4 h-4">مشاهدة</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-masterdata-edit" class="w-4 h-4">تعديل</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-masterdata-delete" class="w-4 h-4">حذف</label>
+                </div>
+            </div>
+        </div>
+        <p id="user-modal-error" class="hidden text-rose-600 text-xs font-bold"></p>
+        <div class="flex gap-2">
+            <button onclick="closeUserModal()" class="flex-1 py-2.5 rounded-lg bg-slate-100 text-slate-700 font-bold text-sm">إلغاء</button>
+            <button onclick="submitUserModal()" id="user-modal-submit" class="flex-1 py-2.5 rounded-lg bg-blue-600 text-white font-bold text-sm">حفظ</button>
+        </div>
+    </div>
 </div>
 
 
@@ -2045,10 +2159,6 @@ input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15);b
 
 <script>
 /* ================= DATA MODEL ================= */
-const STORAGE_KEY = 'mg-system-db-v1';
-const ACTIVATION_KEY = 'mg-system-activated';
-const ACTIVATION_CODE = 'DRACON-2026';
-
 const PL_LABELS = {
     revenue: 'إيرادات',
     other_revenue: 'إيرادات أخرى',
@@ -2089,19 +2199,24 @@ const TABLES = {
 };
 
 function masterRowToItem(cat, row){
-    if(cat==='expenses') return { code:row.code, name:row.name, plType:row.pl_type, plBucket:row.pl_bucket||undefined, nameType:row.name_type||'any' };
-    if(cat==='names') return { code:row.code, name:row.name, contractValue:row.contract_value||undefined, activities:(row.activities&&row.activities.length)?row.activities:undefined, openingBalance:row.opening_balance||undefined, executedOverride:(row.executed_override!=null?row.executed_override:undefined) };
-    if(cat==='clients') return { code:row.code, name:row.name, contractValue:row.contract_value||undefined, activities:(row.activities&&row.activities.length)?row.activities:undefined };
-    if(cat==='suppliers') return { code:row.code, name:row.name, items:(row.items&&row.items.length)?row.items:undefined, openingBalance:row.opening_balance||undefined };
-    if(cat==='supplies') return { code:row.code, name:row.name, unit:row.unit||undefined };
-    if(cat==='activities') return { code:row.code, name:row.name, categories:(row.categories&&row.categories.length)?row.categories:undefined, linkedNames:(row.linked_names&&row.linked_names.length)?row.linked_names:undefined };
-    if(cat==='projects') return { code:row.code, name:row.name, capital:row.capital||undefined, status:row.status||'active' };
-    if(cat==='investors') return { code:row.code, name:row.name, managementFeePct:row.management_fee_pct||undefined };
-    if(cat==='accounts') return { code:row.code, name:row.name, openingBalance:row.opening_balance||0 };
-    if(cat==='employees') return { code:row.code, name:row.name, monthlySalary:row.monthly_salary||0 };
-    if(cat==='assetTypes') return { code:row.code, name:row.name };
-    if(cat==='taxes') return { code:row.code, name:row.name, rate:row.rate||0, active:!!row.active };
-    return { code:row.code, name:row.name };
+    let item;
+    if(cat==='expenses') item = { code:row.code, name:row.name, plType:row.pl_type, plBucket:row.pl_bucket||undefined, nameType:row.name_type||'any' };
+    else if(cat==='names') item = { code:row.code, name:row.name, contractValue:row.contract_value||undefined, activities:(row.activities&&row.activities.length)?row.activities:undefined, openingBalance:row.opening_balance||undefined, executedOverride:(row.executed_override!=null?row.executed_override:undefined) };
+    else if(cat==='clients') item = { code:row.code, name:row.name, contractValue:row.contract_value||undefined, activities:(row.activities&&row.activities.length)?row.activities:undefined };
+    else if(cat==='suppliers') item = { code:row.code, name:row.name, items:(row.items&&row.items.length)?row.items:undefined, openingBalance:row.opening_balance||undefined };
+    else if(cat==='supplies') item = { code:row.code, name:row.name, unit:row.unit||undefined };
+    else if(cat==='activities') item = { code:row.code, name:row.name, categories:(row.categories&&row.categories.length)?row.categories:undefined, linkedNames:(row.linked_names&&row.linked_names.length)?row.linked_names:undefined };
+    else if(cat==='projects') item = { code:row.code, name:row.name, capital:row.capital||undefined, status:row.status||'active' };
+    else if(cat==='investors') item = { code:row.code, name:row.name, managementFeePct:row.management_fee_pct||undefined };
+    else if(cat==='accounts') item = { code:row.code, name:row.name, openingBalance:row.opening_balance||0 };
+    else if(cat==='employees') item = { code:row.code, name:row.name, monthlySalary:row.monthly_salary||0 };
+    else if(cat==='assetTypes') item = { code:row.code, name:row.name };
+    else if(cat==='taxes') item = { code:row.code, name:row.name, rate:row.rate||0, active:!!row.active };
+    else item = { code:row.code, name:row.name };
+    item.created_by = row.created_by || undefined;
+    item.updated_by = row.updated_by || undefined;
+    item.updated_at = row.updated_at || undefined;
+    return item;
 }
 function masterItemToRow(cat, item){
     if(cat==='expenses') return { code:item.code, name:item.name, pl_type:item.plType, pl_bucket:item.plBucket||null, name_type:item.nameType||'any' };
@@ -2249,7 +2364,8 @@ async function logAudit(action, entity, entityName, oldValue, newValue){
         action, entity, entity_name: entityName,
         old_value: oldValue ? JSON.parse(JSON.stringify(oldValue)) : null,
         new_value: newValue ? JSON.parse(JSON.stringify(newValue)) : null,
-        user_label: ROLES[currentRole] ? ROLES[currentRole].label : currentRole
+        user_label: currentUser ? currentUser.username : 'غير معروف',
+        user_id: currentUser ? currentUser.id : null
     };
     try{
         const { data, error } = await sb.from('audit_log').insert(row).select().single();
@@ -2285,80 +2401,309 @@ function setupRealtime(){
     channel.subscribe();
 }
 
-/* ================= تخزين محلي لعلم التفعيل والدور فقط (لا علاقة له ببيانات النظام) ================= */
-const store = {
-    async set(key, value){ try{ localStorage.setItem(key, value); }catch(e){} },
-    async get(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
+/* ================= المصادقة والمستخدم الحالي ================= */
+const EDGE_FUNCTIONS_URL = SUPABASE_URL + '/functions/v1';
+let currentUser = null; // { id, username, isAdmin, permissions }
+
+// كل تبويب مربوط بمجموعة صلاحيات (تسجيل يومي / تقارير ودفاتر / دليل الأكواد)
+// audit و users مقفولين على المدير بس ومش موجودين هنا عمدًا
+const MODULE_TABS = {
+    procurement:'dailyentry', sales:'dailyentry', expenses:'dailyentry', payroll:'dailyentry',
+    custody:'dailyentry', dailyjournal:'dailyentry', assets:'dailyentry', payments:'dailyentry',
+    dashboard:'reports', treasury:'reports', pl:'reports', ledger:'reports', investors:'reports',
+    extinvest:'reports', balance:'reports', cashflow:'reports', projcompare:'reports',
+    masterdata:'masterdata'
 };
 
-/* ================= ACTIVATION ================= */
-/* ================= ROLES (صلاحيات المستخدمين) ================= */
-const ROLE_KEY = 'mg-system-role';
-const ROLES = {
-    admin:      { code:'DRACON-ADMIN-2026', label:'مدير (صلاحية كاملة)' },
-    accountant: { code:'DRACON-ACC-2026',   label:'محاسب (تسجيل وتعديل)' },
-    viewer:     { code:'DRACON-VIEW-2026',  label:'مشاهدة فقط' }
-};
-let currentRole = 'admin';
+function usernameToEmail(username){ return username.trim().toLowerCase() + '@dracon.local'; }
 
-function applyRolePermissions(){
-    const isViewer = currentRole==='viewer';
-    // اخفِ/عطّل كل عناصر التحكم اللي بتغيّر بيانات لو المستخدم Viewer
-    document.querySelectorAll('form button[type="submit"]').forEach(b=>{
-        b.disabled = isViewer;
-        b.classList.toggle('opacity-40', isViewer);
-        b.classList.toggle('cursor-not-allowed', isViewer);
-    });
-    document.querySelectorAll('button[onclick*="delete"], button[onclick*="openAddMasterModal"], button[onclick*="addNewTax"], button[onclick*="settleCustody"], button[onclick*="cycleAssetStatus"], button[onclick*="approveInvestorDistribution"], button[onclick*="payInvestorLiability"], button[onclick*="postPayroll"]').forEach(b=>{
-        b.disabled = isViewer;
-        b.classList.toggle('opacity-40', isViewer);
-        b.classList.toggle('cursor-not-allowed', isViewer);
-    });
-    const banner = document.getElementById('role-banner');
-    if(banner){
-        if(isViewer){
-            banner.textContent = '👁️ وضع مشاهدة فقط — لا يمكن إضافة أو تعديل أو حذف أي بيانات';
-            banner.classList.remove('hidden');
-        }else{
-            banner.classList.add('hidden');
-        }
-    }
+function hasModulePerm(moduleName, action){
+    if(!currentUser) return false;
+    if(currentUser.isAdmin) return true;
+    return !!(currentUser.permissions && currentUser.permissions[moduleName] && currentUser.permissions[moduleName][action]);
 }
 
-async function checkActivation(){
+async function loadCurrentUserProfile(userId){
+    const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
+    if(error || !data || !data.active) return false;
+    currentUser = { id:data.id, username:data.username, isAdmin:data.is_admin, permissions:data.permissions||{} };
+    return true;
+}
+
+async function checkExistingSession(){
     try{
-        const val = await store.get(ACTIVATION_KEY);
-        const role = await store.get(ROLE_KEY);
-        if(val === 'true'){
-            currentRole = role && ROLES[role] ? role : 'admin';
-            document.getElementById('activation-gate').classList.add('hidden');
+        const { data } = await sb.auth.getSession();
+        if(data && data.session && data.session.user){
+            const ok = await loadCurrentUserProfile(data.session.user.id);
+            if(ok){ document.getElementById('login-gate').classList.add('hidden'); return true; }
+            await sb.auth.signOut();
         }
     }catch(err){}
+    return false;
 }
-function normalizeCode(s){
-    const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
-    let out = String(s).trim().toUpperCase();
-    out = out.replace(/[٠-٩]/g, d => arabicDigits.indexOf(d));
-    out = out.replace(/[\s\-_]/g, '');
-    return out;
-}
-async function handleActivation(e){
+
+async function handleLogin(e){
     e.preventDefault();
-    const entered = normalizeCode(document.getElementById('activation-code').value);
-    const matchedRole = Object.keys(ROLES).find(r => normalizeCode(ROLES[r].code) === entered)
-        || (entered === normalizeCode(ACTIVATION_CODE) ? 'admin' : undefined); // توافق مع الكود القديم
-    if(matchedRole){
-        currentRole = matchedRole;
-        try{
-            await store.set(ACTIVATION_KEY, 'true');
-            await store.set(ROLE_KEY, matchedRole);
-        }catch(err){}
-        document.getElementById('activation-gate').classList.add('hidden');
-        applyRolePermissions();
-    }else{
-        document.getElementById('activation-error').classList.remove('hidden');
-        document.getElementById('activation-code').value='';
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-submit-btn');
+    errEl.classList.add('hidden');
+    btn.disabled = true;
+    try{
+        const { data, error } = await sb.auth.signInWithPassword({ email: usernameToEmail(username), password });
+        if(error || !data.user) throw new Error('invalid');
+        const ok = await loadCurrentUserProfile(data.user.id);
+        if(!ok){ await sb.auth.signOut(); throw new Error('invalid'); }
+        document.getElementById('login-gate').classList.add('hidden');
+        await loadDb();
+        initApp();
+        setupRealtime();
+    }catch(err){
+        errEl.classList.remove('hidden');
+        document.getElementById('login-password').value = '';
+    }finally{
+        btn.disabled = false;
     }
+}
+
+async function handleLogout(){
+    try{ await sb.auth.signOut(); }catch(err){}
+    location.reload();
+}
+
+/* ================= الملف الشخصي / تغيير كلمة المرور ================= */
+function openProfileModal(){
+    if(!currentUser) return;
+    document.getElementById('profile-username').textContent = currentUser.username;
+    document.getElementById('profile-new-password').value = '';
+    document.getElementById('profile-password-error').classList.add('hidden');
+    document.getElementById('profile-password-success').classList.add('hidden');
+    document.getElementById('profile-modal').classList.remove('hidden');
+    document.getElementById('profile-modal').classList.add('flex');
+}
+function closeProfileModal(){
+    document.getElementById('profile-modal').classList.add('hidden');
+    document.getElementById('profile-modal').classList.remove('flex');
+}
+async function submitPasswordChange(){
+    const pw = document.getElementById('profile-new-password').value;
+    const errEl = document.getElementById('profile-password-error');
+    const okEl = document.getElementById('profile-password-success');
+    errEl.classList.add('hidden'); okEl.classList.add('hidden');
+    if(pw.length < 8){ errEl.textContent = 'كلمة المرور لازم تكون 8 حروف على الأقل'; errEl.classList.remove('hidden'); return; }
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if(error){ errEl.textContent = 'حصل خطأ، حاول تاني'; errEl.classList.remove('hidden'); return; }
+    okEl.classList.remove('hidden');
+    document.getElementById('profile-new-password').value = '';
+}
+
+/* ================= فرض الصلاحيات على الواجهة (نسخة إضافية عن حماية RLS الحقيقية في القاعدة) ================= */
+function applyPermissions(){
+    if(!currentUser) return;
+    const nameEl = document.getElementById('current-user-name');
+    const roleEl = document.getElementById('current-user-role');
+    if(nameEl) nameEl.textContent = currentUser.username;
+    if(roleEl) roleEl.textContent = currentUser.isAdmin ? 'مدير النظام' : 'مستخدم';
+
+    const adminOnlyIds = ['btn-audit','btn-users'];
+    adminOnlyIds.forEach(id=>{
+        const b = document.getElementById(id);
+        if(b) b.classList.toggle('hidden', !currentUser.isAdmin);
+    });
+
+    if(currentUser.isAdmin){
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('hidden'));
+        document.querySelectorAll('main button[disabled]').forEach(b=>{
+            b.disabled = false;
+            b.classList.remove('opacity-40','cursor-not-allowed');
+        });
+        document.getElementById('no-access-screen')?.classList.add('hidden');
+        return;
+    }
+
+    let firstVisibleTab = null;
+    Object.entries(MODULE_TABS).forEach(([tabId, moduleName])=>{
+        const btn = document.getElementById('btn-'+tabId);
+        const canView = hasModulePerm(moduleName, 'view');
+        if(btn) btn.classList.toggle('hidden', !canView);
+        if(canView && !firstVisibleTab) firstVisibleTab = tabId;
+
+        const root = document.getElementById('tab-'+tabId);
+        if(!root) return;
+        const canEdit = hasModulePerm(moduleName, 'edit');
+        const canDelete = hasModulePerm(moduleName, 'delete');
+
+        root.querySelectorAll('form button[type="submit"]').forEach(b=>{
+            b.disabled = !canEdit;
+            b.classList.toggle('opacity-40', !canEdit);
+            b.classList.toggle('cursor-not-allowed', !canEdit);
+        });
+        root.querySelectorAll('[onchange*="save"], [onchange*="update"]').forEach(el=>{
+            el.disabled = !canEdit;
+            el.classList.toggle('opacity-40', !canEdit);
+        });
+        root.querySelectorAll('button[onclick*="openAddMasterModal"], button[onclick*="addNewTax"], button[onclick*="settleCustody"], button[onclick*="cycleAssetStatus"], button[onclick*="approveInvestorDistribution"], button[onclick*="payInvestorLiability"], button[onclick*="postPayroll"], button[onclick*="approveManagerFee"], button[onclick*="payManagerLiability"], button[onclick*="settleObligation"], button[onclick*="settleAdvance"], button[onclick*="settleExternalInvestment"], button[onclick*="editDailyJournal"]').forEach(b=>{
+            b.disabled = !canEdit;
+            b.classList.toggle('opacity-40', !canEdit);
+            b.classList.toggle('cursor-not-allowed', !canEdit);
+        });
+        root.querySelectorAll('button[onclick*="delete" i]').forEach(b=>{
+            b.disabled = !canDelete;
+            b.classList.toggle('opacity-40', !canDelete);
+            b.classList.toggle('cursor-not-allowed', !canDelete);
+        });
+    });
+
+    const activeBtn = document.querySelector('.tab-btn.active');
+    const activeHidden = !activeBtn || activeBtn.classList.contains('hidden');
+    const noAccessScreen = document.getElementById('no-access-screen');
+    if(activeHidden){
+        if(firstVisibleTab){
+            noAccessScreen?.classList.add('hidden');
+            switchTab(firstVisibleTab);
+        }else{
+            document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+            noAccessScreen?.classList.remove('hidden');
+        }
+    }
+}
+
+/* ================= إدارة المستخدمين (المدير فقط — عن طريق Edge Function admin-users) ================= */
+let usersList = [];
+
+async function callAdminUsers(action, payload){
+    const { data, error } = await sb.functions.invoke('admin-users', { body: { action, ...(payload||{}) } });
+    if(error){
+        let msg = error.message;
+        try{ const body = await error.context.json(); if(body && body.error) msg = body.error; }catch(e){}
+        throw new Error(msg);
+    }
+    if(data && data.error) throw new Error(data.error);
+    return data;
+}
+
+async function renderUsersTab(){
+    const tbody = document.getElementById('tbody-users');
+    if(!tbody || !currentUser || !currentUser.isAdmin) return;
+    const { data, error } = await sb.from('profiles').select('*').order('created_at');
+    if(error){
+        tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-rose-500">تعذر تحميل المستخدمين</td></tr>';
+        return;
+    }
+    usersList = data;
+    const permBadge = (perm)=>{
+        const p = perm||{};
+        const dot = (on,label)=> `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${on?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-400'}">${label}</span>`;
+        return `<div class="flex gap-1">${dot(p.view,'مشاهدة')}${dot(p.edit,'تعديل')}${dot(p.delete,'حذف')}</div>`;
+    };
+    tbody.innerHTML = data.length ? data.map(u=>`
+        <tr class="border-b border-slate-50 hover:bg-slate-50">
+            <td class="p-3 font-bold">${esc(u.username)}</td>
+            <td class="p-3">${u.is_admin?'<span class="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">مدير</span>':'<span class="text-xs text-slate-500">مستخدم</span>'}</td>
+            <td class="p-3">${u.is_admin?'<span class="text-xs text-slate-400">كل الصلاحيات</span>':permBadge(u.permissions&&u.permissions.dailyentry)}</td>
+            <td class="p-3">${u.is_admin?'':permBadge(u.permissions&&u.permissions.reports)}</td>
+            <td class="p-3">${u.is_admin?'':permBadge(u.permissions&&u.permissions.masterdata)}</td>
+            <td class="p-3 text-center">${u.active?'<span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">مفعّل</span>':'<span class="text-xs font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">معطّل</span>'}</td>
+            <td class="p-3">${u.is_admin ? '' : `<div class="flex gap-2">
+                <button onclick="openEditUserModal('${u.id}')" class="text-blue-500 hover:text-blue-700" title="تعديل"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="toggleUserActive('${u.id}', ${!u.active})" class="text-amber-500 hover:text-amber-700" title="${u.active?'تعطيل':'تفعيل'}"><i class="fa-solid fa-power-off"></i></button>
+                <button onclick="deleteUserAccount('${u.id}')" class="text-red-500 hover:text-red-700" title="حذف"><i class="fa-solid fa-trash"></i></button>
+            </div>`}</td>
+        </tr>`).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا يوجد مستخدمين بعد</td></tr>';
+}
+
+function resetUserModalPermissions(perms){
+    ['dailyentry','reports','masterdata'].forEach(m=>{
+        ['view','edit','delete'].forEach(a=>{
+            const el = document.getElementById(`perm-${m}-${a}`);
+            if(el) el.checked = !!(perms && perms[m] && perms[m][a]);
+        });
+    });
+}
+function collectPermissionsFromForm(){
+    const perms = {};
+    ['dailyentry','reports','masterdata'].forEach(m=>{
+        perms[m] = {
+            view: document.getElementById(`perm-${m}-view`).checked,
+            edit: document.getElementById(`perm-${m}-edit`).checked,
+            delete: document.getElementById(`perm-${m}-delete`).checked
+        };
+    });
+    return perms;
+}
+function openAddUserModal(){
+    document.getElementById('user-edit-id').value = '';
+    document.getElementById('user-modal-title').textContent = 'إضافة مستخدم جديد';
+    document.getElementById('user-username').value = '';
+    document.getElementById('user-password').value = '';
+    document.getElementById('user-password-label').textContent = 'كلمة المرور (8 حروف على الأقل)';
+    resetUserModalPermissions(null);
+    document.getElementById('user-modal-error').classList.add('hidden');
+    document.getElementById('user-modal').classList.remove('hidden');
+    document.getElementById('user-modal').classList.add('flex');
+}
+function openEditUserModal(id){
+    const u = usersList.find(x=>x.id===id);
+    if(!u) return;
+    document.getElementById('user-edit-id').value = id;
+    document.getElementById('user-modal-title').textContent = `تعديل: ${u.username}`;
+    document.getElementById('user-username').value = u.username;
+    document.getElementById('user-password').value = '';
+    document.getElementById('user-password-label').textContent = 'كلمة مرور جديدة (اتركها فاضية لو مش عايز تغيّرها)';
+    resetUserModalPermissions(u.permissions);
+    document.getElementById('user-modal-error').classList.add('hidden');
+    document.getElementById('user-modal').classList.remove('hidden');
+    document.getElementById('user-modal').classList.add('flex');
+}
+function closeUserModal(){
+    document.getElementById('user-modal').classList.add('hidden');
+    document.getElementById('user-modal').classList.remove('flex');
+}
+async function submitUserModal(){
+    const errEl = document.getElementById('user-modal-error');
+    errEl.classList.add('hidden');
+    const editId = document.getElementById('user-edit-id').value;
+    const username = document.getElementById('user-username').value.trim();
+    const password = document.getElementById('user-password').value;
+    const permissions = collectPermissionsFromForm();
+    if(!username){ errEl.textContent = 'أدخل اسم المستخدم'; errEl.classList.remove('hidden'); return; }
+    const btn = document.getElementById('user-modal-submit');
+    btn.disabled = true;
+    try{
+        if(editId){
+            await callAdminUsers('update_permissions', { userId: editId, username, permissions });
+            if(password){
+                if(password.length < 8) throw new Error('كلمة المرور الجديدة لازم تكون 8 حروف على الأقل');
+                await callAdminUsers('reset_password', { userId: editId, newPassword: password });
+            }
+        }else{
+            if(password.length < 8) throw new Error('كلمة المرور لازم تكون 8 حروف على الأقل');
+            await callAdminUsers('create_user', { username, password, permissions });
+        }
+        closeUserModal();
+        await renderUsersTab();
+    }catch(err){
+        errEl.textContent = err.message || 'حصل خطأ، حاول تاني';
+        errEl.classList.remove('hidden');
+    }finally{
+        btn.disabled = false;
+    }
+}
+async function toggleUserActive(id, makeActive){
+    if(!confirm(makeActive ? 'تفعيل هذا المستخدم؟' : 'تعطيل هذا المستخدم؟ لن يقدر يسجّل دخول تاني لحد ما يتفعّل تاني.')) return;
+    try{
+        await callAdminUsers('set_active', { userId:id, active:makeActive });
+        await renderUsersTab();
+    }catch(err){ alert(err.message || 'حصل خطأ'); }
+}
+async function deleteUserAccount(id){
+    const u = usersList.find(x=>x.id===id);
+    if(!confirm(`حذف المستخدم "${u?u.username:''}" نهائيًا؟ الإجراء ده لا يمكن التراجع عنه.`)) return;
+    try{
+        await callAdminUsers('delete_user', { userId:id });
+        await renderUsersTab();
+    }catch(err){ alert(err.message || 'حصل خطأ'); }
 }
 
 /* ================= UTIL ================= */
@@ -2366,6 +2711,21 @@ const fmt = n => (Number(n)||0).toLocaleString('ar-EG') + ' ج.م';
 const numFmt = n => (Number(n)||0).toLocaleString('ar-EG');
 const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const todayISO = () => new Date().toISOString().slice(0,10);
+
+// تلميح صغير عند الوقوف بالماوس على أي عملية: مين أضافها ومين آخر واحد عدّلها
+function auditTooltip(row){
+    if(!row || !row.created_by) return '';
+    const fmtDt = v => { if(!v) return ''; const d = new Date(v); return isNaN(d.getTime()) ? '' : d.toLocaleString('ar-EG'); };
+    const lines = [`أُضيف بواسطة: ${row.created_by}`];
+    if(row.updated_by && (row.updated_by !== row.created_by)){
+        lines.push(`آخر تعديل بواسطة: ${row.updated_by}${fmtDt(row.updated_at)?' في '+fmtDt(row.updated_at):''}`);
+    }
+    return lines.join('\n');
+}
+function auditAttr(row){
+    const t = auditTooltip(row);
+    return t ? ` title="${esc(t)}"` : '';
+}
 
 function sortedProjects(){
     // الجديد فوق (أعلى كود = الأحدث)، والمكتمل تحت في الآخر مهما كان تاريخه
@@ -2393,11 +2753,20 @@ function renderAuditLog(){
     if(!db.auditLog) db.auditLog = [];
     const fEntity = document.getElementById('filter-audit-entity')?.value || 'ALL';
     const fAction = document.getElementById('filter-audit-action')?.value || 'ALL';
+    const fUser = document.getElementById('filter-audit-user')?.value || 'ALL';
+    const fFrom = document.getElementById('filter-audit-date-from')?.value || '';
+    const fTo = document.getElementById('filter-audit-date-to')?.value || '';
     const actionLabels = {create:'➕ إضافة', update:'✏️ تعديل', delete:'🗑 حذف'};
     const actionColors = {create:'#d1fae5;color:#065f46', update:'#fef3c7;color:#92400e', delete:'#fee2e2;color:#991b1b'};
-    const rows = [...db.auditLog].reverse().filter(l=>
-        (fEntity==='ALL'||l.entity===fEntity) && (fAction==='ALL'||l.action===fAction)
-    ).slice(0, 500); // آخر 500 حركة فقط لتفادي إبطاء العرض
+    const rows = [...db.auditLog].reverse().filter(l=>{
+        if(fEntity!=='ALL' && l.entity!==fEntity) return false;
+        if(fAction!=='ALL' && l.action!==fAction) return false;
+        if(fUser!=='ALL' && l.user!==fUser) return false;
+        const dateOnly = (l.timestamp||'').slice(0,10);
+        if(fFrom && dateOnly < fFrom) return false;
+        if(fTo && dateOnly > fTo) return false;
+        return true;
+    }).slice(0, 500); // آخر 500 حركة مطابقة للفلاتر فقط لتفادي إبطاء العرض
     tbody.innerHTML = rows.length
         ? rows.map(l=>{
             const dt = new Date(l.timestamp);
@@ -2421,18 +2790,20 @@ function renderAuditLog(){
 
 /* ================= INIT ================= */
 window.onload = async function(){
-    await checkActivation();
-    await loadDb();
-    initApp();
-    setupRealtime();
+    const loggedIn = await checkExistingSession();
+    if(loggedIn){
+        await loadDb();
+        initApp();
+        setupRealtime();
+    }
 };
 
 function initApp(){
     renderMasterData();
     initDropdowns();
-    
+
     renderAll();
-    applyRolePermissions();
+    applyPermissions();
 }
 
 function renderAll(){
@@ -2504,6 +2875,7 @@ function switchTab(tabId){
     if(tabId==='sales'){ renderSalesTable(); renderClientSalesAccounts(); renderCollectionsLog(); }
     if(tabId==='payroll'){ renderAttendance(); renderAdvances(); renderPayrollSummary(); }
     if(tabId==='audit'){ renderAuditLog(); }
+    if(tabId==='users'){ renderUsersTab(); }
     if(tabId==='balance'){ renderBalanceSheet(); renderTrialBalance(); }
     if(tabId==='cashflow'){ renderCashFlow(); }
     if(tabId==='investors'){ renderAllProjectProfits(); renderManagementFees(); renderManagerLiabilities(); }
@@ -2899,6 +3271,13 @@ function initDropdowns(){
         auditEntitySelect.innerHTML = '<option value="ALL">كل الأنواع</option>' + auditEntities.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
         if([...auditEntitySelect.options].some(o=>o.value===prev)) auditEntitySelect.value = prev;
     }
+    const auditUsers = [...new Set((db.auditLog||[]).map(l=>l.user).filter(Boolean))];
+    const auditUserSelect = document.getElementById('filter-audit-user');
+    if(auditUserSelect){
+        const prev = auditUserSelect.value;
+        auditUserSelect.innerHTML = '<option value="ALL">كل المستخدمين</option>' + auditUsers.map(u=>`<option value="${esc(u)}">${esc(u)}</option>`).join('');
+        if([...auditUserSelect.options].some(o=>o.value===prev)) auditUserSelect.value = prev;
+    }
     if(document.getElementById('stock-date') && !document.getElementById('stock-date').value) document.getElementById('stock-date').value = todayISO();
     fillSelect('filter-proc-project', sortedProjects(), 'كل المشاريع');
     fillSelect('filter-proc-supplier', db.suppliers, 'كل الموردين');
@@ -3098,7 +3477,7 @@ function renderProcurementsTable(){
     const totalVal = rows.reduce((s,p)=>s+(p.qty*p.price),0);
     document.getElementById('tbody-procurement').innerHTML =
         rows.map(p=>`
-        <tr class="border-b border-slate-50 hover:bg-slate-50">
+        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(p)}>
             <td class="p-3 font-bold text-amber-700">${esc(p.invoiceNumber||'-')}</td>
             <td class="p-3">${esc(p.item)}</td><td class="p-3">${esc(p.supplier)}</td><td class="p-3">${p.qty}</td><td class="p-3">${p.unit}</td>
             <td class="p-3">${fmt(p.price)}</td><td class="p-3 font-bold">${fmt(p.qty*p.price)}</td><td class="p-3">${esc(p.project)}</td><td class="p-3 text-slate-500">${p.date}</td>
@@ -3358,7 +3737,7 @@ function renderPaymentsTable(){
     const total = rows.reduce((s,p)=>s+p.amount,0);
     document.getElementById('tbody-payments').innerHTML =
         (rows.length ? rows.map(p=>`
-        <tr class="border-b border-slate-50 hover:bg-slate-50">
+        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(p)}>
             <td class="p-3 font-semibold">${esc(p.supplier)}</td><td class="p-3 font-bold">${fmt(p.amount)}</td>
             <td class="p-3">${esc(p.project||'-')}</td><td class="p-3 text-slate-500">${p.date}</td><td class="p-3">${esc(p.notes||'')}</td>
             <td class="p-3"><button onclick="deletePayment(${p.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
@@ -3464,7 +3843,7 @@ function renderCollectionsLog(){
     const tbody = document.getElementById('tbody-collections');
     if(!tbody) return;
     tbody.innerHTML = rows.map(x=>`
-        <tr class="border-b border-slate-50 hover:bg-slate-50">
+        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(x)}>
             <td class="p-3">${esc(x.name)}</td>
             <td class="p-3 font-bold text-cyan-700">${fmt(x.paid)}</td>
             <td class="p-3">${esc(x.project)}</td>
@@ -3514,7 +3893,7 @@ function renderExpensesTable(){
     const totalDebt = rows.filter(x=>x.category==='مقاولين باطن').reduce((s,x)=>s+(x.remaining||0),0);
     document.getElementById('tbody-expenses').innerHTML =
         rows.map(x=>`
-        <tr class="border-b border-slate-50 hover:bg-slate-50">
+        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(x)}>
             <td class="p-3">${esc(x.category)}</td>
             <td class="p-3">${esc(x.activity)}</td>
             <td class="p-3">${esc(x.name)}</td>
@@ -3978,7 +4357,7 @@ function renderTaxTable(){
         return;
     }
     tbody.innerHTML = db.taxes.map((t,i)=>`
-        <tr class="border-b border-slate-100 hover:bg-slate-50">
+        <tr class="border-b border-slate-100 hover:bg-slate-50"${auditAttr(t)}>
             <td class="p-3">
                 <input type="text" value="${esc(t.name)}" onchange="updateTaxField(${i},'name',this.value)"
                     class="w-full bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none py-0.5 text-sm font-semibold">
@@ -4264,7 +4643,7 @@ function renderRefunds(){
     const rows = [...(db.refunds||[])].reverse();
     const total = rows.reduce((s,r)=>s+r.amount,0);
     tbody.innerHTML = (rows.length ? rows.map(r=>`
-        <tr class="border-b border-slate-50 hover:bg-slate-50">
+        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(r)}>
             <td class="p-3">${r.partyType==='supplier'?'مورد':'مقاول'}</td>
             <td class="p-3 font-semibold">${esc(r.name)}</td>
             <td class="p-3 font-bold text-emerald-700">${fmt(r.amount)}</td>
@@ -4336,7 +4715,7 @@ function renderContractorPaymentsTable(){
         .sort((a,b)=>b.id-a.id);
     const el = document.getElementById('tbody-contractor-payments');
     if(!el) return;
-    el.innerHTML = rows.map(p=>`<tr class="border-b border-slate-50 hover:bg-slate-50">
+    el.innerHTML = rows.map(p=>`<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(p)}>
         <td class="p-3 font-semibold">${esc(p.name)}</td>
         <td class="p-3 font-bold text-amber-700">${fmt(p.amount)}</td>
         <td class="p-3">${esc(p.project||'-')}</td>
@@ -4718,7 +5097,7 @@ function renderAssets(){
     tbody.innerHTML = rows.length
         ? rows.map(a=>{
             const book = assetBookValue(a);
-            return `<tr class="border-b border-slate-50 hover:bg-slate-50 ${a.status==='sold'?'opacity-50':''}">
+            return `<tr class="border-b border-slate-50 hover:bg-slate-50 ${a.status==='sold'?'opacity-50':''}"${auditAttr(a)}>
                 <td class="p-3 font-bold">${esc(a.name)}</td>
                 <td class="p-3">${fmt(a.cost)}</td>
                 <td class="p-3 text-slate-500">${a.date}</td>
@@ -4802,7 +5181,7 @@ function renderAttendance(){
             const diffLabel = (!a.timeIn||!a.timeOut) ? '-' :
                 (diff>0 ? `+${diff.toFixed(1)} ساعة ⬆️` : (diff<0 ? `${diff.toFixed(1)} ساعة ⬇️` : '✅ مضبوط'));
             const diffColor = diff>0 ? 'text-emerald-600' : (diff<0 ? 'text-rose-600' : 'text-slate-400');
-            return `<tr class="border-b border-slate-50 hover:bg-slate-50">
+            return `<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(a)}>
             <td class="p-3 font-bold">${esc(a.employee)}</td>
             <td class="p-3 text-slate-500">${a.date}</td>
             <td class="p-3 text-slate-500">${a.timeIn||'-'}</td>
@@ -5032,7 +5411,7 @@ function renderAdvances(){
     tbody.innerHTML = rows.length
         ? rows.map(a=>{
             const remaining = a.amount - (a.deductedAmount||0);
-            return `<tr class="border-b border-slate-50 hover:bg-slate-50">
+            return `<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(a)}>
                 <td class="p-3 font-bold">${esc(a.employee)}</td>
                 <td class="p-3 font-bold text-orange-700">${fmt(a.amount)}</td>
                 <td class="p-3 text-slate-500">${a.date}</td>
@@ -5165,7 +5544,7 @@ function invoiceCollectionAllocation(client){
     (db.sales||[]).forEach(s=>{
         if(s.client!==client) return;
         const key = s.groupId || s.id;
-        if(!invoices[key]) invoices[key] = { groupId:key, invoiceNumber:s.invoiceNumber, client:s.client, project:s.project, date:s.date, total:0 };
+        if(!invoices[key]) invoices[key] = { groupId:key, invoiceNumber:s.invoiceNumber, client:s.client, project:s.project, date:s.date, total:0, created_by:s.created_by, updated_by:s.updated_by, updated_at:s.updated_at };
         invoices[key].total += s.total;
     });
     const list = Object.values(invoices).sort((a,b)=> a.date.localeCompare(b.date) || (a.groupId-b.groupId));
@@ -5282,7 +5661,7 @@ function renderSalesTable(){
     const tbody = document.getElementById('tbody-sales');
     if(!tbody) return;
     tbody.innerHTML = invoices.map(inv=>`
-        <tr class="border-b border-slate-50 hover:bg-slate-50">
+        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(inv)}>
             <td class="p-3 font-bold text-lime-700">${esc(inv.invoiceNumber||'-')}</td>
             <td class="p-3">${esc(inv.client)}</td>
             <td class="p-3 font-bold">${fmt(inv.total)}</td>
@@ -5749,7 +6128,7 @@ function renderDailyJournalsList(){
     const fp = document.getElementById('filter-dj-project')?.value || 'ALL';
     const rows = [...db.dailyJournals].filter(j=>fp==='ALL'||j.project===fp).reverse();
     tbody.innerHTML = rows.length
-        ? rows.map(j=>`<tr class="border-b border-slate-50 hover:bg-slate-50">
+        ? rows.map(j=>`<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(j)}>
             <td class="p-3 font-bold">${esc(j.project)}</td>
             <td class="p-3 text-slate-500">${j.date}</td>
             <td class="p-3 text-slate-500">${esc(j.day||'')}</td>
@@ -6209,7 +6588,7 @@ function renderObligations(){
     let flatRows = [];
     (db.obligations||[]).forEach(o=>{
         (o.installments||[]).forEach(inst=>{
-            flatRows.push({ obligId:o.id, instId:inst.id, type:o.type, desc:o.desc, party:o.party, num:inst.num, totalInstallments:(o.installments||[]).length, amount:inst.amount, dueDate:inst.dueDate, status:inst.status });
+            flatRows.push({ obligId:o.id, instId:inst.id, type:o.type, desc:o.desc, party:o.party, num:inst.num, totalInstallments:(o.installments||[]).length, amount:inst.amount, dueDate:inst.dueDate, status:inst.status, created_by:o.created_by, updated_by:o.updated_by, updated_at:o.updated_at });
         });
     });
 
@@ -6231,7 +6610,7 @@ function renderObligations(){
                     : (isSoon
                         ? '<span style="padding:2px 8px;border-radius:5px;font-size:11px;font-weight:bold;background:#fef3c7;color:#92400e">⏰ قريبة</span>'
                         : '<span style="padding:2px 8px;border-radius:5px;font-size:11px;font-weight:bold;background:#e2e8f0;color:#475569">📅 قائمة</span>'));
-            return `<tr class="border-b border-slate-50 hover:bg-slate-100 ${rowClass}">
+            return `<tr class="border-b border-slate-50 hover:bg-slate-100 ${rowClass}"${auditAttr(r)}>
                 <td class="p-3 font-bold">${esc(r.type)}</td>
                 <td class="p-3">${esc(r.desc)}</td>
                 <td class="p-3 text-slate-500">${esc(r.party||'-')}</td>
@@ -6271,7 +6650,7 @@ function renderCustody(){
     const el = document.getElementById('tbody-custody');
     if(el) el.innerHTML = rows.map(c=>{
         const type = c.type || 'custody';
-        return `<tr class="border-b border-slate-50 hover:bg-slate-50">
+        return `<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(c)}>
             <td class="p-3 font-bold">${esc(c.name)}</td>
             <td class="p-3 font-bold text-violet-700">${fmt(c.amount)}</td>
             <td class="p-3">${esc(c.project)}</td>
@@ -6795,7 +7174,7 @@ function renderManagerLiabilities(){
             const paidAmount = l.paidAmount||0;
             const remaining = l.amount - paidAmount;
             const isPaid = l.status==='paid';
-            return `<tr class="border-b border-slate-100 ${isPaid?'opacity-50':''}">
+            return `<tr class="border-b border-slate-100 ${isPaid?'opacity-50':''}"${auditAttr(l)}>
                 <td class="p-2 font-bold">${esc(l.investor)}</td>
                 <td class="p-2">${esc(l.project)}</td>
                 <td class="p-2 font-bold text-indigo-700">${fmt(l.amount)}</td>
@@ -6820,7 +7199,7 @@ function renderInvestorFunding(){
             const share = investorShareForProject(f);
             const investorRec = db.investors.find(i=>i.name===f.investor);
             const mgmtFee = investorRec?.managementFeePct;
-            return `<tr class="border-b border-slate-50 hover:bg-slate-50">
+            return `<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(f)}>
                 <td class="p-3 font-bold">${esc(f.investor)}${mgmtFee?` <span class="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-bold">إدارة ${mgmtFee}%</span>`:''}</td>
                 <td class="p-3">${esc(f.project)}</td>
                 <td class="p-3">${f.amount?fmt(f.amount):'-'}</td>
@@ -6888,7 +7267,7 @@ function renderInvestorLiabilities(){
             const paidAmount = l.paidAmount||0;
             const remaining = l.amount - paidAmount;
             const isPaid = l.status==='paid';
-            return `<tr class="border-b border-slate-50 ${isPaid?'opacity-50':''}">
+            return `<tr class="border-b border-slate-50 ${isPaid?'opacity-50':''}"${auditAttr(l)}>
             <td class="p-3 font-bold">${esc(l.investor)}</td>
             <td class="p-3">${esc(l.project)}</td>
             <td class="p-3 font-bold text-amber-700">${fmt(l.amount)}</td>

@@ -321,7 +321,8 @@ create table if not exists audit_log (
   entity_name text,
   old_value jsonb,
   new_value jsonb,
-  user_label text,
+  user_label text, -- اسم المستخدم الحقيقي وقت الحركة (عرض سريع بدون join)
+  user_id uuid references auth.users(id), -- مرجع حقيقي للمستخدم
   created_at timestamptz not null default now()
 );
 
@@ -344,7 +345,7 @@ as $$
 declare
   n bigint;
 begin
-  execute format('select nextval(%I)', seq_name) into n;
+  execute format('select nextval(%L)', seq_name) into n;
   return prefix || '-' || lpad(n::text, 5, '0');
 end;
 $$;
@@ -374,33 +375,119 @@ create index if not exists idx_daily_journals_project_date on daily_journals(pro
 create index if not exists idx_audit_log_created_at on audit_log(created_at desc);
 
 -- ============================================================
--- Row Level Security
--- ملاحظة أمان مهمة: التطبيق ده بيستخدم مفتاح publishable (client-side) بدون
--- نظام تسجيل دخول مستخدمين حقيقي — بوابة الدخول هي أكواد تفعيل مشتركة (أدوار:
--- مدير/محاسب/مشاهدة) محفوظة في localStorage بالمتصفح فقط. عشان التطبيق يقدر
--- يقرا/يكتب البيانات من المتصفح، السياسات هنا بتسمح بالقراءة والكتابة الكاملة
--- لأي حد معاه الـ URL والمفتاح (زي أي حد يعرف كود التفعيل). ده مش عزل بيانات
--- لكل مستخدم لوحده أو فرض صلاحيات الأدوار على مستوى القاعدة — فرض الأدوار
--- (مشاهدة فقط مثلاً) بيحصل في واجهة المستخدم بس.
+-- المستخدمين والصلاحيات (Supabase Auth + RLS حقيقي)
+-- ============================================================
+-- profiles: صف واحد لكل مستخدم Auth، فيه اسم المستخدم وحالة التفعيل وصلاحياته.
+-- الكتابة عليه ممنوعة تمامًا من المتصفح — بتتم فقط عن طريق Edge Function
+-- (admin-users) اللي بتستخدم service_role جوّاها (مش في المتصفح أبدًا).
+create table if not exists profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  username text not null unique,
+  is_admin boolean not null default false,
+  active boolean not null default true,
+  permissions jsonb not null default '{}'::jsonb, -- {"dailyentry":{"view":true,"edit":true,"delete":false}, "reports":{...}, "masterdata":{...}}
+  created_at timestamptz not null default now()
+);
+alter table profiles enable row level security;
+grant select, insert, update, delete on profiles to service_role; -- جدول جديد محتاج المنحة دي صراحةً عشان الـ Edge Function تقدر تكتب فيه
+
+create or replace function is_admin_user()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce((select is_admin from profiles where id = auth.uid() and active), false);
+$$;
+
+create or replace function is_active_user()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists(select 1 from profiles where id = auth.uid() and active);
+$$;
+
+-- الدالة دي هي الحماية الحقيقية: أي عملية إضافة/تعديل/حذف بتتحقق منها قبل ما تتنفذ فعليًا في القاعدة
+create or replace function has_permission(p_module text, p_action text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from profiles p
+    where p.id = auth.uid() and p.active
+      and (p.is_admin or coalesce((p.permissions -> p_module ->> p_action)::boolean, false))
+  );
+$$;
+
+drop policy if exists "read own or admin" on profiles;
+create policy "read own or admin" on profiles for select using (id = auth.uid() or is_admin_user());
+
+-- ============================================================
+-- Row Level Security لجداول العمل
+-- القراءة: متاحة لأي مستخدم مسجّل دخول وحسابه مفعّل (شاشات التقارير بتجمع بيانات
+-- من كل الموديولات مع بعض، فمنع القراءة الجزئية هيدّي أرقام غلط بصمت).
+-- الكتابة (إضافة/تعديل/حذف): مربوطة فعليًا بصلاحيات المستخدم حسب مجموعته
+-- (تسجيل يومي / تقارير ودفاتر / دليل الأكواد) — دي الحماية الحقيقية اللي متقدرش
+-- تتخطاها حتى لو حد فتح Console وحاول يستدعي Supabase مباشرة.
 -- ============================================================
 do $$
-declare t text;
+declare
+  t text;
+  module text;
+  tables_dailyentry text[] := array['procurements','sales','expense_entries','payments','contractor_payments','refunds','custodies','employee_advances','attendance','assets','daily_journals','obligations'];
+  tables_reports text[] := array['investor_funding','profit_distributions','investor_liabilities','manager_liabilities','manager_payments','external_investments','taxes'];
+  tables_masterdata text[] := array['projects','supplies','suppliers','expense_categories','activities','names','clients','investors','accounts','employees','asset_types'];
 begin
-  for t in select unnest(array[
-    'projects','supplies','suppliers','expense_categories','activities',
-    'names','clients','investors','accounts','employees','asset_types','taxes',
-    'procurements','sales','expense_entries','payments','contractor_payments',
-    'refunds','investor_funding','profit_distributions','investor_liabilities',
-    'manager_liabilities','manager_payments','custodies','employee_advances',
-    'attendance','assets','daily_journals','obligations','external_investments',
-    'audit_log','app_settings'
-  ])
-  loop
+  foreach t in array (tables_dailyentry || tables_reports || tables_masterdata) loop
     execute format('alter table %I enable row level security;', t);
+  end loop;
+
+  foreach t in array tables_dailyentry loop
+    module := 'dailyentry';
     execute format('drop policy if exists "public full access" on %I;', t);
-    execute format('create policy "public full access" on %I for all using (true) with check (true);', t);
+    execute format('drop policy if exists "select_active" on %I;', t);
+    execute format('drop policy if exists "insert_module" on %I;', t);
+    execute format('drop policy if exists "update_module" on %I;', t);
+    execute format('drop policy if exists "delete_module" on %I;', t);
+    execute format('create policy "select_active" on %I for select using (is_active_user());', t);
+    execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit''));', t, module);
+    execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'')) with check (has_permission(%L, ''edit''));', t, module, module);
+    execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete''));', t, module);
+  end loop;
+
+  foreach t in array tables_reports loop
+    module := 'reports';
+    execute format('drop policy if exists "public full access" on %I;', t);
+    execute format('drop policy if exists "select_active" on %I;', t);
+    execute format('drop policy if exists "insert_module" on %I;', t);
+    execute format('drop policy if exists "update_module" on %I;', t);
+    execute format('drop policy if exists "delete_module" on %I;', t);
+    execute format('create policy "select_active" on %I for select using (is_active_user());', t);
+    execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit''));', t, module);
+    execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'')) with check (has_permission(%L, ''edit''));', t, module, module);
+    execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete''));', t, module);
+  end loop;
+
+  foreach t in array tables_masterdata loop
+    module := 'masterdata';
+    execute format('drop policy if exists "public full access" on %I;', t);
+    execute format('drop policy if exists "select_active" on %I;', t);
+    execute format('drop policy if exists "insert_module" on %I;', t);
+    execute format('drop policy if exists "update_module" on %I;', t);
+    execute format('drop policy if exists "delete_module" on %I;', t);
+    execute format('create policy "select_active" on %I for select using (is_active_user());', t);
+    execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit''));', t, module);
+    execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'')) with check (has_permission(%L, ''edit''));', t, module, module);
+    execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete''));', t, module);
   end loop;
 end $$;
+
+-- audit_log: أي مستخدم مفعّل يقدر يسجّل حركاته هو (INSERT)، لكن القراءة مقفولة
+-- على المدير بس، ومفيش تعديل أو حذف لأي حد — سجل غير قابل للتلاعب.
+alter table audit_log enable row level security;
+drop policy if exists "public full access" on audit_log;
+drop policy if exists "insert own log" on audit_log;
+drop policy if exists "select admin only" on audit_log;
+create policy "insert own log" on audit_log for insert with check (is_active_user());
+create policy "select admin only" on audit_log for select using (is_admin_user());
+
+-- app_settings: جدول قديم غير مستخدم في التصميم الحالي — قراءة فقط للمفعّلين، بدون كتابة من المتصفح.
+alter table app_settings enable row level security;
+drop policy if exists "public full access" on app_settings;
+drop policy if exists "select_active" on app_settings;
+create policy "select_active" on app_settings for select using (is_active_user());
 
 -- ---------- تفعيل Realtime عشان كل المستخدمين يشوفوا تحديثات بعض لحظياً ----------
 do $$
@@ -423,3 +510,62 @@ begin
     end;
   end loop;
 end $$;
+
+-- ============================================================
+-- تتبّع "مين أضاف / مين آخر واحد عدّل" لكل سجل (تلقائي بالكامل من القاعدة نفسها،
+-- عشان يبان في تلميح صغير (tooltip) عند الوقوف بالماوس على أي عملية في الواجهة)
+-- ============================================================
+create or replace function set_audit_columns()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uname text;
+begin
+  select username into uname from profiles where id = auth.uid();
+  if TG_OP = 'INSERT' then
+    new.created_by := coalesce(uname, new.created_by);
+    new.updated_by := coalesce(uname, new.updated_by);
+    new.updated_at := now();
+  elsif TG_OP = 'UPDATE' then
+    new.created_by := old.created_by; -- الحفاظ على أول من أضاف السجل
+    new.updated_by := coalesce(uname, new.updated_by);
+    new.updated_at := now();
+  end if;
+  return new;
+end;
+$$;
+
+do $$
+declare
+  t text;
+  tables_all text[] := array[
+    'procurements','sales','expense_entries','payments','contractor_payments','refunds',
+    'custodies','employee_advances','attendance','assets','daily_journals','obligations',
+    'investor_funding','profit_distributions','investor_liabilities','manager_liabilities',
+    'manager_payments','external_investments','taxes',
+    'projects','supplies','suppliers','expense_categories','activities','names','clients',
+    'investors','accounts','employees','asset_types'
+  ];
+begin
+  foreach t in array tables_all loop
+    execute format('alter table %I add column if not exists created_by text;', t);
+    execute format('alter table %I add column if not exists updated_by text;', t);
+    execute format('alter table %I add column if not exists updated_at timestamptz;', t);
+    execute format('drop trigger if exists trg_set_audit_columns on %I;', t);
+    execute format('create trigger trg_set_audit_columns before insert or update on %I for each row execute function set_audit_columns();', t);
+  end loop;
+end $$;
+
+-- ============================================================
+-- ملاحظة تنصيب مهمة: الملف ده بيغطي قاعدة البيانات بس. عشان نظام المستخدمين
+-- يشتغل كامل لازم كمان:
+-- 1) نشر Edge Function اسمها "admin-users" (كودها في supabase/functions/admin-users
+--    جوّه المشروع) — دي اللي بتنشئ/تعدّل/تعطّل/تمسح حسابات المستخدمين
+--    باستخدام service_role بأمان من غير ما المفتاح يوصل للمتصفح أبدًا.
+-- 2) بعد نشر الفنكشن، تشغيل أكشن "bootstrap_admin" مرة واحدة بس (عن طريق
+--    طلب HTTPS مباشر للفنكشن، مش من الواجهة) عشان ينشئ حساب المدير الافتراضي.
+--    بعد أول مرة، الأكشن ده بيتقفل تلقائيًا ومش هيشتغل تاني.
+-- ============================================================
