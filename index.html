@@ -6790,7 +6790,7 @@ function renderExternalInvestments(){
                 else if(gainLoss<0) glHtml = `<span class="text-rose-700 font-bold">📉 ${fmt(-gainLoss)}</span>`;
                 else glHtml = `<span class="text-slate-500">➖ 0</span>`;
             }
-            return `<tr class="border-b border-slate-50 hover:bg-slate-50">
+            return `<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(inv)}>
                 <td class="p-3 font-bold">${esc(inv.description)}</td>
                 <td class="p-3 text-indigo-700 font-semibold">${esc(inv.project||'-')}</td>
                 <td class="p-3 font-bold text-pink-700">${fmt(inv.amount)}</td>
@@ -7293,7 +7293,7 @@ function renderDistributions(){
         ? rows.map(d=>{
             // إجمالي مبلغ استثمار هذا المستثمر
             const investorTotalFunding = db.investorFunding.filter(f=>f.investor===d.investor).reduce((s,f)=>s+(f.amount||0),0);
-            return `<tr class="border-b border-slate-50 hover:bg-slate-50">
+            return `<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(d)}>
             <td class="p-3 font-bold">${esc(d.investor)}</td>
             <td class="p-3">${esc(d.project==='ALL'?'عام':d.project)}</td>
             <td class="p-3 font-bold text-blue-700">${investorTotalFunding?fmt(investorTotalFunding):'-'}</td>
