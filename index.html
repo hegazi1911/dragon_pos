@@ -8789,67 +8789,23 @@
             URL.revokeObjectURL(url);
         }
 
-        function exportWithData() {
-            // اقرأ الـ HTML الحالي وأدمج فيه البيانات
-            const currentHTML = document.documentElement.outerHTML;
-            const dbJson = JSON.stringify(db);
-            // أضف سكريبت في الأول يحمّل البيانات قبل أي حاجة تانية
-            const injectedScript = `<script>
-/* بيانات مدموجة تلقائياً — لا تعدّل هذا السطر */
-window.__EMBEDDED_DB__ = ${dbJson};
-</scr`+ `ipt>`;
-            // حطّه بعد <head>
-            const injected = currentHTML.replace('<head>', '<head>\n' + injectedScript);
-            const blob = new Blob([injected], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `mg-system-${todayISO()}.html`;
-            document.body.appendChild(a); a.click(); a.remove();
-            URL.revokeObjectURL(url);
-            alert('تم التصدير ✅\nالملف يحتوي على كل بياناتك — أرسله لأي شخص وهيشوف نفس البيانات لما يفتحه.');
+        /* ================= WHATSAPP SHARE (ملخص نصي بسيط) ================= */
+        function buildWhatsAppSummaryText() {
+            const scope = document.getElementById('dashboard-project-filter-label')?.textContent.trim() || 'كل المشاريع';
+            const get = id => document.getElementById(id)?.textContent.trim() || '-';
+            return `📊 ملخص DRACON — ${todayISO()}\n` +
+                `النطاق: ${scope}\n\n` +
+                `💰 رصيد الخزينة الحالي: ${get('kpi-balance')}\n` +
+                `📈 إجمالي الإيرادات المحصّلة: ${get('kpi-inflows')}\n` +
+                `📉 إجمالي المدفوعات والمصروفات: ${get('kpi-outflows')}\n\n` +
+                `🟢 متبقي لنا عند العملاء: ${get('kpi-client-receivable')}\n` +
+                `🔴 متبقي للموردين: ${get('kpi-supplier-debt')}\n` +
+                `🟠 متبقي لمقاولي الباطن: ${get('kpi-contractor-debt')}\n` +
+                `🟣 قيود يومية معلقة: ${get('kpi-custody-pending')}`;
         }
-
-        /* ================= WHATSAPP SHARE ================= */
-        function buildDataFile() {
-            const currentHTML = document.documentElement.outerHTML;
-            const dbJson = JSON.stringify(db);
-            const injectedScript = `<script>
-/* بيانات مدموجة تلقائياً — لا تعدّل هذا السطر */
-window.__EMBEDDED_DB__ = ${dbJson};
-</scr`+ `ipt>`;
-            const injected = currentHTML.replace('<head>', '<head>\n' + injectedScript);
-            return new Blob([injected], { type: 'text/html;charset=utf-8' });
-        }
-
-        async function shareViaWhatsApp() {
-            const blob = buildDataFile();
-            const filename = `mg-system-${todayISO()}.html`;
-            const file = new File([blob], filename, { type: 'text/html' });
-
-            // على الموبايل: افتح شاشة المشاركة الأصلية واختار واتساب منها، والملف هيتبعت فيه البيانات مباشرة
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({
-                        files: [file],
-                        title: 'نظام DRACON',
-                        text: 'ملف نظام DRACON ببياناته — افتحه بنفس المتصفح وهتلاقي نفس البيانات.'
-                    });
-                    return;
-                } catch (err) {
-                    if (err && err.name === 'AbortError') return; // المستخدم لغى المشاركة
-                }
-            }
-
-            // على الكمبيوتر (واتساب ويب مش بيقبل إرفاق ملف من كود الصفحة): نزّل الملف
-            // وافتح واتساب برسالة نصية تفكّر المستخدم يرفق الملف يدوياً
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = filename;
-            document.body.appendChild(a); a.click(); a.remove();
-            URL.revokeObjectURL(url);
-            const msg = encodeURIComponent('ملف نظام DRACON مرفق بالبيانات — هفتحلك واتساب دلوقتي، ارفق الملف اللي اتنزّل عندك دلوقتي (mg-system-...) في المحادثة.');
-            window.open('https://wa.me/?text=' + msg, '_blank');
-            alert('اتنزّل الملف على جهازك ✅\nهيتفتح واتساب دلوقتي — كل اللي عليك ترفق الملف اللي اتنزّل (📎) في المحادثة وتبعته.');
+        function shareViaWhatsApp() {
+            const text = buildWhatsAppSummaryText();
+            window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
         }
     </script>
 </body>
