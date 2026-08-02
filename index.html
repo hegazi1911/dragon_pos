@@ -563,7 +563,7 @@
                     <p class="text-xs text-slate-500 -mt-3 mb-3">الفاتورة تُسجَّل بقيمتها الكاملة وتدخل قائمة الدخل
                         فوراً وتزيد رصيد المخزون. الدفع للمورد يُسجَّل لاحقاً من تبويب "مدفوعات الموردين".</p>
                     <form onsubmit="addProcurement(event)" class="flex flex-col gap-4">
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div class="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-5 gap-4 items-end">
                             <div><label class="block text-xs font-bold text-slate-600 mb-1">المورد</label><select
                                     id="proc-supplier" required
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
@@ -577,6 +577,10 @@
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                             <div><label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input
                                     id="proc-notes" type="text"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">خصم مكتسب (ج.م)</label><input
+                                    id="proc-discount" type="number" step="any" min="0" placeholder="0"
+                                    title="خصم وافق عليه المورد على الفاتورة دي (دفع مبكر/كمية) — بيتسجل كإيراد إضافي، مش تخفيض في تكلفة المواد"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                         </div>
 
@@ -635,6 +639,7 @@
                                     <th class="p-3">الوحدة</th>
                                     <th class="p-3">السعر</th>
                                     <th class="p-3">الإجمالي</th>
+                                    <th class="p-3">الخصم المكتسب</th>
                                     <th class="p-3">المشروع</th>
                                     <th class="p-3">التاريخ</th>
                                     <th class="p-3"></th>
@@ -4560,6 +4565,7 @@
             const project = document.getElementById('proc-project').value;
             const date = document.getElementById('proc-date').value || todayISO();
             const notes = document.getElementById('proc-notes').value.trim();
+            const discount = Number(document.getElementById('proc-discount')?.value) || 0;
 
             const allLines = [...document.querySelectorAll('#proc-lines .proc-line-row')].map(row => ({
                 item: row.querySelector('.proc-line-item')?.value || '',
@@ -4579,10 +4585,12 @@
             if (seqError) { markSaveError(seqError); return; }
             const groupId = crypto.randomUUID();
 
-            const rows = lines.map(l => ({
+            const rows = lines.map((l, i) => ({
                 group_id: groupId, invoice_number: invoiceNumber,
                 item: l.item, supplier, project, qty: l.qty, unit: l.unit, price: l.price,
-                date, notes
+                date, notes,
+                // الخصم بيتسجل على أول سطر بس عشان مايتكررش (مبلغ واحد للفاتورة كلها مش لكل صنف)
+                discount: i === 0 ? discount : 0
             }));
             const { data, error } = await sb.from('procurements').insert(rows).select();
             if (error) { markSaveError(error); return; }
@@ -4654,19 +4662,20 @@
             }).slice().reverse();
 
             const totalVal = rows.reduce((s, p) => s + (p.qty * p.price), 0);
+            const totalDiscount = rows.reduce((s, p) => s + (p.discount || 0), 0);
             document.getElementById('tbody-procurement').innerHTML =
                 rows.map(p => `
         <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(p)}>
             <td class="p-3 font-bold text-amber-700">${esc(p.invoiceNumber || '-')}</td>
             <td class="p-3">${esc(p.item)}</td><td class="p-3">${esc(p.supplier)}</td><td class="p-3">${p.qty}</td><td class="p-3">${p.unit}</td>
-            <td class="p-3">${fmt(p.price)}</td><td class="p-3 font-bold">${fmt(p.qty * p.price)}</td><td class="p-3">${esc(p.project)}</td><td class="p-3 text-slate-500">${p.date}</td>
+            <td class="p-3">${fmt(p.price)}</td><td class="p-3 font-bold">${fmt(p.qty * p.price)}</td><td class="p-3">${p.discount ? fmt(p.discount) : '-'}</td><td class="p-3">${esc(p.project)}</td><td class="p-3 text-slate-500">${p.date}</td>
             <td class="p-3 flex gap-2">
                 ${p.groupId ? `<button onclick="printPurchaseInvoice('${p.groupId}')" class="text-blue-500 hover:text-blue-700" title="طباعة"><i class="fa-solid fa-print"></i></button>` : ''}
                 <button onclick="deleteProcurement(${p.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`).join('')
-                + (rows.length ? `<tr class="bg-slate-50 font-bold"><td colspan="6" class="p-3">الإجمالي</td><td class="p-3 text-blue-700">${fmt(totalVal)}</td><td colspan="3"></td></tr>` : '')
-                || '<tr><td colspan="10" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>';
+                + (rows.length ? `<tr class="bg-slate-50 font-bold"><td colspan="6" class="p-3">الإجمالي</td><td class="p-3 text-blue-700">${fmt(totalVal)}</td><td class="p-3 text-emerald-700">${totalDiscount ? fmt(totalDiscount) : '-'}</td><td colspan="3"></td></tr>` : '')
+                || '<tr><td colspan="11" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>';
         }
         function printPurchaseInvoice(groupId) {
             const lines = db.procurements.filter(p => p.groupId === groupId);
@@ -5504,6 +5513,11 @@
             // أ2. الإيرادات الأخرى (غير تشغيلية)
             const otherRevenueLines = Object.entries(catGroups).filter(([, v]) => v.plType === 'other_revenue')
                 .map(([k, v]) => ({ num: num(), label: k, value: v.total }));
+            // خصومات مكتسبة من الموردين (دفع مبكر/كمية) — إيراد إضافي منفصل، مش تخفيض في تكلفة المواد (COGS تفضل بالقيمة الكاملة)
+            const purchaseDiscountEarned = db.procurements.filter(p => match(p)).reduce((s, p) => s + (p.discount || 0), 0);
+            if (purchaseDiscountEarned > 0) {
+                otherRevenueLines.push({ num: num(), label: 'خصومات مكتسبة من الموردين', value: purchaseDiscountEarned });
+            }
             const otherRevenueTotal = otherRevenueLines.reduce((s, l) => s + l.value, 0);
 
             // ب. تكاليف العقود (مواد + أي تصنيف "تكلفة مباشرة")
@@ -6155,11 +6169,11 @@
             const fs = document.getElementById('filter-proc-supplier').value;
             const rows = db.procurements.filter(p => (fp === 'ALL' || !fp || p.project === fp) && (fs === 'ALL' || !fs || p.supplier === fs));
             const data = [
-                ['الصنف', 'المورد', 'الكمية', 'الوحدة', 'السعر', 'الإجمالي', 'المشروع', 'التاريخ', 'ملاحظات'],
-                ...rows.map(p => [p.item, p.supplier, p.qty, p.unit, p.price, p.qty * p.price, p.project, p.date, p.notes || ''])
+                ['الصنف', 'المورد', 'الكمية', 'الوحدة', 'السعر', 'الإجمالي', 'الخصم المكتسب', 'المشروع', 'التاريخ', 'ملاحظات'],
+                ...rows.map(p => [p.item, p.supplier, p.qty, p.unit, p.price, p.qty * p.price, p.discount || 0, p.project, p.date, p.notes || ''])
             ];
             const ws = XLSX.utils.aoa_to_sheet(data);
-            ws['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 24 }];
+            ws['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 24 }];
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'المشتريات');
             XLSX.writeFile(wb, `سجل-المشتريات-${todayISO()}.xlsx`);

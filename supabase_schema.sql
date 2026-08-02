@@ -98,7 +98,8 @@ create table if not exists procurements (
   price numeric not null default 0,
   date date not null default current_date,
   notes text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  discount numeric not null default 0 -- خصم مكتسب من المورد على الفاتورة (دفع مبكر/كمية) — بيتحسب كإيراد إضافي، مش تخفيض في تكلفة المواد
 );
 
 create table if not exists sales (
