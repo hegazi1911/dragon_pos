@@ -251,12 +251,12 @@
                 title="فعّل إشعارات المتصفح عشان توصلك أول ما مستخدم تاني يضيف أو يعدّل حاجة">
                 <i class="fa-solid fa-bell"></i><span class="hidden sm:inline">فعّل التنبيهات</span>
             </button>
-            <button onclick="shareViaWhatsApp()"
-                class="bg-[#25D366] hover:brightness-95 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
+            <button id="btn-whatsapp-share" onclick="shareViaWhatsApp()"
+                class="hidden bg-[#25D366] hover:brightness-95 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold items-center gap-2">
                 <i class="fa-brands fa-whatsapp"></i><span class="hidden sm:inline">مشاركة واتساب</span>
             </button>
-            <button onclick="exportData()"
-                class="bg-blue-600 hover:bg-blue-700 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold flex items-center gap-2">
+            <button id="btn-export-backup" onclick="exportData()"
+                class="hidden bg-blue-600 hover:bg-blue-700 transition text-white px-2.5 sm:px-4 py-1.5 rounded-lg font-bold items-center gap-2">
                 <i class="fa-solid fa-file-export"></i><span class="hidden sm:inline">تصدير نسخة احتياطية</span>
             </button>
             <button onclick="handleLogout()"
@@ -2729,6 +2729,7 @@
                                     <th class="p-3">تسجيل يومي</th>
                                     <th class="p-3">تقارير ودفاتر</th>
                                     <th class="p-3">دليل الأكواد</th>
+                                    <th class="p-3">أدوات النظام</th>
                                     <th class="p-3 text-center">الحالة</th>
                                     <th class="p-3"></th>
                                 </tr>
@@ -3516,6 +3517,12 @@
                 key: 'masterdata', label: 'دليل الأكواد الموحد', tabs: [
                     { id: 'masterdata', label: 'دليل الأكواد' }
                 ]
+            },
+            {
+                key: 'systemTools', label: 'أدوات النظام', tabs: [
+                    // مش تبويب حقيقي — دي صلاحية زرارين الهيدر (تصدير نسخة احتياطية / مشاركة واتساب)، افتراضيًا للمدير بس وقابلة للمنح
+                    { id: 'exportShare', label: 'تصدير نسخة احتياطية ومشاركة واتساب', viewOnly: true }
+                ]
             }
         ];
 
@@ -3638,6 +3645,13 @@
                 if (b) b.classList.toggle('hidden', !currentUser.isAdmin);
             });
 
+            // تصدير نسخة احتياطية ومشاركة واتساب: افتراضيًا للمدير بس، لكن قابلة للمنح لمستخدم تاني من الصلاحيات
+            const exportShareCanView = hasModulePerm('exportShare', 'view');
+            ['btn-export-backup', 'btn-whatsapp-share'].forEach(id => {
+                const b = document.getElementById(id);
+                if (b) { b.classList.toggle('hidden', !exportShareCanView); b.classList.toggle('flex', exportShareCanView); }
+            });
+
             if (currentUser.isAdmin) {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('hidden'));
                 document.querySelectorAll('main button[disabled]').forEach(b => {
@@ -3715,7 +3729,7 @@
             if (!tbody || !currentUser || !currentUser.isAdmin) return;
             const { data, error } = await sb.from('profiles').select('*').order('created_at');
             if (error) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-rose-500">تعذر تحميل المستخدمين</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-rose-500">تعذر تحميل المستخدمين</td></tr>';
                 return;
             }
             usersList = data;
@@ -3736,7 +3750,7 @@
                 };
                 return `<div class="flex gap-1">${dot(groupPermSummary(permissions, group, 'view'), 'مشاهدة')}${dot(groupPermSummary(permissions, group, 'edit'), 'تعديل')}${dot(groupPermSummary(permissions, group, 'delete'), 'حذف')}</div>`;
             };
-            const [groupDailyEntry, groupReports, groupMasterdata] = PERMISSION_GROUPS;
+            const [groupDailyEntry, groupReports, groupMasterdata, groupSystemTools] = PERMISSION_GROUPS;
             tbody.innerHTML = data.length ? data.map(u => `
         <tr class="border-b border-slate-50 hover:bg-slate-50">
             <td class="p-3 font-bold">${esc(u.username)}</td>
@@ -3744,13 +3758,14 @@
             <td class="p-3">${u.is_admin ? '<span class="text-xs text-slate-400">كل الصلاحيات</span>' : summaryBadge(u.permissions, groupDailyEntry)}</td>
             <td class="p-3">${u.is_admin ? '' : summaryBadge(u.permissions, groupReports)}</td>
             <td class="p-3">${u.is_admin ? '' : summaryBadge(u.permissions, groupMasterdata)}</td>
+            <td class="p-3">${u.is_admin ? '' : summaryBadge(u.permissions, groupSystemTools)}</td>
             <td class="p-3 text-center">${u.active ? '<span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">مفعّل</span>' : '<span class="text-xs font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">معطّل</span>'}</td>
             <td class="p-3">${u.is_admin ? '' : `<div class="flex gap-2">
                 <button onclick="openEditUserModal('${u.id}')" class="text-blue-500 hover:text-blue-700" title="تعديل"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="toggleUserActive('${u.id}', ${!u.active})" class="text-amber-500 hover:text-amber-700" title="${u.active ? 'تعطيل' : 'تفعيل'}"><i class="fa-solid fa-power-off"></i></button>
                 <button onclick="deleteUserAccount('${u.id}')" class="text-red-500 hover:text-red-700" title="حذف"><i class="fa-solid fa-trash"></i></button>
             </div>`}</td>
-        </tr>`).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا يوجد مستخدمين بعد</td></tr>';
+        </tr>`).join('') : '<tr><td colspan="8" class="p-4 text-center text-slate-400">لا يوجد مستخدمين بعد</td></tr>';
         }
 
         // يبني شاشة الصلاحيات ديناميكيًا من PERMISSION_GROUPS: كل مجموعة قابلة للطي (details)
@@ -8795,6 +8810,7 @@
         }
 
         function exportData() {
+            if (!hasModulePerm('exportShare', 'view')) return;
             const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -8818,6 +8834,7 @@
                 `🟣 قيود يومية معلقة: ${get('kpi-custody-pending')}`;
         }
         function shareViaWhatsApp() {
+            if (!hasModulePerm('exportShare', 'view')) return;
             const text = buildWhatsAppSummaryText();
             window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
         }
