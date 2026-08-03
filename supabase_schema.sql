@@ -148,7 +148,8 @@ create table if not exists payments (
   items text[], -- أوصاف الفواتير المحددة اللي اتسددت بالدفعة دي (اختياري)
   date date not null default current_date,
   notes text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  discount numeric not null default 0 -- خصم مكتسب من المورد عند السداد — إيراد إضافي، مش تخفيض في المستحق الأصلي
 );
 
 create table if not exists contractor_payments (
@@ -158,7 +159,8 @@ create table if not exists contractor_payments (
   project text,
   date date not null default current_date,
   notes text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  discount numeric not null default 0 -- خصم مكتسب من المقاول عند السداد — إيراد إضافي، مش تخفيض في المستحق الأصلي
 );
 
 create table if not exists refunds (

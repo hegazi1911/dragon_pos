@@ -1637,9 +1637,13 @@
                                             class="text-rose-700"></b></span>
                                 </div>
                             </div>
-                            <div class="md:col-span-3"><label
+                            <div class="md:col-span-2"><label
                                     class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input
                                     id="pay-notes" type="text"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">خصم مكتسب (ج.م)</label><input
+                                    id="pay-discount" type="number" step="any" min="0" placeholder="0"
+                                    title="خصم وافق عليه المورد عند السداد — بيتسجل كإيراد إضافي"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                             <div><button type="submit"
                                     class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold p-2.5 rounded-lg text-sm">حفظ
@@ -1669,6 +1673,7 @@
                                     <tr>
                                         <th class="p-3">المورد</th>
                                         <th class="p-3">المبلغ</th>
+                                        <th class="p-3">الخصم المكتسب</th>
                                         <th class="p-3">المشروع</th>
                                         <th class="p-3">التاريخ</th>
                                         <th class="p-3">ملاحظات</th>
@@ -1713,9 +1718,13 @@
                                     <span>📌 بعد الدفعة: <b id="cpay-info-after" class="text-blue-700"></b></span>
                                 </div>
                             </div>
-                            <div class="md:col-span-3"><label
+                            <div class="md:col-span-2"><label
                                     class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input
                                     id="cpay-notes" type="text"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">خصم مكتسب (ج.م)</label><input
+                                    id="cpay-discount" type="number" step="any" min="0" placeholder="0"
+                                    title="خصم وافق عليه المقاول عند السداد — بيتسجل كإيراد إضافي"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                             <div><button type="submit"
                                     class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold p-2.5 rounded-lg text-sm">حفظ
@@ -1769,6 +1778,7 @@
                                     <tr>
                                         <th class="p-3">المقاول</th>
                                         <th class="p-3">المبلغ</th>
+                                        <th class="p-3">الخصم المكتسب</th>
                                         <th class="p-3">المشروع</th>
                                         <th class="p-3">التاريخ</th>
                                         <th class="p-3">ملاحظات</th>
@@ -4823,7 +4833,8 @@
                 account: document.getElementById('pay-account')?.value || (db.accounts[0] && db.accounts[0].name) || '',
                 date: document.getElementById('pay-date').value || todayISO(),
                 notes: document.getElementById('pay-notes').value.trim(),
-                items: selectedItems.length ? selectedItems : null
+                items: selectedItems.length ? selectedItems : null,
+                discount: Number(document.getElementById('pay-discount')?.value) || 0
             };
             markSaving();
             const { data, error } = await sb.from('payments').insert(row).select().single();
@@ -4938,14 +4949,16 @@
             }).slice().reverse();
 
             const total = rows.reduce((s, p) => s + p.amount, 0);
+            const totalDiscount = rows.reduce((s, p) => s + (p.discount || 0), 0);
             document.getElementById('tbody-payments').innerHTML =
                 (rows.length ? rows.map(p => `
         <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(p)}>
             <td class="p-3 font-semibold">${esc(p.supplier)}</td><td class="p-3 font-bold">${fmt(p.amount)}</td>
+            <td class="p-3">${p.discount ? fmt(p.discount) : '-'}</td>
             <td class="p-3">${esc(p.project || '-')}</td><td class="p-3 text-slate-500">${p.date}</td><td class="p-3">${esc(p.notes || '')}</td>
             <td class="p-3"><button onclick="deletePayment(${p.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
-        </tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد دفعات مسجلة</td></tr>')
-                + (rows.length ? `<tr class="bg-slate-50 font-bold"><td class="p-3">الإجمالي</td><td class="p-3 text-cyan-700">${fmt(total)}</td><td colspan="4"></td></tr>` : '');
+        </tr>`).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا توجد دفعات مسجلة</td></tr>')
+                + (rows.length ? `<tr class="bg-slate-50 font-bold"><td class="p-3">الإجمالي</td><td class="p-3 text-cyan-700">${fmt(total)}</td><td class="p-3 text-emerald-700">${totalDiscount ? fmt(totalDiscount) : '-'}</td><td colspan="4"></td></tr>` : '');
         }
         function supplierBalance(name) {
             const sup = db.suppliers.find(s => s.name === name) || {};
@@ -5528,8 +5541,10 @@
             // أ2. الإيرادات الأخرى (غير تشغيلية)
             const otherRevenueLines = Object.entries(catGroups).filter(([, v]) => v.plType === 'other_revenue')
                 .map(([k, v]) => ({ num: num(), label: k, value: v.total }));
-            // خصومات مكتسبة من الموردين (دفع مبكر/كمية) — إيراد إضافي منفصل، مش تخفيض في تكلفة المواد (COGS تفضل بالقيمة الكاملة)
-            const purchaseDiscountEarned = db.procurements.filter(p => match(p)).reduce((s, p) => s + (p.discount || 0), 0);
+            // خصومات مكتسبة من الموردين/المقاولين (وقت الشراء أو وقت السداد) — إيراد إضافي منفصل، مش تخفيض في تكلفة المواد (COGS تفضل بالقيمة الكاملة)
+            const purchaseDiscountEarned = db.procurements.filter(p => match(p)).reduce((s, p) => s + (p.discount || 0), 0)
+                + db.payments.filter(p => match(p)).reduce((s, p) => s + (p.discount || 0), 0)
+                + (db.contractorPayments || []).filter(p => match(p)).reduce((s, p) => s + (p.discount || 0), 0);
             if (purchaseDiscountEarned > 0) {
                 otherRevenueLines.push({ num: num(), label: 'خصومات مكتسبة من الموردين', value: purchaseDiscountEarned });
             }
@@ -5940,10 +5955,11 @@
             const project = document.getElementById('cpay-project').value;
             const date = document.getElementById('cpay-date').value || todayISO();
             const notes = document.getElementById('cpay-notes').value.trim();
+            const discount = Number(document.getElementById('cpay-discount')?.value) || 0;
             if (!name || amount <= 0) { alert('اختر المقاول وأدخل مبلغاً صحيحاً'); return; }
             if (!db.contractorPayments) db.contractorPayments = [];
             markSaving();
-            const { data, error } = await sb.from('contractor_payments').insert({ name, amount, project, date, notes }).select().single();
+            const { data, error } = await sb.from('contractor_payments').insert({ name, amount, project, date, notes, discount }).select().single();
             if (error) { markSaveError(error); return; }
             db.contractorPayments.push(data);
             e.target.reset();
@@ -5974,11 +5990,12 @@
             el.innerHTML = rows.map(p => `<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(p)}>
         <td class="p-3 font-semibold">${esc(p.name)}</td>
         <td class="p-3 font-bold text-amber-700">${fmt(p.amount)}</td>
+        <td class="p-3">${p.discount ? fmt(p.discount) : '-'}</td>
         <td class="p-3">${esc(p.project || '-')}</td>
         <td class="p-3 text-slate-500">${p.date}</td>
         <td class="p-3 text-slate-400 text-xs">${esc(p.notes || '')}</td>
         <td class="p-3"><button onclick="deleteContractorPayment(${p.id})" class="text-rose-400 hover:text-rose-600 text-xs"><i class="fa-solid fa-trash"></i></button></td>
-    </tr>`).join('') || '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد دفعات مسجلة</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا توجد دفعات مسجلة</td></tr>';
         }
 
         async function deleteContractorPayment(id) {
@@ -6210,11 +6227,11 @@
 
         function exportPaymentsExcel() {
             const data = [
-                ['المورد', 'المبلغ', 'المشروع', 'التاريخ', 'ملاحظات'],
-                ...db.payments.map(p => [p.supplier, p.amount, p.project || '', p.date, p.notes || ''])
+                ['المورد', 'المبلغ', 'الخصم المكتسب', 'المشروع', 'التاريخ', 'ملاحظات'],
+                ...db.payments.map(p => [p.supplier, p.amount, p.discount || 0, p.project || '', p.date, p.notes || ''])
             ];
             const ws = XLSX.utils.aoa_to_sheet(data);
-            ws['!cols'] = [{ wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 24 }];
+            ws['!cols'] = [{ wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 24 }];
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'مدفوعات الموردين');
             XLSX.writeFile(wb, `مدفوعات-الموردين-${todayISO()}.xlsx`);
