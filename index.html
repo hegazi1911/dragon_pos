@@ -3061,6 +3061,7 @@
                         <option value="متر">متر</option>
                         <option value="كجم">كجم</option>
                         <option value="عدد">عدد</option>
+                        <option value="فاتورة">فاتورة</option>
                     </select>
                 </div>
                 <div id="master-pltype-wrap" class="hidden flex flex-col gap-3">
@@ -4286,7 +4287,7 @@
             if (type === 'activities') {
                 const list = document.getElementById('master-activity-cats-list');
                 const currentChecked = [...list.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
-                list.innerHTML = db.expenses.filter(c => c.name !== 'إيراد').map(c => `
+                list.innerHTML = db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue').map(c => `
             <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
                 <input type="checkbox" value="${esc(c.name)}" ${currentChecked.includes(c.name) ? 'checked' : ''} class="activity-cat-check">
                 <span>${esc(c.name)}</span>
@@ -4483,10 +4484,11 @@
             fillSelect('filter-proc-supplier', db.suppliers, 'كل الموردين');
             fillSelect('filter-proc-item', db.supplies, 'كل الأصناف');
 
-            fillSelect('exp-category', db.expenses.filter(c => c.name !== 'إيراد'));
+            // الإيرادات مكانها الوحيد "مستخلصات العملاء" — أي تصنيف إيراد (revenue/other_revenue) ميظهرش هنا خالص عشان منسجلش نفس الإيراد مرتين
+            fillSelect('exp-category', db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue'));
             fillSelect('exp-project', sortedProjects());
             fillSelect('filter-exp-project', sortedProjects(), 'كل المشاريع');
-            fillSelect('filter-exp-category', db.expenses.filter(c => c.name !== 'إيراد'), 'كل التبويبات');
+            fillSelect('filter-exp-category', db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue'), 'كل التبويبات');
             fillSelect('filter-exp-name', [...db.names, ...db.clients], 'كل الأسماء');
 
             fillSelect('filter-coll-client', db.clients, 'كل العملاء');
@@ -4995,6 +4997,11 @@
         async function addExpense(e) {
             e.preventDefault();
             const cat = document.getElementById('exp-category').value;
+            const catDef = db.expenses.find(c => c.name === cat);
+            if (cat === 'إيراد' || (catDef && (catDef.plType === 'revenue' || catDef.plType === 'other_revenue'))) {
+                alert('تسجيل الإيرادات مكانه الوحيد تاب "مستخلصات العملاء" — مينفعش يتسجل من هنا.');
+                return;
+            }
             const isContractor = cat === 'مقاولين باطن';
             const paid = Number(document.getElementById('exp-paid')?.value) || 0;
             const executedValue = isContractor ? (Number(document.getElementById('exp-executed')?.value) || 0) : 0;
@@ -5088,7 +5095,9 @@
             const fTo = fFrom; // نفس اليوم
 
             const rows = db.expensesData.filter(x => {
-                if (x.category === 'إيراد') return false; // تحصيلات العملاء ليها سجلها الخاص تحت المبيعات
+                // تحصيلات العملاء ليها سجلها الخاص تحت "مستخلصات العملاء" — أي حركة تصنيفها إيراد (بأي اسم) متتكررش هنا
+                const catDef = db.expenses.find(c => c.name === x.category);
+                if (x.category === 'إيراد' || (catDef && (catDef.plType === 'revenue' || catDef.plType === 'other_revenue'))) return false;
                 if (fp !== 'ALL' && fp && x.project !== fp) return false;
                 if (fc !== 'ALL' && fc && x.category !== fc) return false;
                 if (fn !== 'ALL' && fn && x.name !== fn) return false;
