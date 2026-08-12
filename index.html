@@ -680,6 +680,14 @@
                                     class="text-xs bg-lime-100 text-lime-700 px-2 py-1 rounded font-bold">+ إضافة
                                     بند</button>
                             </div>
+                            <div class="flex gap-2 items-center px-1 mb-1 text-[10px] font-bold text-slate-400">
+                                <span class="flex-1">بيان</span>
+                                <span class="w-16">وحدة</span>
+                                <span class="w-16">كمية</span>
+                                <span class="w-24">سعر الوحدة</span>
+                                <span class="w-24 text-left">الإجمالي</span>
+                                <span class="w-4"></span>
+                            </div>
                             <div id="sale-lines" class="flex flex-col gap-2"></div>
                             <div class="flex justify-end mt-2 text-base font-bold text-slate-800">الإجمالي الكلي: <span
                                     id="sale-grand-total" class="text-lime-700 mr-1">0 ج.م</span></div>
@@ -843,13 +851,14 @@
                                 id="exp-category" required onchange="filterExpenseSubFields()"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
                         </div>
-                        <div><label id="exp-name-label"
-                                class="block text-xs font-bold text-slate-600 mb-1">المستفيد</label><select
-                                id="exp-name" required onchange="filterActivitiesByName()"
+                        <div id="exp-activity-wrap" class="hidden"><label
+                                class="block text-xs font-bold text-slate-600 mb-1">النشاط الفرعي</label><select
+                                id="exp-activity" onchange="filterBeneficiariesByActivity()"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
                         </div>
-                        <div><label class="block text-xs font-bold text-slate-600 mb-1">النشاط</label><select
-                                id="exp-activity" required
+                        <div id="exp-name-wrap" class="hidden"><label id="exp-name-label"
+                                class="block text-xs font-bold text-slate-600 mb-1">المستفيد/المقاول</label><select
+                                id="exp-name" onchange="showContractInfo()"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
                         </div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label><select
@@ -859,7 +868,7 @@
                         <div id="exp-contract-info"
                             class="hidden md:col-span-4 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 text-xs text-slate-700">
                         </div>
-                        <!-- حقول مقاولي الباطن الإضافية: تظهر فقط لما تختار مقاولين باطن -->
+                        <!-- حقول مقاولي الباطن الإضافية: تظهر فقط لما تختار "مقاولين" -->
                         <div id="exp-executed-wrap" class="hidden md:col-span-4">
                             <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 grid grid-cols-2 gap-3">
                                 <div>
@@ -3161,14 +3170,16 @@
                     </div>
                 </div>
 
-                <!-- ربط المستفيد بالأنشطة -->
-                <div id="master-name-activities-wrap" class="hidden">
-                    <label class="block text-xs font-bold text-slate-600 mb-1">مرتبط بالأنشطة (اختياري)</label>
-                    <div id="master-name-activities-list"
-                        class="flex flex-wrap gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-28 overflow-y-auto">
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-1">لما تختار هذا النشاط في المصروفات، هيظهر هذا المستفيد فقط
-                    </p>
+                <!-- ربط المستفيد بالنشاط الفرعي -->
+                <div id="master-name-activity-wrap" class="hidden">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">النشاط الفرعي المرتبط <span
+                            class="text-rose-500">*</span></label>
+                    <select id="master-name-activity"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
+                        <option value="">-- اختر النشاط --</option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1">لازم تحدد النشاط الفرعي لهذا المستفيد — هيظهر بس لما
+                        يتم اختيار هذا النشاط في المصروفات</p>
                 </div>
 
                 <div id="master-tax-wrap" style="display:none" class="flex flex-col gap-3">
@@ -3249,7 +3260,7 @@
         function masterRowToItem(cat, row) {
             let item;
             if (cat === 'expenses') item = { code: row.code, name: row.name, plType: row.pl_type, plBucket: row.pl_bucket || undefined, nameType: row.name_type || 'any' };
-            else if (cat === 'names') item = { code: row.code, name: row.name, contractValue: row.contract_value || undefined, activities: (row.activities && row.activities.length) ? row.activities : undefined, openingBalance: row.opening_balance || undefined, executedOverride: (row.executed_override != null ? row.executed_override : undefined) };
+            else if (cat === 'names') item = { code: row.code, name: row.name, contractValue: row.contract_value || undefined, activities: (row.activities && row.activities.length) ? row.activities : undefined, activityCode: row.activity_code || undefined, openingBalance: row.opening_balance || undefined, executedOverride: (row.executed_override != null ? row.executed_override : undefined) };
             else if (cat === 'clients') item = { code: row.code, name: row.name, contractValue: row.contract_value || undefined, activities: (row.activities && row.activities.length) ? row.activities : undefined };
             else if (cat === 'suppliers') item = { code: row.code, name: row.name, items: (row.items && row.items.length) ? row.items : undefined, openingBalance: row.opening_balance || undefined };
             else if (cat === 'supplies') item = { code: row.code, name: row.name, unit: row.unit || undefined };
@@ -3268,7 +3279,7 @@
         }
         function masterItemToRow(cat, item) {
             if (cat === 'expenses') return { code: item.code, name: item.name, pl_type: item.plType, pl_bucket: item.plBucket || null, name_type: item.nameType || 'any' };
-            if (cat === 'names') return { code: item.code, name: item.name, contract_value: item.contractValue || null, activities: item.activities || null, opening_balance: item.openingBalance || null, executed_override: (item.executedOverride != null ? item.executedOverride : null) };
+            if (cat === 'names') return { code: item.code, name: item.name, contract_value: item.contractValue || null, activities: item.activities || null, activity_code: item.activityCode || null, opening_balance: item.openingBalance || null, executed_override: (item.executedOverride != null ? item.executedOverride : null) };
             if (cat === 'clients') return { code: item.code, name: item.name, contract_value: item.contractValue || null, activities: item.activities || null };
             if (cat === 'suppliers') return { code: item.code, name: item.name, items: item.items || null, opening_balance: item.openingBalance || null };
             if (cat === 'supplies') return { code: item.code, name: item.name, unit: item.unit || null };
@@ -4132,8 +4143,13 @@
                     if (cat === 'activities' && it.categories && it.categories.length) {
                         badge = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold shrink-0 truncate max-w-[160px]" title="${esc(it.categories.join('، '))}">${esc(it.categories.join('، '))}</span>`;
                     }
-                    if (cat === 'names' && it.activities && it.activities.length) {
-                        badge = `<span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-bold shrink-0 truncate max-w-[160px]" title="${esc(it.activities.join('، '))}">${esc(it.activities.join('، '))}</span>`;
+                    if (cat === 'names') {
+                        const linkedAct = db.activities.find(a => a.code === it.activityCode);
+                        if (linkedAct) {
+                            badge = `<span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-bold shrink-0 truncate max-w-[160px]" title="${esc(linkedAct.name)}">${esc(linkedAct.name)}</span>`;
+                        } else {
+                            badge = `<span class="bg-rose-100 text-rose-700 text-xs px-2 py-0.5 rounded-full font-bold shrink-0" title="لا يوجد نشاط مرتبط بهذا المستفيد">⚠ بدون نشاط</span>`;
+                        }
                     }
                     if (cat === 'taxes') {
                         badge = `<span class="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full font-bold shrink-0">${it.rate}%</span>
@@ -4227,9 +4243,8 @@
                 nameChecks.forEach(cb => { cb.checked = assignedNames.includes(cb.value); });
             }
             if (cat === 'names') {
-                const checks = document.querySelectorAll('.name-activity-check');
-                const assigned = item.activities || [];
-                checks.forEach(cb => { cb.checked = assigned.includes(cb.value); });
+                const actSel = document.getElementById('master-name-activity');
+                if (actSel) actSel.value = item.activityCode || '';
             }
             if (cat === 'taxes') {
                 document.getElementById('master-tax-rate').value = item.rate || 0;
@@ -4273,7 +4288,8 @@
             document.getElementById('master-supplier-items-wrap').classList.toggle('hidden', type !== 'suppliers');
             document.getElementById('master-tax-wrap').style.display = type === 'taxes' ? 'flex' : 'none';
             document.getElementById('master-activity-cats-wrap').classList.toggle('hidden', type !== 'activities');
-            document.getElementById('master-name-activities-wrap').classList.toggle('hidden', type !== 'names');
+            document.getElementById('master-name-activity-wrap').classList.toggle('hidden', type !== 'names');
+            document.getElementById('master-name-activity').required = (type === 'names');
 
             if (type === 'suppliers') {
                 const list = document.getElementById('master-supplier-items-list');
@@ -4303,13 +4319,11 @@
             </label>`).join('');
             }
             if (type === 'names') {
-                const list = document.getElementById('master-name-activities-list');
-                const currentChecked = [...list.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
-                list.innerHTML = db.activities.map(a => `
-            <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
-                <input type="checkbox" value="${esc(a.name)}" ${currentChecked.includes(a.name) ? 'checked' : ''} class="name-activity-check">
-                <span>${esc(a.name)}</span>
-            </label>`).join('');
+                const sel = document.getElementById('master-name-activity');
+                const currentVal = sel.value;
+                sel.innerHTML = '<option value="">-- اختر النشاط --</option>' +
+                    db.activities.map(a => `<option value="${a.code}">${a.code} - ${esc(a.name)}</option>`).join('');
+                if ([...sel.options].some(o => o.value === currentVal)) sel.value = currentVal;
             }
         }
 
@@ -4355,11 +4369,12 @@
             if (type === 'names' || type === 'clients') {
                 const cv = Number(document.getElementById('master-contract').value);
                 if (cv > 0) item.contractValue = cv;
-                const acts = [...document.querySelectorAll('.name-activity-check:checked')].map(cb => cb.value);
-                if (acts.length) item.activities = acts;
                 if (type === 'names') {
                     const obName = Number(document.getElementById('master-opening-balance').value);
                     if (obName) item.openingBalance = obName;
+                    const actCode = document.getElementById('master-name-activity').value;
+                    if (!actCode) { alert('من فضلك اختر النشاط الفرعي المرتبط بهذا المستفيد'); return; }
+                    item.activityCode = Number(actCode);
                 }
             }
             if (type === 'projects') {
@@ -4717,62 +4732,39 @@
             printSection('invoice-print-template');
         }
 
+        // مقاولي الباطن هم النوع الوحيد اللي بيظهرله حقلي "النشاط الفرعي" و"المستفيد/المقاول"
+        function isContractorCategory(cat) {
+            return cat === 'مقاولين';
+        }
+
         function filterExpenseSubFields() {
             const cat = document.getElementById('exp-category').value;
-            const catDef = db.expenses.find(c => c.name === cat);
-            const nameType = catDef?.nameType || 'any';
+            const isContractor = isContractorCategory(cat);
 
-            // التبويب يحدد قايمة الأسماء
-            const label = document.getElementById('exp-name-label');
-            if (nameType === 'clients') {
-                fillSelect('exp-name', db.clients);
-                label.textContent = 'العميل';
-            } else if (nameType === 'names') {
-                fillSelect('exp-name', db.names);
-                label.textContent = cat === 'مقاولين باطن' ? 'المقاول' : 'المستفيد';
-            } else {
-                fillSelect('exp-name', [...db.names, ...db.clients]);
-                label.textContent = 'المستفيد';
-            }
+            const actWrap = document.getElementById('exp-activity-wrap');
+            const nameWrap = document.getElementById('exp-name-wrap');
+            const actEl = document.getElementById('exp-activity');
+            const nameEl = document.getElementById('exp-name');
 
-            // بعد ما اخترنا الاسم، نفلتر الأنشطة
-            filterActivitiesByName();
-        }
+            actWrap.classList.toggle('hidden', !isContractor);
+            nameWrap.classList.toggle('hidden', !isContractor);
+            actEl.required = isContractor;
+            nameEl.required = isContractor;
 
-        function calcContractorRemaining() {
-            const executed = Number(document.getElementById('exp-executed')?.value) || 0;
-            const paid = Number(document.getElementById('exp-paid')?.value) || 0;
-            const rem = document.getElementById('exp-remaining-display');
-            if (rem) rem.value = Math.max(executed - paid, 0);
-        }
-        function filterActivitiesByName() {
-            const cat = document.getElementById('exp-category').value;
-            const name = document.getElementById('exp-name').value;
-
-            // الأنشطة المرتبطة بهذا الاسم (من تكويد النشاط - linkedNames)
-            let linkedActivities = db.activities.filter(a =>
-                a.linkedNames && a.linkedNames.includes(name)
-            );
-
-            // لو مفيش ربط بالاسم، جرب الربط بالتبويب
-            if (!linkedActivities.length) {
-                linkedActivities = db.activities.filter(a =>
+            if (isContractor) {
+                // النشاط الفرعي يتفلتر حسب التبويب (لو النشاط مش مربوط بتبويبات معينة، يظهر دايماً)
+                const catActivities = db.activities.filter(a =>
                     !a.categories || a.categories.length === 0 || a.categories.includes(cat)
                 );
+                const prevVal = actEl.value;
+                fillSelect('exp-activity', catActivities.length ? catActivities : db.activities);
+                if ([...actEl.options].some(o => o.value === prevVal)) actEl.value = prevVal;
+                filterBeneficiariesByActivity();
+            } else {
+                actEl.innerHTML = '';
+                nameEl.innerHTML = '';
             }
 
-            const actEl = document.getElementById('exp-activity');
-            const prevVal = actEl.value;
-            fillSelect('exp-activity', linkedActivities.length ? linkedActivities : db.activities);
-
-            // لو في نشاط واحد بس → اختاره تلقائياً
-            if (linkedActivities.length === 1) {
-                actEl.value = linkedActivities[0].name;
-            } else if ([...actEl.options].some(o => o.value === prevVal)) {
-                actEl.value = prevVal;
-            }
-
-            const isContractor = cat === 'مقاولين باطن';
             const execWrap = document.getElementById('exp-executed-wrap');
             if (execWrap) execWrap.classList.toggle('hidden', !isContractor);
             // غيّر تسمية حقل المدفوع
@@ -4782,15 +4774,44 @@
             showContractInfo();
         }
 
-        // دالة قديمة محتاجينها للتوافق
-        function filterExpenseNames() { filterActivitiesByName(); }
+        // المستفيد/المقاول يتفلتر حسب النشاط الفرعي المختار (عن طريق activityCode في دليل الأكواد)
+        function filterBeneficiariesByActivity() {
+            const cat = document.getElementById('exp-category').value;
+            const nameEl = document.getElementById('exp-name');
+            if (!isContractorCategory(cat)) { nameEl.innerHTML = ''; return; }
+
+            const actName = document.getElementById('exp-activity').value;
+            if (!actName) {
+                nameEl.innerHTML = '<option value="">-- اختر النشاط الفرعي أولاً --</option>';
+                nameEl.disabled = true;
+                showContractInfo();
+                return;
+            }
+
+            const actDef = db.activities.find(a => a.name === actName);
+            // لو المستفيد مش مربوط بأي نشاط (بيانات قديمة)، نوريه تحت كل الأنشطة عشان الأدمن يظبطه لاحقاً
+            const filtered = db.names.filter(n => !actDef || n.activityCode == null || n.activityCode === actDef.code);
+            nameEl.disabled = false;
+            const prevVal = nameEl.value;
+            fillSelect('exp-name', filtered.length ? filtered : db.names);
+            if ([...nameEl.options].some(o => o.value === prevVal)) nameEl.value = prevVal;
+
+            showContractInfo();
+        }
+
+        function calcContractorRemaining() {
+            const executed = Number(document.getElementById('exp-executed')?.value) || 0;
+            const paid = Number(document.getElementById('exp-paid')?.value) || 0;
+            const rem = document.getElementById('exp-remaining-display');
+            if (rem) rem.value = Math.max(executed - paid, 0);
+        }
         function showContractInfo() {
             const cat = document.getElementById('exp-category').value;
             const name = document.getElementById('exp-name').value;
             const box = document.getElementById('exp-contract-info');
             if (!box) return;
             let info = null;
-            if (cat === 'مقاولين باطن') {
+            if (isContractorCategory(cat)) {
                 const n = db.names.find(n => n.name === name);
                 if (n && n.contractValue) {
                     const { paid, balance: remaining } = subcontractorBalance(name);
@@ -5002,14 +5023,14 @@
                 alert('تسجيل الإيرادات مكانه الوحيد تاب "مستخلصات العملاء" — مينفعش يتسجل من هنا.');
                 return;
             }
-            const isContractor = cat === 'مقاولين باطن';
+            const isContractor = isContractorCategory(cat);
             const paid = Number(document.getElementById('exp-paid')?.value) || 0;
             const executedValue = isContractor ? (Number(document.getElementById('exp-executed')?.value) || 0) : 0;
             const remaining = isContractor ? Math.max(executedValue - paid, 0) : 0;
             const rec = {
                 category: cat,
-                activity: document.getElementById('exp-activity').value,
-                name: document.getElementById('exp-name').value,
+                activity: isContractor ? document.getElementById('exp-activity').value : '',
+                name: isContractor ? document.getElementById('exp-name').value : '',
                 project: document.getElementById('exp-project').value,
                 total: executedValue || paid,
                 paid,
@@ -5107,7 +5128,7 @@
             }).slice().reverse();
 
             const totalPaid = rows.reduce((s, x) => s + x.paid, 0);
-            const totalDebt = rows.filter(x => x.category === 'مقاولين باطن').reduce((s, x) => s + (x.remaining || 0), 0);
+            const totalDebt = rows.filter(x => isContractorCategory(x.category)).reduce((s, x) => s + (x.remaining || 0), 0);
             document.getElementById('tbody-expenses').innerHTML =
                 rows.map(x => `
         <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(x)}>
@@ -5788,7 +5809,7 @@
                 });
             }
             if (!hasSupplier && !hasItem) {
-                db.expensesData.filter(x => (fp === 'ALL' || !fp || x.project === fp) && (!hasContractor || (x.category === 'مقاولين باطن' && x.name === fContractor))).forEach(x => {
+                db.expensesData.filter(x => (fp === 'ALL' || !fp || x.project === fp) && (!hasContractor || (isContractorCategory(x.category) && x.name === fContractor))).forEach(x => {
                     rows.push({ date: x.date, type: x.category, desc: x.activity, project: x.project, party: x.name, value: x.total });
                 });
             }
@@ -5837,7 +5858,7 @@
         }
 
         function subcontractorBalance(name) {
-            const recs = db.expensesData.filter(x => x.category === 'مقاولين باطن' && x.name === name);
+            const recs = db.expensesData.filter(x => isContractorCategory(x.category) && x.name === name);
             // القيمة المنفذة: أولاً نشوف لو في override يدوي في دليل الأكواد، وإلا نجمع من السجلات
             const nameRec = db.names.find(n => n.name === name) || {};
             const overrideExecuted = (nameRec.executedOverride != null) ? nameRec.executedOverride : null;
@@ -6783,8 +6804,10 @@
             div.id = id;
             div.className = 'flex gap-2 items-center sale-line-row';
             div.innerHTML = `
-        <input type="text" placeholder="وصف العمل / المرحلة (مثال: أعمال حفر وأساسات، مستخلص رقم 1)" class="sale-line-desc flex-1 bg-white border border-slate-200 rounded p-1.5 text-xs" oninput="updateSaleGrandTotal()">
-        <input type="number" placeholder="القيمة" step="any" oninput="updateSaleGrandTotal()" class="sale-line-price w-28 bg-white border border-slate-200 rounded p-1.5 text-xs">
+        <input type="text" placeholder="بيان (مثال: أعمال حفر وأساسات، مستخلص رقم 1)" class="sale-line-desc flex-1 bg-white border border-slate-200 rounded p-1.5 text-xs" oninput="updateSaleGrandTotal()">
+        <input type="text" placeholder="وحدة" class="sale-line-unit w-16 bg-white border border-slate-200 rounded p-1.5 text-xs">
+        <input type="number" placeholder="كمية" value="1" step="any" oninput="updateSaleGrandTotal()" class="sale-line-qty w-16 bg-white border border-slate-200 rounded p-1.5 text-xs">
+        <input type="number" placeholder="سعر الوحدة" step="any" oninput="updateSaleGrandTotal()" class="sale-line-price w-24 bg-white border border-slate-200 rounded p-1.5 text-xs">
         <span class="sale-line-total text-xs font-bold text-lime-700 w-24 text-left">0 ج.م</span>
         <button type="button" onclick="document.getElementById('${id}').remove(); updateSaleGrandTotal();" class="text-red-400 hover:text-red-600 text-xs">🗑</button>
     `;
@@ -6793,8 +6816,9 @@
         function updateSaleGrandTotal() {
             let grand = 0;
             document.querySelectorAll('#sale-lines .sale-line-row').forEach(row => {
+                const qty = Number(row.querySelector('.sale-line-qty')?.value) || 0;
                 const price = Number(row.querySelector('.sale-line-price')?.value) || 0;
-                const lineTotal = price;
+                const lineTotal = qty * price;
                 const span = row.querySelector('.sale-line-total');
                 if (span) span.textContent = fmt(lineTotal);
                 grand += lineTotal;
@@ -6842,15 +6866,15 @@
             const allLines = [...document.querySelectorAll('#sale-lines .sale-line-row')].map(row => ({
                 isService: true,
                 item: row.querySelector('.sale-line-desc')?.value.trim() || '',
-                unit: '',
-                qty: 1,
+                unit: row.querySelector('.sale-line-unit')?.value.trim() || '',
+                qty: Number(row.querySelector('.sale-line-qty')?.value) || 0,
                 price: Number(row.querySelector('.sale-line-price')?.value) || 0
             }));
-            const incompleteLines = allLines.filter(l => (l.item || l.price) && !(l.item && l.price));
-            if (incompleteLines.length) { alert(`في ${incompleteLines.length} بند ناقص بيانات (لازم وصف العمل + القيمة). كمّل البيانات أو احذف البند قبل الحفظ.`); return; }
-            const lines = allLines.filter(l => l.item && l.price);
+            const incompleteLines = allLines.filter(l => (l.item || l.price) && !(l.item && l.qty && l.price));
+            if (incompleteLines.length) { alert(`في ${incompleteLines.length} بند ناقص بيانات (لازم بيان + كمية + سعر الوحدة). كمّل البيانات أو احذف البند قبل الحفظ.`); return; }
+            const lines = allLines.filter(l => l.item && l.qty && l.price);
 
-            if (!lines.length) { alert('أضف بند واحد على الأقل بوصف العمل والقيمة'); return; }
+            if (!lines.length) { alert('أضف بند واحد على الأقل ببيان وكمية وسعر وحدة'); return; }
 
             const grandTotal = lines.reduce((s, l) => s + l.qty * l.price, 0);
 
