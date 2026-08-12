@@ -2159,8 +2159,19 @@
                             </table>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-bold text-slate-500">عرض:</label>
+                        <select id="ledger-party-filter" onchange="filterPartyAccountsView()"
+                            class="bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold">
+                            <option value="all">الكل (الثلاثة معاً)</option>
+                            <option value="contractors">حسابات مقاولي الباطن فقط</option>
+                            <option value="clients">حسابات العملاء فقط</option>
+                            <option value="suppliers">حسابات الموردين فقط</option>
+                        </select>
+                    </div>
+                    <div id="party-accounts-grid" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div id="panel-contractors-accounts"
+                            class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                             <div
                                 class="p-4 bg-amber-50 border-b border-amber-100 flex flex-wrap justify-between items-center gap-2">
                                 <h3 class="font-bold text-slate-900"><i class="fa-solid fa-hard-hat text-amber-600"></i>
@@ -2183,7 +2194,8 @@
                                 </table>
                             </div>
                         </div>
-                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div id="panel-clients-accounts"
+                            class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                             <div
                                 class="p-4 bg-cyan-50 border-b border-cyan-100 flex flex-wrap justify-between items-center gap-2">
                                 <h3 class="font-bold text-slate-900"><i class="fa-solid fa-user-tie text-cyan-600"></i>
@@ -2206,7 +2218,8 @@
                                 </table>
                             </div>
                         </div>
-                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div id="panel-suppliers-accounts"
+                            class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                             <div
                                 class="p-4 bg-purple-50 border-b border-purple-100 flex flex-wrap justify-between items-center gap-2">
                                 <h3 class="font-bold text-slate-900"><i
@@ -6067,6 +6080,26 @@
             if (panel === 'contractors') { renderContractorAccounts(); renderContractorPaymentsTable(); }
             if (panel === 'obligations') { renderObligations(); }
             if (panel === 'refunds') { renderRefunds(); }
+        }
+        // فلتر عرض كشف الحساب المركب — يعرض الثلاثة معاً أو واحد بس بعرض كامل
+        function filterPartyAccountsView() {
+            const val = document.getElementById('ledger-party-filter')?.value || 'all';
+            const grid = document.getElementById('party-accounts-grid');
+            if (!grid) return;
+            const panels = {
+                contractors: document.getElementById('panel-contractors-accounts'),
+                clients: document.getElementById('panel-clients-accounts'),
+                suppliers: document.getElementById('panel-suppliers-accounts'),
+            };
+            if (val === 'all') {
+                grid.classList.remove('lg:grid-cols-1');
+                grid.classList.add('lg:grid-cols-3');
+                Object.values(panels).forEach(p => p?.classList.remove('hidden'));
+            } else {
+                grid.classList.remove('lg:grid-cols-3');
+                grid.classList.add('lg:grid-cols-1');
+                Object.entries(panels).forEach(([key, p]) => p?.classList.toggle('hidden', key !== val));
+            }
         }
         function renderPartyAccounts() {
             const subTerm = document.getElementById('search-ledger-contractors')?.value || '';
