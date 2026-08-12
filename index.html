@@ -3160,14 +3160,8 @@
                         </div>
                         <p class="text-[10px] text-slate-400 mt-1">لما تختار هذا التبويب، هيظهر هذا النشاط فقط</p>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">المستفيدون المرتبطون بهذا النشاط
-                            (اختياري)</label>
-                        <div id="master-activity-names-list"
-                            class="flex flex-wrap gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-24 overflow-y-auto">
-                        </div>
-                        <p class="text-[10px] text-slate-400 mt-1">لما تختار هذا النشاط، هتظهر هذه الأسماء فقط</p>
-                    </div>
+                    <p class="text-[10px] text-slate-400">ربط المستفيدين بهذا النشاط بيتم من شاشة "6. الأفراد ومقاولو
+                        الباطن" — اختار النشاط الفرعي من هناك عند إضافة كل مستفيد</p>
                 </div>
 
                 <!-- ربط المستفيد بالنشاط الفرعي -->
@@ -4238,9 +4232,6 @@
                 const checks = document.querySelectorAll('.activity-cat-check');
                 const assigned = item.categories || [];
                 checks.forEach(cb => { cb.checked = assigned.includes(cb.value); });
-                const nameChecks = document.querySelectorAll('.activity-names-check');
-                const assignedNames = item.linkedNames || [];
-                nameChecks.forEach(cb => { cb.checked = assignedNames.includes(cb.value); });
             }
             if (cat === 'names') {
                 const actSel = document.getElementById('master-name-activity');
@@ -4308,15 +4299,6 @@
                 <input type="checkbox" value="${esc(c.name)}" ${currentChecked.includes(c.name) ? 'checked' : ''} class="activity-cat-check">
                 <span>${esc(c.name)}</span>
             </label>`).join('');
-
-                const namesList = document.getElementById('master-activity-names-list');
-                const currentNamesChecked = [...namesList.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
-                const allPeople = [...db.names, ...db.clients];
-                namesList.innerHTML = allPeople.map(n => `
-            <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
-                <input type="checkbox" value="${esc(n.name)}" ${currentNamesChecked.includes(n.name) ? 'checked' : ''} class="activity-names-check">
-                <span>${esc(n.name)}</span>
-            </label>`).join('');
             }
             if (type === 'names') {
                 const sel = document.getElementById('master-name-activity');
@@ -4363,8 +4345,6 @@
             if (type === 'activities') {
                 const cats = [...document.querySelectorAll('.activity-cat-check:checked')].map(cb => cb.value);
                 if (cats.length) item.categories = cats;
-                const names = [...document.querySelectorAll('.activity-names-check:checked')].map(cb => cb.value);
-                if (names.length) item.linkedNames = names;
             }
             if (type === 'names' || type === 'clients') {
                 const cv = Number(document.getElementById('master-contract').value);
