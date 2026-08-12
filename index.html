@@ -3168,12 +3168,11 @@
                 <div id="master-name-activity-wrap" class="hidden">
                     <label class="block text-xs font-bold text-slate-600 mb-1">النشاط الفرعي المرتبط <span
                             class="text-rose-500">*</span></label>
-                    <select id="master-name-activity"
-                        class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
-                        <option value="">-- اختر النشاط --</option>
-                    </select>
-                    <p class="text-[10px] text-slate-400 mt-1">لازم تحدد النشاط الفرعي لهذا المستفيد — هيظهر بس لما
-                        يتم اختيار هذا النشاط في المصروفات</p>
+                    <div id="master-name-activity-list"
+                        class="flex flex-wrap gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-28 overflow-y-auto">
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">اختر نشاط واحد أو أكتر لهذا المستفيد — هيظهر في
+                        المصروفات لما يتم اختيار أي نشاط من دول</p>
                 </div>
 
                 <div id="master-tax-wrap" style="display:none" class="flex flex-col gap-3">
@@ -3254,7 +3253,7 @@
         function masterRowToItem(cat, row) {
             let item;
             if (cat === 'expenses') item = { code: row.code, name: row.name, plType: row.pl_type, plBucket: row.pl_bucket || undefined, nameType: row.name_type || 'any' };
-            else if (cat === 'names') item = { code: row.code, name: row.name, contractValue: row.contract_value || undefined, activities: (row.activities && row.activities.length) ? row.activities : undefined, activityCode: row.activity_code || undefined, openingBalance: row.opening_balance || undefined, executedOverride: (row.executed_override != null ? row.executed_override : undefined) };
+            else if (cat === 'names') item = { code: row.code, name: row.name, contractValue: row.contract_value || undefined, activities: (row.activities && row.activities.length) ? row.activities : undefined, activityCodes: (row.activity_codes && row.activity_codes.length) ? row.activity_codes : undefined, openingBalance: row.opening_balance || undefined, executedOverride: (row.executed_override != null ? row.executed_override : undefined) };
             else if (cat === 'clients') item = { code: row.code, name: row.name, contractValue: row.contract_value || undefined, activities: (row.activities && row.activities.length) ? row.activities : undefined };
             else if (cat === 'suppliers') item = { code: row.code, name: row.name, items: (row.items && row.items.length) ? row.items : undefined, openingBalance: row.opening_balance || undefined };
             else if (cat === 'supplies') item = { code: row.code, name: row.name, unit: row.unit || undefined };
@@ -3273,7 +3272,7 @@
         }
         function masterItemToRow(cat, item) {
             if (cat === 'expenses') return { code: item.code, name: item.name, pl_type: item.plType, pl_bucket: item.plBucket || null, name_type: item.nameType || 'any' };
-            if (cat === 'names') return { code: item.code, name: item.name, contract_value: item.contractValue || null, activities: item.activities || null, activity_code: item.activityCode || null, opening_balance: item.openingBalance || null, executed_override: (item.executedOverride != null ? item.executedOverride : null) };
+            if (cat === 'names') return { code: item.code, name: item.name, contract_value: item.contractValue || null, activities: item.activities || null, activity_codes: item.activityCodes || null, opening_balance: item.openingBalance || null, executed_override: (item.executedOverride != null ? item.executedOverride : null) };
             if (cat === 'clients') return { code: item.code, name: item.name, contract_value: item.contractValue || null, activities: item.activities || null };
             if (cat === 'suppliers') return { code: item.code, name: item.name, items: item.items || null, opening_balance: item.openingBalance || null };
             if (cat === 'supplies') return { code: item.code, name: item.name, unit: item.unit || null };
@@ -4138,9 +4137,10 @@
                         badge = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold shrink-0 truncate max-w-[160px]" title="${esc(it.categories.join('، '))}">${esc(it.categories.join('، '))}</span>`;
                     }
                     if (cat === 'names') {
-                        const linkedAct = db.activities.find(a => a.code === it.activityCode);
-                        if (linkedAct) {
-                            badge = `<span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-bold shrink-0 truncate max-w-[160px]" title="${esc(linkedAct.name)}">${esc(linkedAct.name)}</span>`;
+                        const linkedActs = (it.activityCodes || []).map(c => db.activities.find(a => a.code === c)).filter(Boolean);
+                        if (linkedActs.length) {
+                            const namesStr = linkedActs.map(a => a.name).join('، ');
+                            badge = `<span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-bold shrink-0 truncate max-w-[160px]" title="${esc(namesStr)}">${esc(namesStr)}</span>`;
                         } else {
                             badge = `<span class="bg-rose-100 text-rose-700 text-xs px-2 py-0.5 rounded-full font-bold shrink-0" title="لا يوجد نشاط مرتبط بهذا المستفيد">⚠ بدون نشاط</span>`;
                         }
@@ -4234,8 +4234,9 @@
                 checks.forEach(cb => { cb.checked = assigned.includes(cb.value); });
             }
             if (cat === 'names') {
-                const actSel = document.getElementById('master-name-activity');
-                if (actSel) actSel.value = item.activityCode || '';
+                const checks = document.querySelectorAll('.name-activity-check');
+                const assigned = (item.activityCodes || []).map(String);
+                checks.forEach(cb => { cb.checked = assigned.includes(cb.value); });
             }
             if (cat === 'taxes') {
                 document.getElementById('master-tax-rate').value = item.rate || 0;
@@ -4280,7 +4281,6 @@
             document.getElementById('master-tax-wrap').style.display = type === 'taxes' ? 'flex' : 'none';
             document.getElementById('master-activity-cats-wrap').classList.toggle('hidden', type !== 'activities');
             document.getElementById('master-name-activity-wrap').classList.toggle('hidden', type !== 'names');
-            document.getElementById('master-name-activity').required = (type === 'names');
 
             if (type === 'suppliers') {
                 const list = document.getElementById('master-supplier-items-list');
@@ -4301,11 +4301,13 @@
             </label>`).join('');
             }
             if (type === 'names') {
-                const sel = document.getElementById('master-name-activity');
-                const currentVal = sel.value;
-                sel.innerHTML = '<option value="">-- اختر النشاط --</option>' +
-                    db.activities.map(a => `<option value="${a.code}">${a.code} - ${esc(a.name)}</option>`).join('');
-                if ([...sel.options].some(o => o.value === currentVal)) sel.value = currentVal;
+                const list = document.getElementById('master-name-activity-list');
+                const currentChecked = [...list.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
+                list.innerHTML = db.activities.map(a => `
+            <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
+                <input type="checkbox" value="${a.code}" ${currentChecked.includes(String(a.code)) ? 'checked' : ''} class="name-activity-check">
+                <span>${esc(a.name)}</span>
+            </label>`).join('');
             }
         }
 
@@ -4352,9 +4354,9 @@
                 if (type === 'names') {
                     const obName = Number(document.getElementById('master-opening-balance').value);
                     if (obName) item.openingBalance = obName;
-                    const actCode = document.getElementById('master-name-activity').value;
-                    if (!actCode) { alert('من فضلك اختر النشاط الفرعي المرتبط بهذا المستفيد'); return; }
-                    item.activityCode = Number(actCode);
+                    const actCodes = [...document.querySelectorAll('.name-activity-check:checked')].map(cb => Number(cb.value));
+                    if (!actCodes.length) { alert('من فضلك اختر نشاط فرعي واحد على الأقل مرتبط بهذا المستفيد'); return; }
+                    item.activityCodes = actCodes;
                 }
             }
             if (type === 'projects') {
@@ -4754,7 +4756,7 @@
             showContractInfo();
         }
 
-        // المستفيد/المقاول يتفلتر حسب النشاط الفرعي المختار (عن طريق activityCode في دليل الأكواد)
+        // المستفيد/المقاول يتفلتر حسب النشاط الفرعي المختار (عن طريق activityCodes في دليل الأكواد)
         function filterBeneficiariesByActivity() {
             const cat = document.getElementById('exp-category').value;
             const nameEl = document.getElementById('exp-name');
@@ -4770,7 +4772,7 @@
 
             const actDef = db.activities.find(a => a.name === actName);
             // لو المستفيد مش مربوط بأي نشاط (بيانات قديمة)، نوريه تحت كل الأنشطة عشان الأدمن يظبطه لاحقاً
-            const filtered = db.names.filter(n => !actDef || n.activityCode == null || n.activityCode === actDef.code);
+            const filtered = db.names.filter(n => !actDef || !n.activityCodes || !n.activityCodes.length || n.activityCodes.includes(actDef.code));
             nameEl.disabled = false;
             const prevVal = nameEl.value;
             fillSelect('exp-name', filtered.length ? filtered : db.names);
