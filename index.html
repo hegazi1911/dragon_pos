@@ -418,7 +418,7 @@
                             class="text-xs text-slate-500 hover:text-slate-800 underline">مسح الفترة</button>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="printMonthlyReport()"
+                        <button onclick="openMonthlyReportModal()"
                             class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
                             <i class="fa-solid fa-file-lines"></i><span>تقرير شهري</span>
                         </button>
@@ -3043,6 +3043,30 @@
         </div>
     </div>
 
+    <!-- MONTHLY REPORT MODAL (عرض على الشاشة + طباعة/واتساب) -->
+    <div id="monthly-report-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-100 p-4">
+                <h3 class="font-bold text-slate-900">التقرير الشهري</h3>
+                <button onclick="closeMonthlyReportModal()"
+                    class="text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
+            </div>
+            <div id="monthly-report-content" class="overflow-y-auto p-4"></div>
+            <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 p-3 bg-slate-50 rounded-b-2xl">
+                <button onclick="closeMonthlyReportModal()"
+                    class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold">إغلاق</button>
+                <button id="btn-monthly-report-whatsapp" onclick="sendMonthlyReportWhatsapp()"
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                    <i class="fa-brands fa-whatsapp"></i><span>إرسال واتساب</span>
+                </button>
+                <button onclick="printMonthlyReportNow()"
+                    class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i><span>طباعة</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="add-master-modal"
         class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white p-6 rounded-xl border border-slate-200 w-full max-w-md shadow-xl flex flex-col gap-4">
@@ -3670,7 +3694,7 @@
 
             // تصدير نسخة احتياطية ومشاركة واتساب: افتراضيًا للمدير بس، لكن قابلة للمنح لمستخدم تاني من الصلاحيات
             const exportShareCanView = hasModulePerm('exportShare', 'view');
-            ['btn-export-backup', 'btn-whatsapp-share'].forEach(id => {
+            ['btn-export-backup', 'btn-whatsapp-share', 'btn-monthly-report-whatsapp'].forEach(id => {
                 const b = document.getElementById(id);
                 if (b) { b.classList.toggle('hidden', !exportShareCanView); b.classList.toggle('flex', exportShareCanView); }
             });
@@ -5291,9 +5315,7 @@
                 return d;
             })();
         }
-        function printMonthlyReport() {
-            const month = prompt('اكتب الشهر بصيغة سنة-شهر (مثال: 2026-07):', todayISO().slice(0, 7));
-            if (!month || !/^\d{4}-\d{2}$/.test(month)) { if (month !== null) alert('صيغة الشهر غلط، اكتبها كده: 2026-07'); return; }
+        function computeMonthlyReportData(month) {
             const dateFrom = month + '-01';
             const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
             const dateTo = month + '-' + String(lastDay).padStart(2, '0');
@@ -5308,11 +5330,12 @@
             const monthNames = { '01': 'يناير', '02': 'فبراير', '03': 'مارس', '04': 'أبريل', '05': 'مايو', '06': 'يونيو', '07': 'يوليو', '08': 'أغسطس', '09': 'سبتمبر', '10': 'أكتوبر', '11': 'نوفمبر', '12': 'ديسمبر' };
             const monthLabel = `${monthNames[month.slice(5, 7)]} ${month.slice(0, 4)}`;
 
+            return { month, monthLabel, pl, clientReceivables, supplierPayables, subcontractorPayables, cash };
+        }
+        function buildMonthlyReportHTML(data) {
+            const { monthLabel, pl, clientReceivables, supplierPayables, subcontractorPayables, cash } = data;
             const row = (label, val, cls = '') => `<div style="display:flex;justify-content:space-between;padding:8px 4px;border-bottom:1px dotted #cbd5e1;"><span>${esc(label)}</span><span style="font-weight:bold;" class="${cls}">${fmt(val)}</span></div>`;
-
-            const container = getReportPrintContainer();
-            container.innerHTML = `
-        <style>@page{size:auto;margin:10mm;}</style>
+            return `
         <div id="report-print-target" style="font-family:'Cairo',Tahoma,sans-serif;padding:20px;max-width:700px;margin:auto;border:3px double #1e293b;">
             <div style="text-align:center;border-bottom:2px solid #1e293b;padding-bottom:12px;margin-bottom:16px;">
                 <h1 style="font-size:18px;font-weight:900;margin:0;">DRACON</h1>
@@ -5339,10 +5362,47 @@
             </div>
         </div>
     `;
+        }
+        function buildMonthlyReportWhatsAppText(data) {
+            const { monthLabel, pl, clientReceivables, supplierPayables, subcontractorPayables, cash } = data;
+            return `📊 التقرير الشهري — ${monthLabel} (DRACON)\n\n` +
+                `📈 إجمالي الإيرادات: ${fmt(pl.revenueTotal)}\n` +
+                `📉 التكاليف المباشرة: ${fmt(pl.directTotal)}\n` +
+                `📉 المصروفات التشغيلية: ${fmt(pl.operatingTotal)}\n` +
+                `✅ صافي الربح قبل الضريبة: ${fmt(pl.profitBeforeTax)}\n\n` +
+                `💰 الرصيد النقدي بالخزينة: ${fmt(cash)}\n` +
+                `🟢 متبقي لنا عند العملاء: ${fmt(clientReceivables)}\n` +
+                `🔴 متبقي للموردين: ${fmt(supplierPayables)}\n` +
+                `🟠 متبقي لمقاولي الباطن: ${fmt(subcontractorPayables)}`;
+        }
+
+        let __monthlyReportData = null;
+        function openMonthlyReportModal() {
+            const month = prompt('اكتب الشهر بصيغة سنة-شهر (مثال: 2026-07):', todayISO().slice(0, 7));
+            if (!month || !/^\d{4}-\d{2}$/.test(month)) { if (month !== null) alert('صيغة الشهر غلط، اكتبها كده: 2026-07'); return; }
+            __monthlyReportData = computeMonthlyReportData(month);
+            document.getElementById('monthly-report-content').innerHTML = buildMonthlyReportHTML(__monthlyReportData);
+            document.getElementById('monthly-report-modal').classList.remove('hidden');
+            document.getElementById('monthly-report-modal').classList.add('flex');
+        }
+        function closeMonthlyReportModal() {
+            document.getElementById('monthly-report-modal').classList.add('hidden');
+            document.getElementById('monthly-report-modal').classList.remove('flex');
+        }
+        function printMonthlyReportNow() {
+            if (!__monthlyReportData) return;
+            const container = getReportPrintContainer();
+            container.innerHTML = '<style>@page{size:auto;margin:10mm;}</style>' + buildMonthlyReportHTML(__monthlyReportData);
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-target'));
             container.classList.remove('dj-print-hidden');
             container.classList.add('print-target');
             window.print();
+        }
+        function sendMonthlyReportWhatsapp() {
+            if (!hasModulePerm('exportShare', 'view')) return;
+            if (!__monthlyReportData) return;
+            const text = buildMonthlyReportWhatsAppText(__monthlyReportData);
+            window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
         }
         function renderProjectComparison() {
             const tbody = document.getElementById('tbody-project-compare');
