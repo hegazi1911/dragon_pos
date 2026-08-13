@@ -4998,8 +4998,10 @@
             const openingBalance = sup.openingBalance || 0;
             const totalInvoices = db.procurements.filter(p => p.supplier === name).reduce((a, p) => a + (p.qty * p.price), 0);
             const totalPaid = db.payments.filter(pay => pay.supplier === name).reduce((a, pay) => a + pay.amount, 0);
+            // الخصم المكتسب بيسدد جزء من الفاتورة زي الكاش بالظبط — لازم يتخصم من المستحق، وإلا هيفضل ظاهر كأنه لسه مديون بيه (وده اللي بيكسر توازن ميزان المراجعة)
+            const totalDiscount = db.payments.filter(pay => pay.supplier === name).reduce((a, pay) => a + (pay.discount || 0), 0);
             const totalRefunded = (db.refunds || []).filter(r => r.partyType === 'supplier' && r.name === name).reduce((a, r) => a + r.amount, 0);
-            return { totalInvoices, totalPaid, refunded: totalRefunded, openingBalance, remaining: openingBalance + totalInvoices - totalPaid + totalRefunded };
+            return { totalInvoices, totalPaid, discount: totalDiscount, refunded: totalRefunded, openingBalance, remaining: openingBalance + totalInvoices - totalPaid - totalDiscount + totalRefunded };
         }
         function filterAccountRows(rows, status) {
             if (status === 'CASH') return rows.filter(r => r.remaining <= 0);
@@ -5922,12 +5924,14 @@
             // المدفوع = مدفوعات من سجل المصروفات + مدفوعات من سجل المقاولين المستقل
             const paidFromExp = recs.reduce((a, x) => a + x.paid, 0);
             const paidFromCpay = (db.contractorPayments || []).filter(p => p.name === name).reduce((a, p) => a + p.amount, 0);
+            // الخصم المكتسب بيسدد جزء من المستحق زي الكاش بالظبط — لازم يتخصم برضه، وإلا هيفضل ظاهر كأنه لسه مديون بيه (وده اللي بيكسر توازن ميزان المراجعة)
+            const totalDiscount = (db.contractorPayments || []).filter(p => p.name === name).reduce((a, p) => a + (p.discount || 0), 0);
             const totalRefunded = (db.refunds || []).filter(r => r.partyType === 'contractor' && r.name === name).reduce((a, r) => a + r.amount, 0);
             const totalPaid = paidFromExp + paidFromCpay - totalRefunded;
             const openingBalance = nameRec.openingBalance || 0;
-            const balance = openingBalance + totalExecuted - totalPaid; // موجب = مستحق له، سالب = رصيد ليّ عنده
+            const balance = openingBalance + totalExecuted - totalPaid - totalDiscount; // موجب = مستحق له، سالب = رصيد ليّ عنده
             const cv = nameRec.contractValue || 0;
-            return { contractValue: cv, totalExecuted, paid: totalPaid, refunded: totalRefunded, openingBalance, balance };
+            return { contractValue: cv, totalExecuted, paid: totalPaid, discount: totalDiscount, refunded: totalRefunded, openingBalance, balance };
         }
 
         /* ================= استرداد مبلغ من مورد/مقاول ================= */
