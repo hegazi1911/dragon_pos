@@ -331,6 +331,22 @@ create table if not exists audit_log (
   created_at timestamptz not null default now()
 );
 
+-- pending_changes: طلبات موافقة المدير — لأي مستخدم عنده profiles.requires_approval = true.
+-- بدل ما تتنفذ إضافة/تعديل/حذف على طول، بتتسجل هنا كطلب معلّق (before/after كـ JSON)، وتتنفذ فعليًا
+-- بس لما المدير يوافق عليها (عن طريق admin-users Edge Function، action=approve_change/reject_change).
+create table if not exists pending_changes (
+  id bigint generated always as identity primary key,
+  user_id uuid references profiles(id) on delete set null, -- مرجع للمستخدم الطالب؛ يتفرغ لو اتحذف حسابه بدل ما يمنع الحذف
+  action_type text not null, -- create / update / delete
+  module text not null, -- نفس معرّف التبويب (procurement, expenses, ...) لتحديد صلاحية التنفيذ والتنقل
+  target_record_id text, -- لعمليات update/delete: هوية السجل الأصلي المستهدف
+  before_data jsonb, -- نسخة من السجل قبل التعديل (للمقارنة/التراجع)
+  after_data jsonb, -- تفاصيل العملية المطلوبة (اسم العنصر + عمليات insert/update/delete الفعلية)
+  status text not null default 'pending', -- pending / approved / rejected
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+
 -- ---------- إعدادات عامة (متبقية للتوافق، غير مستخدمة في التصميم الجديد) ----------
 create table if not exists app_settings (
   key text primary key,
@@ -391,7 +407,8 @@ create table if not exists profiles (
   is_admin boolean not null default false,
   active boolean not null default true,
   permissions jsonb not null default '{}'::jsonb, -- مفتاح مستقل لكل تبويب: {"procurement":{"view":true,"edit":true,"delete":false}, "sales":{...}, ..., "masterdata":{...}} (18 مفتاح)
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  requires_approval boolean not null default false -- لو true: أي إضافة/تعديل/حذف من المستخدم ده بيتسجل في pending_changes بدل التنفيذ المباشر، لحد ما المدير يوافق
 );
 alter table profiles enable row level security;
 grant select, insert, update, delete on profiles to service_role; -- جدول جديد محتاج المنحة دي صراحةً عشان الـ Edge Function تقدر تكتب فيه
@@ -498,6 +515,18 @@ drop policy if exists "insert own log" on audit_log;
 drop policy if exists "select admin only" on audit_log;
 create policy "insert own log" on audit_log for insert with check (is_active_user());
 create policy "select admin only" on audit_log for select using (is_admin_user());
+
+-- pending_changes: المستخدم يقدر يسجّل طلب باسمه هو بس، وبشرط يكون عنده أصلاً صلاحية edit/delete
+-- على الموديول ده (منعًا لطلب حركة هو أصلاً ممنوع منها) — القراءة له طلباته بس أو للمدير كل الطلبات —
+-- والتعديل (الموافقة/الرفض) للمدير بس، مفيش حذف خالص (سجل تاريخي دايمًا).
+alter table pending_changes enable row level security;
+drop policy if exists "insert own pending change" on pending_changes;
+drop policy if exists "select own or admin" on pending_changes;
+drop policy if exists "admin resolves" on pending_changes;
+create policy "insert own pending change" on pending_changes for insert
+  with check (user_id = auth.uid() and has_permission(module, case when action_type = 'delete' then 'delete' else 'edit' end));
+create policy "select own or admin" on pending_changes for select using (user_id = auth.uid() or is_admin_user());
+create policy "admin resolves" on pending_changes for update using (is_admin_user());
 
 -- app_settings: جدول قديم غير مستخدم في التصميم الحالي — قراءة فقط للمفعّلين، بدون كتابة من المتصفح.
 alter table app_settings enable row level security;

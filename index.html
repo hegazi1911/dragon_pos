@@ -364,6 +364,13 @@
                     class="tab-btn hidden w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
                     <i class="fa-solid fa-users-gear text-cyan-300 w-5"></i><span>إدارة المستخدمين</span>
                 </button>
+                <button onclick="switchTab('pendingApprovals')" id="btn-pendingApprovals"
+                    class="tab-btn hidden w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-user-clock text-amber-300 w-5"></i><span class="flex-1">طلبات في انتظار
+                        الموافقة</span>
+                    <span id="pending-approvals-count"
+                        class="hidden text-xs font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full">0</span>
+                </button>
             </div>
             <div class="p-4 border-t border-slate-800 flex items-center gap-2.5 cursor-pointer hover:bg-slate-800"
                 onclick="openProfileModal()" title="الملف الشخصي / تغيير كلمة المرور">
@@ -383,6 +390,14 @@
                 <i class="fa-solid fa-lock text-4xl"></i>
                 <p class="font-bold text-slate-600">مفيش صلاحيات متاحة لحسابك حاليًا</p>
                 <p class="text-xs">تواصل مع مدير النظام عشان يفعّل صلاحياتك</p>
+            </div>
+
+            <!-- طلباتي قيد المراجعة (تظهر بس للمستخدم اللي محتاج موافقة أدمن ولسه عنده طلبات معلّقة) -->
+            <div id="my-pending-requests-panel"
+                class="hidden mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 flex-col gap-2">
+                <h3 class="font-bold text-amber-800 text-sm flex items-center gap-2"><i
+                        class="fa-solid fa-hourglass-half"></i> طلباتي قيد المراجعة</h3>
+                <div id="my-pending-requests-list" class="flex flex-col gap-1.5"></div>
             </div>
 
             <!-- DASHBOARD -->
@@ -861,9 +876,21 @@
                                 id="exp-name" onchange="showContractInfo()"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
                         </div>
-                        <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label><select
-                                id="exp-project" required
-                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">المشروع (تقدر تحمّله على أكتر من
+                                مشروع، ينقسم بينهم بالتساوي)</label>
+                            <div class="relative">
+                                <button type="button" id="exp-project-ms-btn"
+                                    onclick="toggleProjectMultiSelectDropdown('exp-project-ms')"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm flex items-center justify-between">
+                                    <span id="exp-project-ms-label">اختر مشروع أو أكتر</span>
+                                    <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                                </button>
+                                <div id="exp-project-ms-panel"
+                                    class="hidden absolute z-20 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-2 w-full max-h-60 overflow-y-auto">
+                                    <div id="exp-project-ms-options"></div>
+                                </div>
+                            </div>
                         </div>
                         <div id="exp-contract-info"
                             class="hidden md:col-span-4 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 text-xs text-slate-700">
@@ -1112,6 +1139,18 @@
                         <div class="flex flex-wrap gap-2 items-center">
                             <input id="payroll-month" type="month" onchange="renderPayrollSummary()"
                                 class="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
+                            <div class="relative">
+                                <button type="button" id="payroll-project-ms-btn"
+                                    onclick="toggleProjectMultiSelectDropdown('payroll-project-ms')"
+                                    class="bg-white border border-slate-200 rounded px-2 py-1 text-xs flex items-center gap-2">
+                                    <span id="payroll-project-ms-label">حمّل على مشروع...</span>
+                                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                                </button>
+                                <div id="payroll-project-ms-panel"
+                                    class="hidden absolute z-20 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-2 w-48 max-h-60 overflow-y-auto">
+                                    <div id="payroll-project-ms-options"></div>
+                                </div>
+                            </div>
                             <button onclick="postPayroll()"
                                 class="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold">💰
                                 ترحيل رواتب الشهر للمصروفات</button>
@@ -1645,9 +1684,9 @@
                                     class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input
                                     id="pay-notes" type="text"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-600 mb-1">خصم مكتسب (ج.م)</label><input
-                                    id="pay-discount" type="number" step="any" min="0" placeholder="0"
-                                    title="خصم وافق عليه المورد عند السداد — بيتسجل كإيراد إضافي"
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">خصم مكتسب
+                                    (ج.م)</label><input id="pay-discount" type="number" step="any" min="0"
+                                    placeholder="0" title="خصم وافق عليه المورد عند السداد — بيتسجل كإيراد إضافي"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                             <div><button type="submit"
                                     class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold p-2.5 rounded-lg text-sm">حفظ
@@ -1726,9 +1765,9 @@
                                     class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input
                                     id="cpay-notes" type="text"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-600 mb-1">خصم مكتسب (ج.م)</label><input
-                                    id="cpay-discount" type="number" step="any" min="0" placeholder="0"
-                                    title="خصم وافق عليه المقاول عند السداد — بيتسجل كإيراد إضافي"
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">خصم مكتسب
+                                    (ج.م)</label><input id="cpay-discount" type="number" step="any" min="0"
+                                    placeholder="0" title="خصم وافق عليه المقاول عند السداد — بيتسجل كإيراد إضافي"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                             <div><button type="submit"
                                     class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold p-2.5 rounded-lg text-sm">حفظ
@@ -2758,10 +2797,37 @@
                                     <th class="p-3">دليل الأكواد</th>
                                     <th class="p-3">أدوات النظام</th>
                                     <th class="p-3 text-center">الحالة</th>
+                                    <th class="p-3 text-center">يحتاج موافقة</th>
                                     <th class="p-3"></th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-users"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PENDING APPROVALS TAB (المدير فقط) -->
+            <div id="tab-pendingApprovals" class="tab-content flex-col gap-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-900">طلبات في انتظار الموافقة</h2>
+                </div>
+                <p class="text-xs text-slate-500">حركات المستخدمين اللي محتاجين موافقة الأدمن قبل التنفيذ — وافق
+                    عليها عشان تتطبّق فعليًا، أو ارفضها عشان تتجاهل نهائيًا.</p>
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-right">
+                            <thead class="bg-slate-800 text-white">
+                                <tr>
+                                    <th class="p-3">المستخدم</th>
+                                    <th class="p-3">الإجراء</th>
+                                    <th class="p-3">التبويب</th>
+                                    <th class="p-3">التفاصيل</th>
+                                    <th class="p-3">التاريخ</th>
+                                    <th class="p-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-pending-approvals"></tbody>
                         </table>
                     </div>
                 </div>
@@ -2791,6 +2857,13 @@
                 <input id="user-password" type="text" autocomplete="new-password"
                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
             </div>
+            <label
+                class="flex items-center gap-2 text-sm bg-amber-50 border border-amber-200 rounded-lg p-2.5 cursor-pointer">
+                <input id="user-requires-approval" type="checkbox" class="w-4 h-4">
+                <span class="font-bold text-amber-800">يحتاج موافقة الأدمن قبل التنفيذ</span>
+            </label>
+            <p class="text-[10px] text-slate-400 -mt-2">لو مفعّلة، أي إضافة/تعديل/حذف من هذا المستخدم في أي تبويب
+                هيتحفظ كطلب معلّق لحد ما توافق عليه من تاب "طلبات في انتظار الموافقة"</p>
             <div id="user-permissions-editor" class="flex flex-col gap-3"></div>
             <p id="user-modal-error" class="hidden text-rose-600 text-xs font-bold"></p>
             <div class="flex gap-2">
@@ -3269,7 +3342,8 @@
                 taxes: [], investors: [], investorFunding: [], profitDistributions: [], investorLiabilities: [],
                 custodies: [], accounts: [], employees: [], attendance: [], auditLog: [], assets: [], assetTypes: [],
                 contractorPayments: [], refunds: [], employeeAdvances: [],
-                managerLiabilities: [], managerPayments: [], dailyJournals: [], obligations: [], externalInvestments: []
+                managerLiabilities: [], managerPayments: [], dailyJournals: [], obligations: [], externalInvestments: [],
+                pendingChanges: []
             };
         }
 
@@ -3345,6 +3419,9 @@
         function liabilityRowToRecord(row) { return { ...row, paidAmount: row.paid_amount || 0, paidDate: row.paid_date ?? undefined }; }
         function managerPaymentRowToRecord(row) { return { ...row, liabilityId: row.liability_id }; }
         function auditRowToRecord(row) { return { id: row.id, action: row.action, entity: row.entity, entityName: row.entity_name, oldValue: row.old_value, newValue: row.new_value, user: row.user_label, timestamp: row.created_at }; }
+        function pendingChangeRowToRecord(row) {
+            return { id: row.id, userId: row.user_id, actionType: row.action_type, module: row.module, targetRecordId: row.target_record_id, beforeData: row.before_data, afterData: row.after_data, status: row.status, createdAt: row.created_at, resolvedAt: row.resolved_at };
+        }
 
         function markSaving() {
             const ind = document.getElementById('save-indicator');
@@ -3367,7 +3444,7 @@
                     accountsRes, employeesRes, assetTypesRes, taxesRes,
                     procRes, salesRes, expDataRes, payRes, cpayRes, refundsRes,
                     invFundRes, distRes, invLiabRes, mgrLiabRes, mgrPayRes,
-                    custodyRes, advanceRes, attendanceRes, assetsRes, djRes, obligRes, extInvRes, auditRes] = await Promise.all([
+                    custodyRes, advanceRes, attendanceRes, assetsRes, djRes, obligRes, extInvRes, auditRes, pendingRes] = await Promise.all([
                         sb.from('projects').select('*').order('code'),
                         sb.from('supplies').select('*').order('code'),
                         sb.from('suppliers').select('*').order('code'),
@@ -3398,11 +3475,12 @@
                         sb.from('daily_journals').select('*').order('id'),
                         sb.from('obligations').select('*').order('id'),
                         sb.from('external_investments').select('*').order('id'),
-                        sb.from('audit_log').select('*').order('created_at', { ascending: false }).limit(500)
+                        sb.from('audit_log').select('*').order('created_at', { ascending: false }).limit(500),
+                        sb.from('pending_changes').select('*').order('created_at', { ascending: false })
                     ]);
                 const allRes = [projRes, supRes, supplierRes, expCatRes, actRes, namesRes, clientsRes, investorsRes,
                     accountsRes, employeesRes, assetTypesRes, taxesRes, procRes, salesRes, expDataRes, payRes, cpayRes, refundsRes,
-                    invFundRes, distRes, invLiabRes, mgrLiabRes, mgrPayRes, custodyRes, advanceRes, attendanceRes, assetsRes, djRes, obligRes, extInvRes, auditRes];
+                    invFundRes, distRes, invLiabRes, mgrLiabRes, mgrPayRes, custodyRes, advanceRes, attendanceRes, assetsRes, djRes, obligRes, extInvRes, auditRes, pendingRes];
                 const firstError = allRes.find(r => r.error);
                 if (firstError) throw firstError.error;
 
@@ -3437,7 +3515,8 @@
                     dailyJournals: djRes.data.map(djRowToRecord),
                     obligations: obligRes.data.map(obligationRowToRecord),
                     externalInvestments: extInvRes.data.map(extInvRowToRecord),
-                    auditLog: auditRes.data.map(auditRowToRecord)
+                    auditLog: auditRes.data.map(auditRowToRecord),
+                    pendingChanges: pendingRes.data.map(pendingChangeRowToRecord)
                 };
                 markSaved();
             } catch (err) {
@@ -3468,6 +3547,54 @@
             } catch (err) { console.warn('تعذر تسجيل حركة في سجل التعديلات:', err); }
         }
 
+        /* ================= طلبات موافقة الأدمن (requiresApproval) =================
+           gateOrRun/gateOrRunAccrual هي نقطة التدخل الوحيدة اللي بتتنادى من كل دوال
+           الإضافة/التعديل/الحذف في التطبيق، قبل أي كتابة حقيقية على القاعدة مباشرة.
+           - لو المستخدم الحالي مدير أو مش محتاج موافقة: بترجع false فورًا، ومفيش أي تأثير
+             (نفس السلوك الحالي 100% — مفيش أي كتابة هنا خالص).
+           - لو محتاج موافقة: بتسجّل الطلب في pending_changes بدل الكتابة الحقيقية، وترجع true
+             عشان الدالة اللي نادتها توقف فورًا (من غير ما تلمس db المحلي أو تعمل renderAll). */
+        function needsApprovalGate() {
+            return !!(currentUser && !currentUser.isAdmin && currentUser.requiresApproval);
+        }
+        async function gateOrRun(actionType, module, entityName, operations, beforeSnapshot) {
+            if (!needsApprovalGate()) return false;
+            markSaving();
+            const targetOp = operations.find(o => o.pk_value != null);
+            const { error } = await sb.from('pending_changes').insert({
+                user_id: currentUser.id,
+                action_type: actionType,
+                module,
+                target_record_id: targetOp ? String(targetOp.pk_value) : null,
+                before_data: beforeSnapshot ? JSON.parse(JSON.stringify(beforeSnapshot)) : null,
+                after_data: { entityName, operations: JSON.parse(JSON.stringify(operations)) }
+            });
+            if (error) { markSaveError(error); return true; }
+            markSaved();
+            alert('تم إرسال طلبك لموافقة المدير ✅\nهيتنفذ تلقائيًا بمجرد الموافقة عليه، ومش هيظهر كحركة فعلية لحد ما يتم اعتماده.');
+            if (typeof renderMyPendingRequests === 'function') renderMyPendingRequests();
+            return true;
+        }
+        // نسخة "المتراكم" — لعمليات زي سداد جزء من التزام أو خصم من سلفة، فين القيمة الجديدة بتتحسب من
+        // القيمة الحالية في القاعدة، فمينفعش نسجّل قيمة مطلقة محفوظة وقت الطلب (ممكن تبقى قديمة وقت الموافقة)
+        async function gateOrRunAccrual(kind, module, entityName, payload, beforeSnapshot) {
+            if (!needsApprovalGate()) return false;
+            markSaving();
+            const { error } = await sb.from('pending_changes').insert({
+                user_id: currentUser.id,
+                action_type: 'update',
+                module,
+                target_record_id: payload.liabilityId ?? payload.advanceId ?? payload.obligId ?? null,
+                before_data: beforeSnapshot ? JSON.parse(JSON.stringify(beforeSnapshot)) : null,
+                after_data: { entityName, kind, ...JSON.parse(JSON.stringify(payload)) }
+            });
+            if (error) { markSaveError(error); return true; }
+            markSaved();
+            alert('تم إرسال طلبك لموافقة المدير ✅\nهيتنفذ تلقائيًا بمجرد الموافقة عليه، ومش هيظهر كحركة فعلية لحد ما يتم اعتماده.');
+            if (typeof renderMyPendingRequests === 'function') renderMyPendingRequests();
+            return true;
+        }
+
         /* ================= LIVE SYNC (Supabase Realtime) ================= */
         let realtimeReloadTimer = null;
         function scheduleRealtimeReload() {
@@ -3486,7 +3613,7 @@
                 'accounts', 'employees', 'asset_types', 'taxes', 'procurements', 'sales', 'expense_entries', 'payments',
                 'contractor_payments', 'refunds', 'investor_funding', 'profit_distributions', 'investor_liabilities',
                 'manager_liabilities', 'manager_payments', 'custodies', 'employee_advances', 'attendance', 'assets',
-                'daily_journals', 'obligations', 'external_investments', 'audit_log'];
+                'daily_journals', 'obligations', 'external_investments', 'audit_log', 'pending_changes'];
             const channel = sb.channel('dragon-erp-sync');
             tables.forEach(t => {
                 channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, scheduleRealtimeReload);
@@ -3528,7 +3655,7 @@
 
         /* ================= المصادقة والمستخدم الحالي ================= */
         const EDGE_FUNCTIONS_URL = SUPABASE_URL + '/functions/v1';
-        let currentUser = null; // { id, username, isAdmin, permissions }
+        let currentUser = null; // { id, username, isAdmin, permissions, requiresApproval }
 
         // كل تبويب مربوط بمجموعة صلاحيات (تسجيل يومي / تقارير ودفاتر / دليل الأكواد)
         // audit و users مقفولين على المدير بس ومش موجودين هنا عمدًا
@@ -3588,7 +3715,7 @@
         async function loadCurrentUserProfile(userId) {
             const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
             if (error || !data || !data.active) return false;
-            currentUser = { id: data.id, username: data.username, isAdmin: data.is_admin, permissions: data.permissions || {} };
+            currentUser = { id: data.id, username: data.username, isAdmin: data.is_admin, permissions: data.permissions || {}, requiresApproval: !!data.requires_approval };
             return true;
         }
 
@@ -3686,7 +3813,7 @@
             if (nameEl) nameEl.textContent = currentUser.username;
             if (roleEl) roleEl.textContent = currentUser.isAdmin ? 'مدير النظام' : 'مستخدم';
 
-            const adminOnlyIds = ['btn-audit', 'btn-users'];
+            const adminOnlyIds = ['btn-audit', 'btn-users', 'btn-pendingApprovals'];
             adminOnlyIds.forEach(id => {
                 const b = document.getElementById(id);
                 if (b) b.classList.toggle('hidden', !currentUser.isAdmin);
@@ -3776,7 +3903,7 @@
             if (!tbody || !currentUser || !currentUser.isAdmin) return;
             const { data, error } = await sb.from('profiles').select('*').order('created_at');
             if (error) {
-                tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-rose-500">تعذر تحميل المستخدمين</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-rose-500">تعذر تحميل المستخدمين</td></tr>';
                 return;
             }
             usersList = data;
@@ -3807,12 +3934,13 @@
             <td class="p-3">${u.is_admin ? '' : summaryBadge(u.permissions, groupMasterdata)}</td>
             <td class="p-3">${u.is_admin ? '' : summaryBadge(u.permissions, groupSystemTools)}</td>
             <td class="p-3 text-center">${u.active ? '<span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">مفعّل</span>' : '<span class="text-xs font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">معطّل</span>'}</td>
+            <td class="p-3 text-center">${u.is_admin ? '<span class="text-xs text-slate-400">-</span>' : (u.requires_approval ? '<span class="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">نعم</span>' : '<span class="text-xs text-slate-400">لا</span>')}</td>
             <td class="p-3">${u.is_admin ? '' : `<div class="flex gap-2">
                 <button onclick="openEditUserModal('${u.id}')" class="text-blue-500 hover:text-blue-700" title="تعديل"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="toggleUserActive('${u.id}', ${!u.active})" class="text-amber-500 hover:text-amber-700" title="${u.active ? 'تعطيل' : 'تفعيل'}"><i class="fa-solid fa-power-off"></i></button>
                 <button onclick="deleteUserAccount('${u.id}')" class="text-red-500 hover:text-red-700" title="حذف"><i class="fa-solid fa-trash"></i></button>
             </div>`}</td>
-        </tr>`).join('') : '<tr><td colspan="8" class="p-4 text-center text-slate-400">لا يوجد مستخدمين بعد</td></tr>';
+        </tr>`).join('') : '<tr><td colspan="9" class="p-4 text-center text-slate-400">لا يوجد مستخدمين بعد</td></tr>';
         }
 
         // يبني شاشة الصلاحيات ديناميكيًا من PERMISSION_GROUPS: كل مجموعة قابلة للطي (details)
@@ -3878,6 +4006,7 @@
             document.getElementById('user-username').value = '';
             document.getElementById('user-password').value = '';
             document.getElementById('user-password-label').textContent = 'كلمة المرور (8 حروف على الأقل)';
+            document.getElementById('user-requires-approval').checked = false;
             buildPermissionEditorHTML();
             resetUserModalPermissions(null);
             document.getElementById('user-modal-error').classList.add('hidden');
@@ -3892,6 +4021,7 @@
             document.getElementById('user-username').value = u.username;
             document.getElementById('user-password').value = '';
             document.getElementById('user-password-label').textContent = 'كلمة مرور جديدة (اتركها فاضية لو مش عايز تغيّرها)';
+            document.getElementById('user-requires-approval').checked = !!u.requires_approval;
             buildPermissionEditorHTML();
             resetUserModalPermissions(u.permissions);
             document.getElementById('user-modal-error').classList.add('hidden');
@@ -3909,19 +4039,20 @@
             const username = document.getElementById('user-username').value.trim();
             const password = document.getElementById('user-password').value;
             const permissions = collectPermissionsFromForm();
+            const requiresApproval = document.getElementById('user-requires-approval').checked;
             if (!username) { errEl.textContent = 'أدخل اسم المستخدم'; errEl.classList.remove('hidden'); return; }
             const btn = document.getElementById('user-modal-submit');
             btn.disabled = true;
             try {
                 if (editId) {
-                    await callAdminUsers('update_permissions', { userId: editId, username, permissions });
+                    await callAdminUsers('update_permissions', { userId: editId, username, permissions, requiresApproval });
                     if (password) {
                         if (password.length < 8) throw new Error('كلمة المرور الجديدة لازم تكون 8 حروف على الأقل');
                         await callAdminUsers('reset_password', { userId: editId, newPassword: password });
                     }
                 } else {
                     if (password.length < 8) throw new Error('كلمة المرور لازم تكون 8 حروف على الأقل');
-                    await callAdminUsers('create_user', { username, password, permissions });
+                    await callAdminUsers('create_user', { username, password, permissions, requiresApproval });
                 }
                 closeUserModal();
                 await renderUsersTab();
@@ -4030,6 +4161,168 @@
                 : '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد حركات مسجلة بعد</td></tr>';
         }
 
+        /* ================= طلبات موافقة الأدمن (عرض) ================= */
+        const PENDING_ACTION_LABELS = { create: '➕ إضافة', update: '✏️ تعديل', delete: '🗑 حذف' };
+        const PENDING_ACCRUAL_LABELS = {
+            pay_investor_liability: 'سداد دفعة لمستثمر',
+            pay_manager_liability: 'سداد التزام مدير',
+            settle_employee_advance: 'سداد سلفة موظف',
+            pay_obligation_installment: 'سداد دفعة التزام',
+            reopen_obligation_installment: 'إعادة فتح دفعة التزام',
+            post_payroll: 'ترحيل رواتب الشهر'
+        };
+        // ترجمة أسماء أعمدة قاعدة البيانات لتسميات عربية مفهومة — تُستخدم في عرض تفاصيل الطلبات المعلّقة
+        const FIELD_LABELS = {
+            supplier: 'المورد', client: 'العميل', investor: 'المستثمر', employee: 'الموظف', name: 'الاسم',
+            item: 'الصنف', description: 'الوصف', desc: 'الوصف', category: 'التصنيف', activity: 'النشاط',
+            project: 'المشروع', account: 'الحساب', notes: 'ملاحظات', date: 'التاريخ',
+            qty: 'الكمية', unit: 'الوحدة', price: 'السعر', amount: 'المبلغ', total: 'الإجمالي',
+            paid: 'المدفوع', remaining: 'المتبقي', executed_value: 'القيمة المنفذة', discount: 'الخصم المكتسب',
+            status: 'الحالة', invoice_number: 'رقم الفاتورة', opening_balance: 'الرصيد الافتتاحي',
+            time_in: 'حضور', time_out: 'انصراف', purpose: 'الغرض', rate: 'النسبة %'
+        };
+        const MONEY_FIELDS = new Set(['price', 'amount', 'total', 'paid', 'remaining', 'executed_value', 'discount', 'opening_balance']);
+        function formatFieldValue(k, v) {
+            if (v === null || v === undefined || v === '') return '-';
+            if (MONEY_FIELDS.has(k)) return fmt(v);
+            return String(v);
+        }
+        function describePendingChange(p) {
+            const after = p.afterData || {};
+            if (after.kind) {
+                const label = PENDING_ACCRUAL_LABELS[after.kind] || after.kind;
+                return after.amount != null ? `${label} — ${fmt(after.amount)}` : label;
+            }
+            if (Array.isArray(after.operations) && after.operations.length) {
+                const op = after.operations[0];
+                if (op.op === 'delete') return `حذف${after.operations.length > 1 ? ` (${after.operations.length} سجلات)` : ''}`;
+                const row = op.row || {};
+                if (p.beforeData && op.op === 'update') {
+                    const changedKeys = Object.keys(row).filter(k => JSON.stringify(p.beforeData[k]) !== JSON.stringify(row[k]));
+                    if (changedKeys.length) {
+                        return changedKeys.map(k => `${FIELD_LABELS[k] || k}: ${esc(formatFieldValue(k, p.beforeData[k]))} ← ${esc(formatFieldValue(k, row[k]))}`).join('، ');
+                    }
+                }
+                // للإضافة: بند/اسم أولاً، بعده أهم القيم (مبلغ/كمية/سعر/مشروع/تاريخ) بتسميات عربية واضحة
+                const priorityKeys = ['item', 'name', 'supplier', 'client', 'employee', 'investor', 'description', 'desc',
+                    'category', 'qty', 'unit', 'price', 'amount', 'total', 'paid', 'project', 'date'];
+                const keys = priorityKeys.filter(k => row[k] !== null && row[k] !== undefined && row[k] !== '' && !after.operations.some((o, i) => i > 0 && o.row && o.row[k] !== row[k]));
+                const shown = (keys.length ? keys : Object.keys(row).filter(k => row[k] !== null && row[k] !== undefined && row[k] !== '')).slice(0, 5);
+                const extra = after.operations.length > 1 ? ` (+${after.operations.length - 1} صنف إضافي)` : '';
+                return shown.map(k => `${FIELD_LABELS[k] || k}: ${esc(formatFieldValue(k, row[k]))}`).join('  •  ') + extra || '-';
+            }
+            return '-';
+        }
+        // اسم التبويب الحقيقي اللي الطلب ده بيخص أي سجل فيه — يُستخدم للتنقل عند الضغط على الطلب
+        function pendingChangeTargetTab(p) {
+            return MODULE_TABS[p.module] ? p.module : (p.module === 'masterdata' ? 'masterdata' : p.module);
+        }
+        function goToPendingChangeTarget(id) {
+            const p = (db.pendingChanges || []).find(x => x.id === id);
+            if (!p) return;
+            const tab = pendingChangeTargetTab(p);
+            if (!document.getElementById('tab-' + tab)) return;
+            switchTab(tab);
+            const highlightId = p.targetRecordId || ('pending-' + p.id);
+            setTimeout(() => {
+                const el = document.querySelector(`[data-record-id="${CSS.escape(String(highlightId))}"]`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.add('ring-2', 'ring-amber-400');
+                    setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400'), 2500);
+                }
+            }, 200);
+        }
+        // طلبات الإضافة المعلّقة الخاصة بموديول معيّن — يشوفها المدير كلها، والمستخدم العادي يشوف بس طلباته هو
+        function getPendingCreateRequests(moduleName) {
+            if (!currentUser) return [];
+            return (db.pendingChanges || []).filter(p =>
+                p.status === 'pending' && p.module === moduleName && p.actionType === 'create' &&
+                (currentUser.isAdmin || p.userId === currentUser.id)
+            );
+        }
+        const PENDING_GHOST_BADGE = '<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full whitespace-nowrap">⏳ غير معتمد</span>';
+        function pendingUserLabel(p) {
+            const u = (usersList || []).find(x => x.id === p.userId);
+            return u ? u.username : 'مستخدم';
+        }
+        function renderPendingApprovalsBadge() {
+            const badge = document.getElementById('pending-approvals-count');
+            if (!badge || !currentUser || !currentUser.isAdmin) { if (badge) badge.classList.add('hidden'); return; }
+            const count = (db.pendingChanges || []).filter(p => p.status === 'pending').length;
+            badge.textContent = count;
+            badge.classList.toggle('hidden', count === 0);
+        }
+        async function renderPendingApprovalsTab() {
+            const tbody = document.getElementById('tbody-pending-approvals');
+            if (!tbody || !currentUser || !currentUser.isAdmin) return;
+            // نجيب أسماء المستخدمين عشان نعرض اسم الطالب بدل الـ id
+            if (!usersList || !usersList.length) {
+                const { data } = await sb.from('profiles').select('*');
+                if (data) usersList = data;
+            }
+            const rows = (db.pendingChanges || []).filter(p => p.status === 'pending').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+            const moduleLabels = {};
+            PERMISSION_GROUPS.forEach(g => g.tabs.forEach(t => { moduleLabels[t.id] = t.label; }));
+            tbody.innerHTML = rows.length ? rows.map(p => {
+                const dt = new Date(p.createdAt);
+                const dtStr = isNaN(dt.getTime()) ? '' : dt.toLocaleString('ar-EG');
+                const entityName = (p.afterData && p.afterData.entityName) || p.targetRecordId || '';
+                const canNavigate = !!document.getElementById('tab-' + pendingChangeTargetTab(p));
+                return `<tr class="border-b border-slate-50 hover:bg-amber-50/60 align-top${canNavigate ? ' cursor-pointer' : ''}"${canNavigate ? ` onclick="goToPendingChangeTarget(${p.id})"` : ''} title="${canNavigate ? 'اضغط للانتقال لمكان الحركة' : ''}">
+            <td class="p-3 font-bold">${esc(pendingUserLabel(p))}</td>
+            <td class="p-3"><span class="text-xs font-bold px-2 py-0.5 rounded ${p.actionType === 'create' ? 'bg-emerald-100 text-emerald-700' : p.actionType === 'delete' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'}">${PENDING_ACTION_LABELS[p.actionType] || p.actionType}</span>
+                <span class="block mt-1 text-[10px] font-bold text-rose-500">⏳ غير معتمد</span></td>
+            <td class="p-3">${esc(moduleLabels[p.module] || p.module)}</td>
+            <td class="p-3 text-xs text-slate-600 max-w-[320px]">${entityName ? `<div class="font-bold text-slate-800 mb-0.5">${esc(entityName)}</div>` : ''}${describePendingChange(p)}</td>
+            <td class="p-3 text-xs text-slate-500 whitespace-nowrap">${dtStr}</td>
+            <td class="p-3" onclick="event.stopPropagation()"><div class="flex gap-2">
+                <button onclick="approveChange(${p.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-bold">موافقة</button>
+                <button onclick="rejectChange(${p.id})" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded text-xs font-bold">رفض</button>
+            </div></td>
+        </tr>`;
+            }).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد طلبات معلّقة حاليًا</td></tr>';
+        }
+        async function approveChange(id) {
+            if (!confirm('موافقة على هذا الطلب وتطبيقه فعليًا؟')) return;
+            try {
+                await callAdminUsers('approve_change', { changeId: id });
+                await loadDb();
+                renderPendingApprovalsTab();
+                renderAll();
+            } catch (err) { alert(err.message || 'حصل خطأ أثناء الموافقة'); }
+        }
+        async function rejectChange(id) {
+            if (!confirm('رفض هذا الطلب نهائيًا؟ لن يتم تطبيقه.')) return;
+            try {
+                await callAdminUsers('reject_change', { changeId: id });
+                await loadDb();
+                renderPendingApprovalsTab();
+                renderAll();
+            } catch (err) { alert(err.message || 'حصل خطأ أثناء الرفض'); }
+        }
+        // "طلباتي قيد المراجعة" — للمستخدم اللي محتاج موافقة أدمن، يشوف طلباته المعلّقة بس (RLS بتضمن كده تلقائيًا)
+        function renderMyPendingRequests() {
+            const panel = document.getElementById('my-pending-requests-panel');
+            const list = document.getElementById('my-pending-requests-list');
+            if (!panel || !list) return;
+            if (!currentUser || currentUser.isAdmin || !currentUser.requiresApproval) { panel.classList.add('hidden'); panel.classList.remove('flex'); return; }
+            const mine = (db.pendingChanges || []).filter(p => p.userId === currentUser.id && p.status === 'pending');
+            if (!mine.length) { panel.classList.add('hidden'); panel.classList.remove('flex'); return; }
+            const moduleLabels = {};
+            PERMISSION_GROUPS.forEach(g => g.tabs.forEach(t => { moduleLabels[t.id] = t.label; }));
+            list.innerHTML = mine.map(p => {
+                const entityName = (p.afterData && p.afterData.entityName) || '';
+                const canNavigate = !!document.getElementById('tab-' + pendingChangeTargetTab(p));
+                return `<div class="flex items-center justify-between gap-2 bg-white border border-amber-100 rounded-lg px-3 py-1.5 text-xs${canNavigate ? ' cursor-pointer hover:bg-amber-50' : ''}"${canNavigate ? ` onclick="goToPendingChangeTarget(${p.id})"` : ''} title="${canNavigate ? 'اضغط للانتقال لمكان الحركة' : ''}">
+            <span><span class="font-bold">${esc(moduleLabels[p.module] || p.module)}</span>${entityName ? ` — ${esc(entityName)}` : ''} — ${describePendingChange(p)}</span>
+            <span class="shrink-0 text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">⏳ غير معتمد</span>
+        </div>`;
+            }).join('');
+            panel.classList.remove('hidden');
+            panel.classList.add('flex');
+        }
+
         /* ================= INIT ================= */
         window.onload = async function () {
             const loggedIn = await checkExistingSession();
@@ -4086,6 +4379,8 @@
             renderAuditLog();
             renderTrialBalance();
             renderCashFlow();
+            renderPendingApprovalsBadge();
+            renderMyPendingRequests();
             requestAnimationFrame(() => { setTimeout(() => renderCharts(dashFp), 50); });
         }
 
@@ -4118,6 +4413,7 @@
             if (tabId === 'payroll') { renderAttendance(); renderAdvances(); renderPayrollSummary(); }
             if (tabId === 'audit') { renderAuditLog(); }
             if (tabId === 'users') { renderUsersTab(); }
+            if (tabId === 'pendingApprovals') { renderPendingApprovalsTab(); }
             if (tabId === 'balance') { renderBalanceSheet(); renderTrialBalance(); }
             if (tabId === 'cashflow') { renderCashFlow(); }
             if (tabId === 'investors') { renderAllProjectProfits(); renderManagementFees(); renderManagerLiabilities(); }
@@ -4418,7 +4714,6 @@
             }
 
             const row = masterItemToRow(type, item);
-            markSaving();
             if (editCode) {
                 const idx = db[type].findIndex(it => it.code === Number(editCode));
                 if (idx > -1) {
@@ -4430,12 +4725,16 @@
                             || db.payments.some(pay => [pay.supplier, pay.project].includes(oldName));
                         if (inUse && !confirm(`تنبيه: "${oldName}" مستخدم في حركات مسجلة بالفعل. تغيير الاسم لـ "${name}" هيفصل هذه الحركات عنه في التقارير. هل تريد المتابعة؟`)) return;
                     }
+                    if (await gateOrRun('update', 'masterdata', name, [{ table: TABLES[type], pk_col: 'code', pk_value: Number(editCode), op: 'update', row }], oldItemSnapshot)) { closeAddMasterModal(); return; }
+                    markSaving();
                     const { error } = await sb.from(TABLES[type]).update(row).eq('code', Number(editCode));
                     if (error) { markSaveError(error); return; }
                     db[type][idx] = item;
                     logAudit('update', 'دليل الأكواد', name, oldItemSnapshot, item);
                 }
             } else {
+                if (await gateOrRun('create', 'masterdata', name, [{ table: TABLES[type], pk_col: 'code', pk_value: item.code, op: 'insert', row }])) { closeAddMasterModal(); return; }
+                markSaving();
                 const { error } = await sb.from(TABLES[type]).insert(row);
                 if (error) { markSaveError(error); return; }
                 db[type].push(item);
@@ -4520,7 +4819,8 @@
 
             // الإيرادات مكانها الوحيد "مستخلصات العملاء" — أي تصنيف إيراد (revenue/other_revenue) ميظهرش هنا خالص عشان منسجلش نفس الإيراد مرتين
             fillSelect('exp-category', db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue'));
-            fillSelect('exp-project', sortedProjects());
+            renderProjectMultiSelectOptions('exp-project-ms');
+            renderProjectMultiSelectOptions('payroll-project-ms');
             fillSelect('filter-exp-project', sortedProjects(), 'كل المشاريع');
             fillSelect('filter-exp-category', db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue'), 'كل التبويبات');
             fillSelect('filter-exp-name', [...db.names, ...db.clients], 'كل الأسماء');
@@ -4645,6 +4945,14 @@
                 item: l.item, supplier, project, qty: l.qty, unit: l.unit, price: l.price,
                 date, notes
             }));
+            const ops = rows.map(row => ({ table: 'procurements', pk_col: 'id', pk_value: null, op: 'insert', row }));
+            if (await gateOrRun('create', 'procurement', `${invoiceNumber} - ${supplier} - ${lines.length} صنف`, ops)) {
+                e.target.reset();
+                document.getElementById('proc-lines').innerHTML = '';
+                document.getElementById('proc-date').value = todayISO();
+                updateProcGrandTotal();
+                return;
+            }
             const { data, error } = await sb.from('procurements').insert(rows).select();
             if (error) { markSaveError(error); return; }
             db.procurements.push(...data.map(procRowToRecord));
@@ -4671,6 +4979,7 @@
                 || (db.assets || []).some(a => a.location === item.name);
             if (inUse && !confirm(`"${item.name}" مستخدم في حركات مسجلة بالفعل. حذفه لن يحذف تلك الحركات لكنها قد تفقد الربط الصحيح بها. هل تريد المتابعة؟`)) return;
             if (!inUse && !confirm(`هل تريد حذف "${item.name}"؟`)) return;
+            if (await gateOrRun('delete', 'masterdata', item.name, [{ table: TABLES[cat], pk_col: 'code', pk_value: code, op: 'delete' }], item)) return;
             markSaving();
             const { error } = await sb.from(TABLES[cat]).delete().eq('code', code);
             if (error) { markSaveError(error); return; }
@@ -4686,6 +4995,10 @@
             if (!rec) return;
             const groupId = rec.groupId;
             if (!confirm(groupId ? 'حذف فاتورة التوريد دي بكل أصنافها؟' : 'هل تريد حذف حركة التوريد دي؟')) return;
+            const delOps = groupId
+                ? [{ table: 'procurements', pk_col: 'group_id', pk_value: groupId, op: 'delete' }]
+                : [{ table: 'procurements', pk_col: 'id', pk_value: id, op: 'delete' }];
+            if (await gateOrRun('delete', 'procurement', rec.invoiceNumber ? `${rec.invoiceNumber} - ${rec.supplier}` : rec.item, delOps, rec)) return;
             markSaving();
             const { error } = groupId
                 ? await sb.from('procurements').delete().eq('group_id', groupId)
@@ -4715,9 +5028,24 @@
             }).slice().reverse();
 
             const totalVal = rows.reduce((s, p) => s + (p.qty * p.price), 0);
-            document.getElementById('tbody-procurement').innerHTML =
+            // طلبات إضافة معلّقة (لسه محتاجة موافقة المدير) — بتتعرض هنا للعلم بس، ومش داخلة في الإجمالي خالص
+            const ghostHtml = getPendingCreateRequests('procurement').flatMap(p =>
+                ((p.afterData && p.afterData.operations) || []).filter(o => o.op === 'insert').map(o => {
+                    const row = o.row || {};
+                    return `<tr class="border-b border-amber-100 bg-amber-50/60 opacity-90" data-record-id="pending-${p.id}" title="طلب إضافة معلّق من ${esc(pendingUserLabel(p))} — لسه ما اتوافقش عليه">
+                <td class="p-3 font-bold text-amber-700">⏳ ${esc(row.invoice_number || 'معلّق')}</td>
+                <td class="p-3">${esc(row.item || '-')}</td><td class="p-3">${esc(row.supplier || '-')}</td>
+                <td class="p-3">${row.qty ?? '-'}</td><td class="p-3">${esc(row.unit || '')}</td>
+                <td class="p-3">${row.price != null ? fmt(row.price) : '-'}</td>
+                <td class="p-3 font-bold">${(row.qty != null && row.price != null) ? fmt(row.qty * row.price) : '-'}</td>
+                <td class="p-3">${esc(row.project || '-')}</td><td class="p-3 text-slate-500">${esc(row.date || '-')}</td>
+                <td class="p-3">${PENDING_GHOST_BADGE}</td>
+            </tr>`;
+                })
+            ).join('');
+            document.getElementById('tbody-procurement').innerHTML = ghostHtml +
                 rows.map(p => `
-        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(p)}>
+        <tr class="border-b border-slate-50 hover:bg-slate-50" data-record-id="${p.id}"${auditAttr(p)}>
             <td class="p-3 font-bold text-amber-700">${esc(p.invoiceNumber || '-')}</td>
             <td class="p-3">${esc(p.item)}</td><td class="p-3">${esc(p.supplier)}</td><td class="p-3">${p.qty}</td><td class="p-3">${p.unit}</td>
             <td class="p-3">${fmt(p.price)}</td><td class="p-3 font-bold">${fmt(p.qty * p.price)}</td><td class="p-3">${esc(p.project)}</td><td class="p-3 text-slate-500">${p.date}</td>
@@ -4727,7 +5055,7 @@
             </td>
         </tr>`).join('')
                 + (rows.length ? `<tr class="bg-slate-50 font-bold"><td colspan="6" class="p-3">الإجمالي</td><td class="p-3 text-blue-700">${fmt(totalVal)}</td><td colspan="3"></td></tr>` : '')
-                || '<tr><td colspan="10" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>';
+                || (ghostHtml ? '' : '<tr><td colspan="10" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>');
         }
         function printPurchaseInvoice(groupId) {
             const lines = db.procurements.filter(p => p.groupId === groupId);
@@ -4869,6 +5197,13 @@
                 items: selectedItems.length ? selectedItems : null,
                 discount: Number(document.getElementById('pay-discount')?.value) || 0
             };
+            if (await gateOrRun('create', 'payments', row.supplier, [{ table: 'payments', pk_col: 'id', pk_value: null, op: 'insert', row }])) {
+                e.target.reset();
+                document.getElementById('pay-date').value = todayISO();
+                document.getElementById('pay-supplier-balance-info').style.display = 'none';
+                document.getElementById('pay-invoices-panel').style.display = 'none';
+                return;
+            }
             markSaving();
             const { data, error } = await sb.from('payments').insert(row).select().single();
             if (error) { markSaveError(error); return; }
@@ -4885,6 +5220,7 @@
         async function deletePayment(id) {
             if (!confirm('هل تريد حذف هذه الدفعة؟ سيرتفع رصيد المورد المستحق مرة أخرى.')) return;
             const old = db.payments.find(p => p.id === id);
+            if (await gateOrRun('delete', 'payments', old ? old.supplier : '', [{ table: 'payments', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('payments').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -4983,14 +5319,25 @@
 
             const total = rows.reduce((s, p) => s + p.amount, 0);
             const totalDiscount = rows.reduce((s, p) => s + (p.discount || 0), 0);
-            document.getElementById('tbody-payments').innerHTML =
+            const ghostHtml = getPendingCreateRequests('payments').filter(p => (p.afterData?.operations || [])[0]?.table === 'payments').flatMap(p =>
+                ((p.afterData && p.afterData.operations) || []).filter(o => o.op === 'insert' && o.table === 'payments').map(o => {
+                    const row = o.row || {};
+                    return `<tr class="border-b border-amber-100 bg-amber-50/60 opacity-90" data-record-id="pending-${p.id}" title="طلب إضافة معلّق من ${esc(pendingUserLabel(p))} — لسه ما اتوافقش عليه">
+            <td class="p-3 font-semibold">⏳ ${esc(row.supplier || '-')}</td><td class="p-3 font-bold">${row.amount != null ? fmt(row.amount) : '-'}</td>
+            <td class="p-3">${row.discount ? fmt(row.discount) : '-'}</td>
+            <td class="p-3">${esc(row.project || '-')}</td><td class="p-3 text-slate-500">${esc(row.date || '-')}</td><td class="p-3">${esc(row.notes || '')}</td>
+            <td class="p-3">${PENDING_GHOST_BADGE}</td>
+        </tr>`;
+                })
+            ).join('');
+            document.getElementById('tbody-payments').innerHTML = ghostHtml +
                 (rows.length ? rows.map(p => `
-        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(p)}>
+        <tr class="border-b border-slate-50 hover:bg-slate-50" data-record-id="${p.id}"${auditAttr(p)}>
             <td class="p-3 font-semibold">${esc(p.supplier)}</td><td class="p-3 font-bold">${fmt(p.amount)}</td>
             <td class="p-3">${p.discount ? fmt(p.discount) : '-'}</td>
             <td class="p-3">${esc(p.project || '-')}</td><td class="p-3 text-slate-500">${p.date}</td><td class="p-3">${esc(p.notes || '')}</td>
             <td class="p-3"><button onclick="deletePayment(${p.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
-        </tr>`).join('') : '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا توجد دفعات مسجلة</td></tr>')
+        </tr>`).join('') : (ghostHtml ? '' : '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا توجد دفعات مسجلة</td></tr>'))
                 + (rows.length ? `<tr class="bg-slate-50 font-bold"><td class="p-3">الإجمالي</td><td class="p-3 text-cyan-700">${fmt(total)}</td><td class="p-3 text-emerald-700">${totalDiscount ? fmt(totalDiscount) : '-'}</td><td colspan="4"></td></tr>` : '');
         }
         function supplierBalance(name) {
@@ -5036,6 +5383,14 @@
         }
 
         /* ================= EXPENSES ================= */
+        // بيقسم مبلغ على N مشروع بالتساوي، وآخر مشروع بياخد فرق التقريب عشان الإجمالي يفضل مطابق تمامًا
+        function splitAmountEqually(total, n) {
+            if (n <= 1) return [total];
+            const base = Math.floor((total / n) * 100) / 100;
+            const amounts = new Array(n).fill(base);
+            amounts[n - 1] = Math.round((total - base * (n - 1)) * 100) / 100;
+            return amounts;
+        }
         async function addExpense(e) {
             e.preventDefault();
             const cat = document.getElementById('exp-category').value;
@@ -5044,31 +5399,55 @@
                 alert('تسجيل الإيرادات مكانه الوحيد تاب "مستخلصات العملاء" — مينفعش يتسجل من هنا.');
                 return;
             }
+            const projects = getProjectMultiSelectValues('exp-project-ms');
+            if (!projects.length) { alert('اختر مشروع واحد على الأقل تحمّل عليه الحركة'); return; }
             const isContractor = isContractorCategory(cat);
             const paid = Number(document.getElementById('exp-paid')?.value) || 0;
             const executedValue = isContractor ? (Number(document.getElementById('exp-executed')?.value) || 0) : 0;
-            const remaining = isContractor ? Math.max(executedValue - paid, 0) : 0;
-            const rec = {
-                category: cat,
-                activity: isContractor ? document.getElementById('exp-activity').value : '',
-                name: isContractor ? document.getElementById('exp-name').value : '',
-                project: document.getElementById('exp-project').value,
-                total: executedValue || paid,
-                paid,
-                remaining,
-                executedValue: executedValue || undefined,
-                account: document.getElementById('exp-account')?.value || (db.accounts[0] && db.accounts[0].name) || '',
-                date: document.getElementById('exp-date').value || todayISO(),
-                notes: document.getElementById('exp-notes').value.trim(),
-                sourceModule: 'expenses'
-            };
+            const n = projects.length;
+            const paidSplits = splitAmountEqually(paid, n);
+            const executedSplits = splitAmountEqually(executedValue, n);
+            const baseNotes = document.getElementById('exp-notes').value.trim();
+            const notesSuffix = n > 1 ? ` (موزّع بالتساوي على ${n} مشاريع)` : '';
+            const rows = projects.map((project, i) => {
+                const p = paidSplits[i];
+                const ev = isContractor ? executedSplits[i] : 0;
+                const remaining = isContractor ? Math.max(ev - p, 0) : 0;
+                return expenseRecordToRow({
+                    category: cat,
+                    activity: isContractor ? document.getElementById('exp-activity').value : '',
+                    name: isContractor ? document.getElementById('exp-name').value : '',
+                    project,
+                    total: ev || p,
+                    paid: p,
+                    remaining,
+                    executedValue: ev || undefined,
+                    account: document.getElementById('exp-account')?.value || (db.accounts[0] && db.accounts[0].name) || '',
+                    date: document.getElementById('exp-date').value || todayISO(),
+                    notes: baseNotes + notesSuffix,
+                    sourceModule: 'expenses'
+                });
+            });
+            const entityName = `${cat}${n > 1 ? ` — موزّع على ${n} مشاريع` : ` - ${projects[0]}`}`;
+            const ops = rows.map(row => ({ table: 'expense_entries', pk_col: 'id', pk_value: null, op: 'insert', row }));
+            if (await gateOrRun('create', 'expenses', entityName, ops)) {
+                e.target.reset();
+                resetProjectMultiSelect('exp-project-ms');
+                const remEl0 = document.getElementById('exp-remaining-display');
+                if (remEl0) remEl0.value = '';
+                document.getElementById('exp-date').value = todayISO();
+                filterExpenseSubFields();
+                return;
+            }
             markSaving();
-            const { data, error } = await sb.from('expense_entries').insert(expenseRecordToRow(rec)).select().single();
+            const { data, error } = await sb.from('expense_entries').insert(rows).select();
             if (error) { markSaveError(error); return; }
-            const saved = expenseRowToRecord(data);
-            db.expensesData.push(saved);
-            logAudit('create', 'مصروف/إيراد', `${saved.category} - ${saved.name}`, null, saved);
+            data.map(expenseRowToRecord).forEach(saved => {
+                db.expensesData.push(saved);
+                logAudit('create', 'مصروف/إيراد', `${saved.category} - ${saved.name || saved.project}`, null, saved);
+            });
             e.target.reset();
+            resetProjectMultiSelect('exp-project-ms');
             const remEl = document.getElementById('exp-remaining-display');
             if (remEl) remEl.value = '';
             document.getElementById('exp-date').value = todayISO();
@@ -5079,6 +5458,7 @@
         async function deleteExpense(id) {
             if (!confirm('هل تريد حذف هذه الحركة؟')) return;
             const old = db.expensesData.find(x => x.id === id);
+            if (await gateOrRun('delete', old?.sourceModule || 'expenses', old ? `${old.category} - ${old.name}` : '', [{ table: 'expense_entries', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('expense_entries').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -5150,9 +5530,25 @@
 
             const totalPaid = rows.reduce((s, x) => s + x.paid, 0);
             const totalDebt = rows.filter(x => isContractorCategory(x.category)).reduce((s, x) => s + (x.remaining || 0), 0);
-            document.getElementById('tbody-expenses').innerHTML =
+            const ghostHtml = getPendingCreateRequests('expenses').flatMap(p =>
+                ((p.afterData && p.afterData.operations) || []).filter(o => o.op === 'insert').map(o => {
+                    const row = o.row || {};
+                    return `<tr class="border-b border-amber-100 bg-amber-50/60 opacity-90" data-record-id="pending-${p.id}" title="طلب إضافة معلّق من ${esc(pendingUserLabel(p))} — لسه ما اتوافقش عليه">
+            <td class="p-3">⏳ ${esc(row.category || '-')}</td>
+            <td class="p-3">${esc(row.activity || '-')}</td>
+            <td class="p-3">${esc(row.name || '-')}</td>
+            <td class="p-3 font-bold">${row.executed_value ? fmt(row.executed_value) : (row.paid != null ? fmt(row.paid) : '-')}</td>
+            <td class="p-3">${row.paid != null ? fmt(row.paid) : '-'}</td>
+            <td class="p-3">${row.remaining ? fmt(row.remaining) : '-'}</td>
+            <td class="p-3">${esc(row.project || '-')}</td>
+            <td class="p-3 text-slate-500">${esc(row.date || '-')}</td>
+            <td class="p-3">${PENDING_GHOST_BADGE}</td>
+        </tr>`;
+                })
+            ).join('');
+            document.getElementById('tbody-expenses').innerHTML = ghostHtml +
                 rows.map(x => `
-        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(x)}>
+        <tr class="border-b border-slate-50 hover:bg-slate-50" data-record-id="${x.id}"${auditAttr(x)}>
             <td class="p-3">${esc(x.category)}</td>
             <td class="p-3">${esc(x.activity)}</td>
             <td class="p-3">${esc(x.name)}</td>
@@ -5170,7 +5566,7 @@
             <td class="p-3 text-rose-700">${totalDebt > 0 ? fmt(totalDebt) : '-'}</td>
             <td colspan="3"></td>
         </tr>` : '')
-                || '<tr><td colspan="9" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>';
+                || (ghostHtml ? '' : '<tr><td colspan="9" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>');
         }
 
         /* ================= TREASURY ================= */
@@ -5254,6 +5650,7 @@
             if (!accName) return;
             const acc = (db.accounts || []).find(a => a.name === accName);
             if (acc) {
+                if (await gateOrRun('update', 'masterdata', accName, [{ table: 'accounts', pk_col: 'code', pk_value: acc.code, op: 'update', row: { opening_balance: amount } }], { openingBalance: acc.openingBalance })) return;
                 markSaving();
                 const { error } = await sb.from('accounts').update({ opening_balance: amount }).eq('code', acc.code);
                 if (error) { markSaveError(error); return; }
@@ -5540,6 +5937,46 @@
             else if (selected.length === 1) label.textContent = selected[0];
             else label.textContent = `${selected.length} مشاريع محددة`;
         }
+        /* ================= مكوّن عام لاختيار أكتر من مشروع (تحميل مرتبات/مصروفات على مشاريع متعددة) =================
+           بيتفرّق عن فلتر لوحة التحكم فوق: مفيش خيار "كل المشاريع"، لازم تختار مشروع واحد على الأقل،
+           والاستخدام هنا "تحميل تكلفة" مش فلترة عرض بس. */
+        function renderProjectMultiSelectOptions(prefix) {
+            const container = document.getElementById(prefix + '-options');
+            if (!container) return;
+            const prevChecked = new Set(getProjectMultiSelectValues(prefix));
+            container.innerHTML = sortedProjects().map(p => `
+                <label class="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-slate-50 rounded">
+                    <input type="checkbox" class="${prefix}-item" value="${esc(p.name)}"
+                        ${prevChecked.has(p.name) ? 'checked' : ''} onchange="updateProjectMultiSelectLabel('${prefix}')">
+                    ${esc(p.code)} - ${esc(p.name)}
+                </label>`).join('');
+            updateProjectMultiSelectLabel(prefix);
+        }
+        function getProjectMultiSelectValues(prefix) {
+            return [...document.querySelectorAll(`.${prefix}-item:checked`)].map(el => el.value);
+        }
+        function toggleProjectMultiSelectDropdown(prefix) {
+            document.getElementById(prefix + '-panel')?.classList.toggle('hidden');
+        }
+        function updateProjectMultiSelectLabel(prefix) {
+            const label = document.getElementById(prefix + '-label');
+            if (!label) return;
+            const selected = getProjectMultiSelectValues(prefix);
+            if (!selected.length) label.textContent = prefix === 'payroll-project-ms' ? 'حمّل على مشروع...' : 'اختر مشروع أو أكتر';
+            else if (selected.length === 1) label.textContent = selected[0];
+            else label.textContent = `${selected.length} مشاريع محددة`;
+        }
+        function resetProjectMultiSelect(prefix) {
+            document.querySelectorAll(`.${prefix}-item`).forEach(el => el.checked = false);
+            updateProjectMultiSelectLabel(prefix);
+        }
+        document.addEventListener('click', (e) => {
+            document.querySelectorAll('[id$="-ms-panel"]:not(.hidden)').forEach(panel => {
+                const btn = document.getElementById(panel.id.replace('-panel', '-btn'));
+                const wrap = btn ? btn.parentElement : null;
+                if (wrap && !wrap.contains(e.target)) panel.classList.add('hidden');
+            });
+        });
         function calculateKPIs(projectFilter) {
             const selectedProjects = Array.isArray(projectFilter) ? projectFilter : (projectFilter && projectFilter !== 'ALL' ? [projectFilter] : []);
             const matchProj = rec => selectedProjects.length === 0 || selectedProjects.includes(rec.project);
@@ -5731,6 +6168,7 @@
         async function updateTaxField(idx, field, value) {
             if (!db.taxes[idx]) return;
             const code = db.taxes[idx].code;
+            if (await gateOrRun('update', 'pl', db.taxes[idx].name, [{ table: 'taxes', pk_col: 'code', pk_value: code, op: 'update', row: { [field]: value } }], { [field]: db.taxes[idx][field] })) return;
             markSaving();
             const { error } = await sb.from('taxes').update({ [field]: value }).eq('code', code);
             if (error) { markSaveError(error); return; }
@@ -5748,6 +6186,11 @@
             if (!db.taxes) db.taxes = [];
             const maxCode = db.taxes.reduce((m, t) => Math.max(m, t.code || 9000), 9000);
             const item = { code: maxCode + 1, name, rate, active: true };
+            if (await gateOrRun('create', 'pl', name, [{ table: 'taxes', pk_col: 'code', pk_value: item.code, op: 'insert', row: item }])) {
+                document.getElementById('new-tax-name').value = '';
+                document.getElementById('new-tax-rate').value = '';
+                return;
+            }
             markSaving();
             const { error } = await sb.from('taxes').insert(item);
             if (error) { markSaveError(error); return; }
@@ -5762,6 +6205,7 @@
         async function deleteTaxRow(idx) {
             if (!confirm('حذف هذه الضريبة؟')) return;
             const code = db.taxes[idx].code;
+            if (await gateOrRun('delete', 'pl', db.taxes[idx].name, [{ table: 'taxes', pk_col: 'code', pk_value: code, op: 'delete' }], db.taxes[idx])) return;
             markSaving();
             const { error } = await sb.from('taxes').delete().eq('code', code);
             if (error) { markSaveError(error); return; }
@@ -5962,9 +6406,15 @@
             if (!name || amount <= 0) { alert('اختر الاسم وأدخل المبلغ'); return; }
             const date = document.getElementById('refund-date').value || todayISO();
             const notes = document.getElementById('refund-notes').value.trim();
-
+            const refundRow = { party_type: partyType, name, amount, date, notes };
+            if (await gateOrRun('create', 'payments', `${name} - ${fmt(amount)}`, [{ table: 'refunds', pk_col: 'id', pk_value: null, op: 'insert', row: refundRow }])) {
+                e.target.reset();
+                document.getElementById('refund-date').value = todayISO();
+                document.getElementById('refund-balance-info').style.display = 'none';
+                return;
+            }
             markSaving();
-            const { data, error } = await sb.from('refunds').insert({ party_type: partyType, name, amount, date, notes }).select().single();
+            const { data, error } = await sb.from('refunds').insert(refundRow).select().single();
             if (error) { markSaveError(error); return; }
             const rec = refundRowToRecord(data);
             db.refunds.push(rec);
@@ -5979,6 +6429,8 @@
         }
         async function deleteRefund(id) {
             if (!confirm('هل تريد حذف عملية الاسترداد دي؟ سيرجع الرصيد المقدّم زي ما كان.')) return;
+            const old = (db.refunds || []).find(r => r.id === id);
+            if (await gateOrRun('delete', 'payments', old ? old.name : '', [{ table: 'refunds', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('refunds').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -6037,8 +6489,15 @@
             const discount = Number(document.getElementById('cpay-discount')?.value) || 0;
             if (!name || amount <= 0) { alert('اختر المقاول وأدخل مبلغاً صحيحاً'); return; }
             if (!db.contractorPayments) db.contractorPayments = [];
+            const cpayRow = { name, amount, project, date, notes, discount };
+            if (await gateOrRun('create', 'payments', name, [{ table: 'contractor_payments', pk_col: 'id', pk_value: null, op: 'insert', row: cpayRow }])) {
+                e.target.reset();
+                document.getElementById('cpay-date').value = todayISO();
+                document.getElementById('cpay-balance-info').style.display = 'none';
+                return;
+            }
             markSaving();
-            const { data, error } = await sb.from('contractor_payments').insert({ name, amount, project, date, notes, discount }).select().single();
+            const { data, error } = await sb.from('contractor_payments').insert(cpayRow).select().single();
             if (error) { markSaveError(error); return; }
             db.contractorPayments.push(data);
             e.target.reset();
@@ -6052,6 +6511,7 @@
             const rec = db.names.find(n => n.name === name);
             if (!rec) return;
             const override = Number(val) || 0;
+            if (await gateOrRun('update', 'masterdata', name, [{ table: 'names', pk_col: 'code', pk_value: rec.code, op: 'update', row: { executed_override: override } }], { executedOverride: rec.executedOverride })) return;
             markSaving();
             const { error } = await sb.from('names').update({ executed_override: override }).eq('code', rec.code);
             if (error) { markSaveError(error); return; }
@@ -6079,6 +6539,8 @@
 
         async function deleteContractorPayment(id) {
             if (!confirm('هل تريد حذف هذه الدفعة؟')) return;
+            const old = (db.contractorPayments || []).find(p => p.id === id);
+            if (await gateOrRun('delete', 'payments', old ? old.name : '', [{ table: 'contractor_payments', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('contractor_payments').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -6420,6 +6882,11 @@
                 status: document.getElementById('asset-status').value || 'working',
                 notes: document.getElementById('asset-notes').value.trim()
             };
+            if (await gateOrRun('create', 'assets', name, [{ table: 'assets', pk_col: 'id', pk_value: null, op: 'insert', row }])) {
+                e.target.reset();
+                document.getElementById('asset-date').value = todayISO();
+                return;
+            }
             markSaving();
             const { data, error } = await sb.from('assets').insert(row).select().single();
             if (error) { markSaveError(error); return; }
@@ -6432,6 +6899,8 @@
 
         async function deleteAsset(id) {
             if (!confirm('حذف هذا الأصل من السجل؟')) return;
+            const old = (db.assets || []).find(a => a.id === id);
+            if (await gateOrRun('delete', 'assets', old ? old.name : '', [{ table: 'assets', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('assets').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -6446,6 +6915,7 @@
             const order = ['working', 'maintenance', 'broken', 'sold'];
             const idx = order.indexOf(a.status);
             const newStatus = order[(idx + 1) % order.length];
+            if (await gateOrRun('update', 'assets', a.name, [{ table: 'assets', pk_col: 'id', pk_value: id, op: 'update', row: { status: newStatus } }], { status: a.status })) return;
             markSaving();
             const { error } = await sb.from('assets').update({ status: newStatus }).eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -6467,10 +6937,26 @@
             const statusLabels = { working: '🟢 يعمل', maintenance: '🟡 صيانة', broken: '🔴 معطّل', sold: '⚪ مُباع' };
             const statusColors = { working: '#d1fae5;color:#065f46', maintenance: '#fef3c7;color:#92400e', broken: '#fee2e2;color:#991b1b', sold: '#f1f5f9;color:#475569' };
 
-            tbody.innerHTML = rows.length
+            const ghostHtml = getPendingCreateRequests('assets').flatMap(p =>
+                ((p.afterData && p.afterData.operations) || []).filter(o => o.op === 'insert').map(o => {
+                    const row = o.row || {};
+                    return `<tr class="border-b border-amber-100 bg-amber-50/60 opacity-90" data-record-id="pending-${p.id}" title="طلب إضافة معلّق من ${esc(pendingUserLabel(p))} — لسه ما اتوافقش عليه">
+                <td class="p-3 font-bold">⏳ ${esc(row.name || '-')}</td>
+                <td class="p-3">${row.cost != null ? fmt(row.cost) : '-'}</td>
+                <td class="p-3 text-slate-500">${esc(row.date || '-')}</td>
+                <td class="p-3">${row.dep_rate ? row.dep_rate + '%' : '-'}</td>
+                <td class="p-3 font-bold text-lime-700">-</td>
+                <td class="p-3">${esc(row.location || '-')}</td>
+                <td class="p-3 text-center">${PENDING_GHOST_BADGE}</td>
+                <td class="p-3 text-slate-500 text-xs">${esc(row.notes || '')}</td>
+                <td class="p-3"></td>
+            </tr>`;
+                })
+            ).join('');
+            tbody.innerHTML = ghostHtml + (rows.length
                 ? rows.map(a => {
                     const book = assetBookValue(a);
-                    return `<tr class="border-b border-slate-50 hover:bg-slate-50 ${a.status === 'sold' ? 'opacity-50' : ''}"${auditAttr(a)}>
+                    return `<tr class="border-b border-slate-50 hover:bg-slate-50 ${a.status === 'sold' ? 'opacity-50' : ''}" data-record-id="${a.id}"${auditAttr(a)}>
                 <td class="p-3 font-bold">${esc(a.name)}</td>
                 <td class="p-3">${fmt(a.cost)}</td>
                 <td class="p-3 text-slate-500">${a.date}</td>
@@ -6487,7 +6973,7 @@
                 <td class="p-3"><button onclick="deleteAsset(${a.id})" class="text-red-400 hover:text-red-600">🗑</button></td>
             </tr>`;
                 }).join('')
-                : '<tr><td colspan="9" class="p-4 text-center text-slate-400">لا توجد أصول مسجلة — أضف من الفورم أعلاه</td></tr>';
+                : (ghostHtml ? '' : '<tr><td colspan="9" class="p-4 text-center text-slate-400">لا توجد أصول مسجلة — أضف من الفورم أعلاه</td></tr>'));
 
             // الملخص
             const active = db.assets.filter(a => a.status !== 'sold');
@@ -6513,15 +6999,29 @@
             // امنع تكرار نفس اليوم لنفس الموظف — حدّث بدل ما يتكرر
             const existing = db.attendance.find(a => a.employee === employee && a.date === date);
             const status = document.getElementById('att-status').value;
+            const attRow = { status, time_in: timeIn || null, time_out: timeOut || null };
+            if (existing) {
+                if (await gateOrRun('update', 'payroll', employee, [{ table: 'attendance', pk_col: 'id', pk_value: existing.id, op: 'update', row: attRow }], { status: existing.status, timeIn: existing.timeIn, timeOut: existing.timeOut })) {
+                    e.target.reset();
+                    document.getElementById('att-date').value = todayISO();
+                    return;
+                }
+            } else {
+                if (await gateOrRun('create', 'payroll', employee, [{ table: 'attendance', pk_col: 'id', pk_value: null, op: 'insert', row: { employee, date, ...attRow } }])) {
+                    e.target.reset();
+                    document.getElementById('att-date').value = todayISO();
+                    return;
+                }
+            }
             markSaving();
             if (existing) {
-                const { error } = await sb.from('attendance').update({ status, time_in: timeIn || null, time_out: timeOut || null }).eq('id', existing.id);
+                const { error } = await sb.from('attendance').update(attRow).eq('id', existing.id);
                 if (error) { markSaveError(error); return; }
                 existing.status = status;
                 existing.timeIn = timeIn;
                 existing.timeOut = timeOut;
             } else {
-                const { data, error } = await sb.from('attendance').insert({ employee, date, status, time_in: timeIn || null, time_out: timeOut || null }).select().single();
+                const { data, error } = await sb.from('attendance').insert({ employee, date, ...attRow }).select().single();
                 if (error) { markSaveError(error); return; }
                 db.attendance.push(attendanceRowToRecord(data));
             }
@@ -6533,6 +7033,8 @@
         }
         async function deleteAttendance(id) {
             if (!confirm('حذف سجل الحضور ده؟')) return;
+            const old = (db.attendance || []).find(a => a.id === id);
+            if (await gateOrRun('delete', 'payroll', old ? old.employee : '', [{ table: 'attendance', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('attendance').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -6657,21 +7159,29 @@
                 alert(`رواتب شهر ${month} مترحّلة بالفعل من قبل. لو عايز تعدّل، احذف السجلات القديمة الأول من تاب المصروفات أو سجل التعديلات.`);
                 return;
             }
-            if (!confirm(`ترحيل رواتب ${rows.length} موظف لشهر ${month} كمصروف "أجور"؟`)) return;
+            const projects = getProjectMultiSelectValues('payroll-project-ms');
+            const projectLabel = projects.length ? ` — موزّعة على ${projects.length > 1 ? projects.length + ' مشاريع' : projects[0]}` : '';
+            if (!confirm(`ترحيل رواتب ${rows.length} موظف لشهر ${month} كمصروف "أجور"${projectLabel}؟`)) return;
             const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
             const dateStr = `${month}-${String(lastDay).padStart(2, '0')}`;
-            const newRows = rows.map(r => ({
-                category: 'أجور',
-                activity: db.activities[0] ? db.activities[0].name : 'رواتب',
-                name: r.employee,
-                project: '-',
-                total: r.grossSalary,
-                paid: r.netSalary,
-                remaining: 0,
-                date: dateStr,
-                notes: `راتب شهر ${month}`,
-                source_module: 'payroll'
-            }));
+            const activityName = db.activities[0] ? db.activities[0].name : 'رواتب';
+            // من غير مشروع مختار: يفضل السلوك القديم زي ما هو (سطر واحد بمشروع "-"). لو اتحدد مشروع أو أكتر: يتقسم بالتساوي بينهم
+            const newRows = projects.length
+                ? rows.flatMap(r => {
+                    const totalSplits = splitAmountEqually(r.grossSalary, projects.length);
+                    const paidSplits = splitAmountEqually(r.netSalary, projects.length);
+                    return projects.map((project, i) => ({
+                        category: 'أجور', activity: activityName, name: r.employee, project,
+                        total: totalSplits[i], paid: paidSplits[i], remaining: 0,
+                        date: dateStr, notes: `راتب شهر ${month}`, source_module: 'payroll'
+                    }));
+                })
+                : rows.map(r => ({
+                    category: 'أجور', activity: activityName, name: r.employee, project: '-',
+                    total: r.grossSalary, paid: r.netSalary, remaining: 0,
+                    date: dateStr, notes: `راتب شهر ${month}`, source_module: 'payroll'
+                }));
+            if (await gateOrRunAccrual('post_payroll', 'payroll', `رواتب شهر ${month}`, { month, rows: newRows })) return;
             markSaving();
             const { data, error } = await sb.from('expense_entries').insert(newRows).select();
             if (error) { markSaveError(error); return; }
@@ -6679,6 +7189,7 @@
                 db.expensesData.push(rec);
                 logAudit('create', 'راتب', `${rec.name} - ${month}`, null, rec);
             });
+            resetProjectMultiSelect('payroll-project-ms');
             markSaved();
             renderAll();
             alert('تم ترحيل الرواتب بنجاح ✅');
@@ -6694,9 +7205,14 @@
             const date = document.getElementById('adv-date').value || todayISO();
             const account = document.getElementById('adv-account')?.value || (db.accounts[0] && db.accounts[0].name) || '';
             const notes = document.getElementById('adv-notes').value.trim();
-
+            const advRow = { employee, amount, date, account, notes, deducted_amount: 0, status: 'pending' };
+            if (await gateOrRun('create', 'payroll', `${employee} - ${fmt(amount)}`, [{ table: 'employee_advances', pk_col: 'id', pk_value: null, op: 'insert', row: advRow }])) {
+                e.target.reset();
+                document.getElementById('adv-date').value = todayISO();
+                return;
+            }
             markSaving();
-            const { data, error } = await sb.from('employee_advances').insert({ employee, amount, date, account, notes, deducted_amount: 0, status: 'pending' }).select().single();
+            const { data, error } = await sb.from('employee_advances').insert(advRow).select().single();
             if (error) { markSaveError(error); return; }
             const rec = advanceRowToRecord(data);
             db.employeeAdvances.push(rec);
@@ -6745,6 +7261,7 @@
             if (amount <= 0) { alert('أدخل مبلغ صحيح'); return; }
             const date = document.getElementById('settle-advance-date').value || todayISO();
 
+            if (await gateOrRunAccrual('settle_employee_advance', 'payroll', rec.employee, { advanceId: rec.id, amount, date })) { closeSettleAdvanceModal(); return; }
             const settlements = [...(rec.settlements || []), { amount, date }]; // عشان الخصم يتطبّق فعلياً على صافي راتب شهر السداد ده بالظبط
             const deductedAmount = (rec.deductedAmount || 0) + amount;
             const patch = { settlements, deducted_amount: deductedAmount };
@@ -6767,6 +7284,7 @@
         async function deleteEmployeeAdvance(id) {
             if (!confirm('حذف سلفة الموظف دي؟ لو كان اتخصم منها جزء، الخصم مش هيترجع تلقائي.')) return;
             const old = (db.employeeAdvances || []).find(a => a.id === id);
+            if (await gateOrRun('delete', 'payroll', old ? old.employee : '', [{ table: 'employee_advances', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('employee_advances').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -6969,14 +7487,11 @@
                 item: l.item, client, qty: l.qty, unit: l.unit, price: l.price, total: l.qty * l.price,
                 project, date, notes
             }));
-            const { data: savedSales, error: salesError } = await sb.from('sales').insert(saleRows).select();
-            if (salesError) { markSaveError(salesError); return; }
-            db.sales.push(...savedSales.map(saleRowToRecord));
 
             // الفاتورة كلها بقيمتها الإجمالية تدخل الإيرادات كسجل واحد — التحصيل يُسجَّل لاحقاً
             const revenueActDef = db.activities.find(a => a.categories && a.categories.includes('إيراد'));
             const itemsSummary = lines.map(l => l.qty > 1 ? `${l.item} (${l.qty})` : l.item).join('، ');
-            const { data: savedExp, error: expError } = await sb.from('expense_entries').insert(expenseRecordToRow({
+            const expRow = expenseRecordToRow({
                 saleId: groupId,
                 category: 'إيراد',
                 activity: revenueActDef ? revenueActDef.name : (db.activities[0] && db.activities[0].name) || '',
@@ -6989,7 +7504,24 @@
                 date,
                 notes: notes || `فاتورة ${invoiceNumber}: ${itemsSummary}`,
                 sourceModule: 'sales'
-            })).select().single();
+            });
+            const saleOps = [
+                ...saleRows.map(row => ({ table: 'sales', pk_col: 'id', pk_value: null, op: 'insert', row })),
+                { table: 'expense_entries', pk_col: 'id', pk_value: null, op: 'insert', row: expRow }
+            ];
+            if (await gateOrRun('create', 'sales', `${invoiceNumber} - ${client} - ${fmt(grandTotal)}`, saleOps)) {
+                e.target.reset();
+                document.getElementById('sale-lines').innerHTML = '';
+                document.getElementById('sale-date').value = todayISO();
+                updateSaleGrandTotal();
+                return;
+            }
+
+            const { data: savedSales, error: salesError } = await sb.from('sales').insert(saleRows).select();
+            if (salesError) { markSaveError(salesError); return; }
+            db.sales.push(...savedSales.map(saleRowToRecord));
+
+            const { data: savedExp, error: expError } = await sb.from('expense_entries').insert(expRow).select().single();
             if (expError) { markSaveError(expError); return; }
             db.expensesData.push(expenseRowToRecord(savedExp));
 
@@ -7009,6 +7541,11 @@
             const rec = db.sales.find(s => s.groupId === groupId);
             if (!rec) return;
             if (!confirm('حذف الفاتورة دي بكل بنودها؟ هيتحذف معاها القيد المرتبط في الإيرادات.')) return;
+            const delOps = [
+                { table: 'expense_entries', pk_col: 'sale_id', pk_value: groupId, op: 'delete' },
+                { table: 'sales', pk_col: 'group_id', pk_value: groupId, op: 'delete' }
+            ];
+            if (await gateOrRun('delete', 'sales', `${rec.item} - ${rec.client}`, delOps, rec)) return;
             markSaving();
             const { error: e1 } = await sb.from('expense_entries').delete().eq('sale_id', groupId);
             if (e1) { markSaveError(e1); return; }
@@ -7177,9 +7714,14 @@
             const account = document.getElementById('cust-account')?.value || (db.accounts[0] && db.accounts[0].name) || '';
             const date = document.getElementById('cust-date').value || todayISO();
             const purpose = document.getElementById('cust-purpose').value.trim();
-
+            const custRow = { name, amount, project, account, date, purpose, status: 'pending' };
+            if (await gateOrRun('create', 'custody', name, [{ table: 'custodies', pk_col: 'id', pk_value: null, op: 'insert', row: custRow }])) {
+                e.target.reset();
+                document.getElementById('cust-date').value = todayISO();
+                return;
+            }
             markSaving();
-            const { data, error } = await sb.from('custodies').insert({ name, amount, project, account, date, purpose, status: 'pending' }).select().single();
+            const { data, error } = await sb.from('custodies').insert(custRow).select().single();
             if (error) { markSaveError(error); return; }
             const rec = custodyRowToRecord(data);
             db.custodies.push(rec);
@@ -7203,6 +7745,11 @@
             if (c.status === 'settled') {
                 // إلغاء التسوية
                 if (!confirm('إلغاء تسوية هذه العهدة وإرجاعها لحالة معلقة؟')) return;
+                const unsettleOps = [
+                    { table: 'expense_entries', pk_col: 'custody_id', pk_value: id, op: 'delete' },
+                    { table: 'custodies', pk_col: 'id', pk_value: id, op: 'update', row: { status: 'pending', spent_amount: null, returned_amount: null } }
+                ];
+                if (await gateOrRun('update', 'custody', c.name, unsettleOps, { status: c.status, spentAmount: c.spentAmount, returnedAmount: c.returnedAmount })) return;
                 markSaving();
                 const { error: e1 } = await sb.from('expense_entries').delete().eq('custody_id', id);
                 if (e1) { markSaveError(e1); return; }
@@ -7252,14 +7799,11 @@
             if (!c) return;
             const spent = Math.min(Number(document.getElementById('settle-spent').value) || 0, c.amount);
             const returned = c.amount - spent;
-            markSaving();
-            const { error } = await sb.from('custodies').update({ status: 'settled', spent_amount: spent, returned_amount: returned }).eq('id', c.id);
-            if (error) { markSaveError(error); return; }
-            c.status = 'settled';
-            c.spentAmount = spent;
-            c.returnedAmount = returned;
+            const custodyPatch = { status: 'settled', spent_amount: spent, returned_amount: returned };
+            const settleOps = [{ table: 'custodies', pk_col: 'id', pk_value: c.id, op: 'update', row: custodyPatch }];
+            let expRow = null;
             if (spent > 0) {
-                const { data, error: e2 } = await sb.from('expense_entries').insert(expenseRecordToRow({
+                expRow = expenseRecordToRow({
                     custodyId: c.id,
                     category: 'مصروفات موقع',
                     name: c.name,
@@ -7271,7 +7815,18 @@
                     date: todayISO(),
                     notes: (c.purpose || 'عهدة مؤقتة') + (returned > 0 ? ` | مرتجع: ${fmt(returned)}` : ''),
                     sourceModule: 'custody'
-                })).select().single();
+                });
+                settleOps.push({ table: 'expense_entries', pk_col: 'id', pk_value: null, op: 'insert', row: expRow });
+            }
+            if (await gateOrRun('update', 'custody', c.name, settleOps, { status: c.status, spentAmount: c.spentAmount, returnedAmount: c.returnedAmount })) { closeSettleModal(); return; }
+            markSaving();
+            const { error } = await sb.from('custodies').update(custodyPatch).eq('id', c.id);
+            if (error) { markSaveError(error); return; }
+            c.status = 'settled';
+            c.spentAmount = spent;
+            c.returnedAmount = returned;
+            if (expRow) {
+                const { data, error: e2 } = await sb.from('expense_entries').insert(expRow).select().single();
                 if (e2) { markSaveError(e2); return; }
                 db.expensesData.push(expenseRowToRecord(data));
             }
@@ -7284,6 +7839,10 @@
         async function deleteCustody(id) {
             if (!confirm('حذف هذه العهدة؟ لو كانت مسوّاة هيتحذف معاها المصروف المرتبط.')) return;
             const c = db.custodies.find(x => x.id === id);
+            const custDelOps = c && c.status === 'settled'
+                ? [{ table: 'expense_entries', pk_col: 'custody_id', pk_value: id, op: 'delete' }, { table: 'custodies', pk_col: 'id', pk_value: id, op: 'delete' }]
+                : [{ table: 'custodies', pk_col: 'id', pk_value: id, op: 'delete' }];
+            if (await gateOrRun('delete', 'custody', c ? c.name : '', custDelOps, c)) return;
             markSaving();
             if (c && c.status === 'settled') {
                 const { error: e1 } = await sb.from('expense_entries').delete().eq('custody_id', id);
@@ -7472,6 +8031,13 @@
                 time_out: timeOutVal || null,
                 engineer: document.getElementById('dj-engineer').value.trim()
             };
+            if (isEdit) {
+                const idx = db.dailyJournals.findIndex(j => j.id === editingDJId);
+                const old = idx > -1 ? db.dailyJournals[idx] : null;
+                if (await gateOrRun('update', 'dailyjournal', `${project} - ${date}`, [{ table: 'daily_journals', pk_col: 'id', pk_value: editingDJId, op: 'update', row }], old)) { clearDJForm(); return; }
+            } else {
+                if (await gateOrRun('create', 'dailyjournal', `${project} - ${date}`, [{ table: 'daily_journals', pk_col: 'id', pk_value: null, op: 'insert', row }])) { clearDJForm(); return; }
+            }
             markSaving();
             if (isEdit) {
                 const idx = db.dailyJournals.findIndex(j => j.id === editingDJId);
@@ -7496,6 +8062,7 @@
         async function deleteDailyJournal(id) {
             if (!confirm('حذف اليومية دي؟')) return;
             const old = (db.dailyJournals || []).find(j => j.id === id);
+            if (await gateOrRun('delete', 'dailyjournal', old ? `${old.project} - ${old.date}` : '', [{ table: 'daily_journals', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('daily_journals').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -7510,8 +8077,20 @@
             if (!db.dailyJournals) db.dailyJournals = [];
             const fp = document.getElementById('filter-dj-project')?.value || 'ALL';
             const rows = [...db.dailyJournals].filter(j => fp === 'ALL' || j.project === fp).reverse();
-            tbody.innerHTML = rows.length
-                ? rows.map(j => `<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(j)}>
+            const ghostHtml = getPendingCreateRequests('dailyjournal').flatMap(p =>
+                ((p.afterData && p.afterData.operations) || []).filter(o => o.op === 'insert').map(o => {
+                    const row = o.row || {};
+                    return `<tr class="border-b border-amber-100 bg-amber-50/60 opacity-90" data-record-id="pending-${p.id}" title="طلب إضافة معلّق من ${esc(pendingUserLabel(p))} — لسه ما اتوافقش عليه">
+            <td class="p-3 font-bold">⏳ ${esc(row.project || '-')}</td>
+            <td class="p-3 text-slate-500">${esc(row.date || '-')}</td>
+            <td class="p-3 text-slate-500">${esc(row.day || '')}</td>
+            <td class="p-3">${esc(row.engineer || '-')}</td>
+            <td class="p-3">${PENDING_GHOST_BADGE}</td>
+        </tr>`;
+                })
+            ).join('');
+            tbody.innerHTML = ghostHtml + (rows.length
+                ? rows.map(j => `<tr class="border-b border-slate-50 hover:bg-slate-50" data-record-id="${j.id}"${auditAttr(j)}>
             <td class="p-3 font-bold">${esc(j.project)}</td>
             <td class="p-3 text-slate-500">${j.date}</td>
             <td class="p-3 text-slate-500">${esc(j.day || '')}</td>
@@ -7523,7 +8102,7 @@
                 <button onclick="deleteDailyJournal(${j.id})" class="text-red-400 hover:text-red-600" title="حذف">🗑</button>
             </td>
         </tr>`).join('')
-                : '<tr><td colspan="5" class="p-4 text-center text-slate-400">لا توجد يوميات محفوظة</td></tr>';
+                : (ghostHtml ? '' : '<tr><td colspan="5" class="p-4 text-center text-slate-400">لا توجد يوميات محفوظة</td></tr>'));
         }
         function buildDJPrintHTML(j) {
             // صف بخط منقط تحته (زي الورقة الأصلية) — لو القيمة فاضية بيوري نقط فاضية
@@ -7869,8 +8448,13 @@
             if (installments.some(i => !i.amount || !i.dueDate)) { alert('كل دفعة لازم يكون ليها مبلغ وتاريخ استحقاق'); return; }
 
             const totalAmount = installments.reduce((s, i) => s + i.amount, 0);
+            const obligRow = { type, description: desc, party, notes, installments, total_amount: totalAmount };
+            if (await gateOrRun('create', 'payments', `${type} - ${desc}`, [{ table: 'obligations', pk_col: 'id', pk_value: null, op: 'insert', row: obligRow }])) {
+                clearObligationForm();
+                return;
+            }
             markSaving();
-            const { data, error } = await sb.from('obligations').insert({ type, description: desc, party, notes, installments, total_amount: totalAmount }).select().single();
+            const { data, error } = await sb.from('obligations').insert(obligRow).select().single();
             if (error) { markSaveError(error); return; }
             const rec = obligationRowToRecord(data);
             db.obligations.push(rec);
@@ -7912,6 +8496,7 @@
             const date = document.getElementById('pay-oblig-date').value || todayISO();
             const notes = document.getElementById('pay-oblig-notes').value.trim();
 
+            if (await gateOrRunAccrual('pay_obligation_installment', 'payments', `${rec.desc} - دفعة ${inst.num}`, { obligId: rec.id, instId: inst.id, date, notes })) { closePayObligModal(); return; }
             const installments = rec.installments.map(i => i.id === inst.id ? { ...i, status: 'paid', paidDate: date, paidNotes: notes } : i);
             markSaving();
             const { error } = await sb.from('obligations').update({ installments }).eq('id', rec.id);
@@ -7927,6 +8512,7 @@
             if (!rec) return;
             const inst = (rec.installments || []).find(i => i.id === instId);
             if (!inst) return;
+            if (await gateOrRunAccrual('reopen_obligation_installment', 'payments', `${rec.desc} - دفعة ${inst.num}`, { obligId, instId })) return;
             const installments = rec.installments.map(i => {
                 if (i.id !== instId) return i;
                 const { paidDate, ...restInst } = i;
@@ -7942,6 +8528,7 @@
         async function deleteObligation(obligId) {
             if (!confirm('حذف الالتزام ده بالكامل مع كل خطة الدفعات بتاعته؟')) return;
             const old = (db.obligations || []).find(o => o.id === obligId);
+            if (await gateOrRun('delete', 'payments', old ? old.desc : '', [{ table: 'obligations', pk_col: 'id', pk_value: obligId, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('obligations').delete().eq('id', obligId);
             if (error) { markSaveError(error); return; }
@@ -8030,10 +8617,24 @@
             const pending = db.custodies.filter(c => c.status === 'pending').reduce((s, c) => s + c.amount, 0);
             const settled = db.custodies.filter(c => c.status === 'settled').reduce((s, c) => s + (c.spentAmount ?? c.amount), 0);
 
+            const ghostHtml = getPendingCreateRequests('custody').flatMap(p =>
+                ((p.afterData && p.afterData.operations) || []).filter(o => o.op === 'insert').map(o => {
+                    const row = o.row || {};
+                    return `<tr class="border-b border-amber-100 bg-amber-50/60 opacity-90" data-record-id="pending-${p.id}" title="طلب إضافة معلّق من ${esc(pendingUserLabel(p))} — لسه ما اتوافقش عليه">
+            <td class="p-3 font-bold">⏳ ${esc(row.name || '-')}</td>
+            <td class="p-3 font-bold text-violet-700">${row.amount != null ? fmt(row.amount) : '-'}</td>
+            <td class="p-3">${esc(row.project || '-')}</td>
+            <td class="p-3 text-slate-500">${esc(row.date || '-')}</td>
+            <td class="p-3 text-slate-500">${esc(row.purpose || '')}</td>
+            <td class="p-3 text-center">${PENDING_GHOST_BADGE}</td>
+            <td class="p-3"></td>
+        </tr>`;
+                })
+            ).join('');
             const el = document.getElementById('tbody-custody');
-            if (el) el.innerHTML = rows.map(c => {
+            if (el) el.innerHTML = ghostHtml + rows.map(c => {
                 const type = c.type || 'custody';
-                return `<tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(c)}>
+                return `<tr class="border-b border-slate-50 hover:bg-slate-50" data-record-id="${c.id}"${auditAttr(c)}>
             <td class="p-3 font-bold">${esc(c.name)}</td>
             <td class="p-3 font-bold text-violet-700">${fmt(c.amount)}</td>
             <td class="p-3">${esc(c.project)}</td>
@@ -8051,7 +8652,7 @@
             <td class="p-3"><button onclick="deleteCustody(${c.id})" class="text-red-400 hover:text-red-600">🗑</button></td>
         </tr>`;
             }).join('')
-                || '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا توجد عهد مسجلة</td></tr>';
+                || (ghostHtml ? '' : '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا توجد عهد مسجلة</td></tr>');
 
             const elP = document.getElementById('cust-total-pending');
             const elS = document.getElementById('cust-total-settled');
@@ -8073,11 +8674,14 @@
             const date = document.getElementById('extinv-date').value || todayISO();
             const account = document.getElementById('extinv-account')?.value || (db.accounts[0] && db.accounts[0].name) || '';
             const notes = document.getElementById('extinv-notes').value.trim();
-
+            const extInvRow = { description, project, amount, date, account, notes, status: 'pending', returned_amount: 0 };
+            if (await gateOrRun('create', 'extinvest', description, [{ table: 'external_investments', pk_col: 'id', pk_value: null, op: 'insert', row: extInvRow }])) {
+                e.target.reset();
+                document.getElementById('extinv-date').value = todayISO();
+                return;
+            }
             markSaving();
-            const { data, error } = await sb.from('external_investments').insert({
-                description, project, amount, date, account, notes, status: 'pending', returned_amount: 0
-            }).select().single();
+            const { data, error } = await sb.from('external_investments').insert(extInvRow).select().single();
             if (error) { markSaveError(error); return; }
             const rec = extInvRowToRecord(data);
             db.externalInvestments.push(rec);
@@ -8095,6 +8699,7 @@
             if (!inv) return;
             if (inv.status === 'settled') {
                 if (!confirm('إلغاء تسوية هذا الاستثمار وإرجاعه لحالة قائم؟')) return;
+                if (await gateOrRun('update', 'extinvest', inv.description, [{ table: 'external_investments', pk_col: 'id', pk_value: id, op: 'update', row: { status: 'pending', returned_amount: 0, settle_date: null } }], { status: inv.status, returnedAmount: inv.returnedAmount, settleDate: inv.settleDate })) return;
                 markSaving();
                 const { error } = await sb.from('external_investments').update({ status: 'pending', returned_amount: 0, settle_date: null }).eq('id', id);
                 if (error) { markSaveError(error); return; }
@@ -8136,6 +8741,7 @@
             if (!inv) return;
             const returned = Number(document.getElementById('settle-extinv-returned').value) || 0;
             const date = document.getElementById('settle-extinv-date').value || todayISO();
+            if (await gateOrRun('update', 'extinvest', inv.description, [{ table: 'external_investments', pk_col: 'id', pk_value: inv.id, op: 'update', row: { status: 'settled', returned_amount: returned, settle_date: date } }], { status: inv.status, returnedAmount: inv.returnedAmount, settleDate: inv.settleDate })) { closeSettleExtInvModal(); return; }
             markSaving();
             const { error } = await sb.from('external_investments').update({ status: 'settled', returned_amount: returned, settle_date: date }).eq('id', inv.id);
             if (error) { markSaveError(error); return; }
@@ -8151,6 +8757,7 @@
         async function deleteExternalInvestment(id) {
             if (!confirm('حذف هذا الاستثمار الخارجي؟')) return;
             const old = (db.externalInvestments || []).find(x => x.id === id);
+            if (await gateOrRun('delete', 'extinvest', old ? old.description : '', [{ table: 'external_investments', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('external_investments').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -8297,6 +8904,12 @@
                 notes: document.getElementById('inv-notes').value.trim()
             };
             if (isManualOverride) row.pct = enteredPct; // نسبة ثابتة يدوية بدل النسبة التلقائية من التمويل
+            if (await gateOrRun('create', 'investors', investor, [{ table: 'investor_funding', pk_col: 'id', pk_value: null, op: 'insert', row }])) {
+                e.target.reset();
+                if (document.getElementById('inv-date')) document.getElementById('inv-date').value = todayISO();
+                if (document.getElementById('inv-auto-pct')) document.getElementById('inv-auto-pct').value = '';
+                return;
+            }
             markSaving();
             const { data, error } = await sb.from('investor_funding').insert(row).select().single();
             if (error) { markSaveError(error); return; }
@@ -8312,6 +8925,8 @@
 
         async function deleteInvestorFunding(id) {
             if (!confirm('حذف هذا الربط؟')) return;
+            const old = (db.investorFunding || []).find(f => f.id === id);
+            if (await gateOrRun('delete', 'investors', old ? old.investor : '', [{ table: 'investor_funding', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('investor_funding').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -8323,8 +8938,10 @@
         async function approveInvestorDistribution(investor, project, amount) {
             if (!confirm(`اعتماد ${fmt(amount)} كمستحق للمستثمر ${investor}؟\nسيظهر في المركز المالي كالتزام متداول.`)) return;
             if (!db.investorLiabilities) db.investorLiabilities = [];
+            const libRow = { investor, project, amount, date: todayISO(), status: 'pending' };
+            if (await gateOrRun('create', 'investors', investor, [{ table: 'investor_liabilities', pk_col: 'id', pk_value: null, op: 'insert', row: libRow }])) return;
             markSaving();
-            const { data, error } = await sb.from('investor_liabilities').insert({ investor, project, amount, date: todayISO(), status: 'pending' }).select().single();
+            const { data, error } = await sb.from('investor_liabilities').insert(libRow).select().single();
             if (error) { markSaveError(error); return; }
             db.investorLiabilities.push(liabilityRowToRecord(data));
             markSaved();
@@ -8370,6 +8987,7 @@
             const date = document.getElementById('pay-investor-date').value || todayISO();
             const notes = document.getElementById('pay-investor-notes').value.trim();
 
+            if (await gateOrRunAccrual('pay_investor_liability', 'investors', lib.investor, { liabilityId: lib.id, amount, date, notes })) { closePayInvestorModal(); return; }
             const paidAmount = (lib.paidAmount || 0) + amount;
             const patch = { paid_amount: paidAmount };
             if (paidAmount >= lib.amount) { patch.status = 'paid'; patch.paid_date = date; }
@@ -8392,6 +9010,8 @@
 
         async function deleteInvestorLiability(id) {
             if (!confirm('إلغاء هذا الاعتماد؟')) return;
+            const old = (db.investorLiabilities || []).find(l => l.id === id);
+            if (await gateOrRun('delete', 'investors', old ? old.investor : '', [{ table: 'investor_liabilities', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('investor_liabilities').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -8406,12 +9026,18 @@
             const project = document.getElementById('dist-project').value;
             const amount = Number(document.getElementById('dist-amount').value) || 0;
             if (!amount) { alert('أدخل المبلغ'); return; }
-            markSaving();
-            const { data, error } = await sb.from('profit_distributions').insert({
+            const distRow = {
                 investor, project: project || 'ALL', amount,
                 date: document.getElementById('dist-date').value || todayISO(),
                 notes: document.getElementById('dist-notes').value.trim()
-            }).select().single();
+            };
+            if (await gateOrRun('create', 'investors', investor, [{ table: 'profit_distributions', pk_col: 'id', pk_value: null, op: 'insert', row: distRow }])) {
+                e.target.reset();
+                document.getElementById('dist-date').value = todayISO();
+                return;
+            }
+            markSaving();
+            const { data, error } = await sb.from('profit_distributions').insert(distRow).select().single();
             if (error) { markSaveError(error); return; }
             db.profitDistributions.push(data);
             e.target.reset();
@@ -8422,6 +9048,8 @@
 
         async function deleteDistribution(id) {
             if (!confirm('حذف هذا التوزيع؟')) return;
+            const old = (db.profitDistributions || []).find(d => d.id === id);
+            if (await gateOrRun('delete', 'investors', old ? old.investor : '', [{ table: 'profit_distributions', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('profit_distributions').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
@@ -8471,8 +9099,10 @@
         async function approveManagerFee(investor, project, amount) {
             if (!confirm(`اعتماد ${fmt(amount)} كمستحق لك (كمدير) عن نصيب "${investor}" في مشروع "${project}"؟\nسيظهر في المركز المالي كالتزام متداول.`)) return;
             if (!db.managerLiabilities) db.managerLiabilities = [];
+            const mgrLibRow = { investor, project, amount, date: todayISO(), status: 'pending', paid_amount: 0 };
+            if (await gateOrRun('create', 'investors', investor, [{ table: 'manager_liabilities', pk_col: 'id', pk_value: null, op: 'insert', row: mgrLibRow }])) return;
             markSaving();
-            const { data, error } = await sb.from('manager_liabilities').insert({ investor, project, amount, date: todayISO(), status: 'pending', paid_amount: 0 }).select().single();
+            const { data, error } = await sb.from('manager_liabilities').insert(mgrLibRow).select().single();
             if (error) { markSaveError(error); return; }
             db.managerLiabilities.push(liabilityRowToRecord(data));
             logAudit('create', 'اعتماد التزام مدير', `${investor} - ${project} - ${fmt(amount)}`, null, { investor, project, amount });
@@ -8519,6 +9149,7 @@
             const account = document.getElementById('pay-manager-account')?.value || (db.accounts[0] && db.accounts[0].name) || '';
             const notes = document.getElementById('pay-manager-notes').value.trim();
 
+            if (await gateOrRunAccrual('pay_manager_liability', 'investors', lib.investor, { liabilityId: lib.id, amount, date, account, notes })) { closePayManagerModal(); return; }
             const paidAmount = (lib.paidAmount || 0) + amount;
             const patch = { paid_amount: paidAmount };
             if (paidAmount >= lib.amount) { patch.status = 'paid'; patch.paid_date = date; }
@@ -8540,6 +9171,7 @@
         async function deleteManagerLiability(id) {
             if (!confirm('حذف الالتزام ده؟ لو كان اتسدد جزء منه، الجزء ده مش هيترجع تلقائي.')) return;
             const old = (db.managerLiabilities || []).find(l => l.id === id);
+            if (await gateOrRun('delete', 'investors', old ? old.investor : '', [{ table: 'manager_liabilities', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
             markSaving();
             const { error } = await sb.from('manager_liabilities').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
