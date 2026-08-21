@@ -218,6 +218,7 @@ Deno.serve(async (req: Request) => {
     const password = String(body.password || '');
     const permissions = body.permissions && typeof body.permissions === 'object' ? body.permissions : {};
     const requiresApproval = !!body.requiresApproval;
+    const allowedProjects = Array.isArray(body.allowedProjects) ? body.allowedProjects.map(Number).filter(Number.isFinite) : [];
     if (!isValidUsername(username)) return json({ error: 'invalid username' }, 400);
     if (password.length < 8) return json({ error: 'password too short' }, 400);
 
@@ -234,7 +235,8 @@ Deno.serve(async (req: Request) => {
       is_admin: false,
       active: true,
       permissions,
-      requires_approval: requiresApproval
+      requires_approval: requiresApproval,
+      allowed_projects: allowedProjects
     });
     if (profileErr) {
       await admin.auth.admin.deleteUser(created.user.id);
@@ -251,6 +253,7 @@ Deno.serve(async (req: Request) => {
     const patch: Record<string, unknown> = {};
     if (body.permissions && typeof body.permissions === 'object') patch.permissions = body.permissions;
     if (typeof body.requiresApproval === 'boolean') patch.requires_approval = body.requiresApproval;
+    if (Array.isArray(body.allowedProjects)) patch.allowed_projects = body.allowedProjects.map(Number).filter(Number.isFinite);
     let usernameChanged = false;
     if (body.username) {
       const username = String(body.username).trim();

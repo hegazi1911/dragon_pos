@@ -140,8 +140,25 @@ create table if not exists expense_entries (
   created_at timestamptz not null default now(),
   -- الجدول ده مشترك بين 4 تبويبات مختلفة (مصروفات/رواتب/مبيعات/عهد) — العمود ده بيوضّح
   -- مصدر كل حركة عشان RLS تقدر تفرض صلاحية التبويب الحقيقي بدل موديول واحد ثابت
-  source_module text not null check (source_module in ('expenses','payroll','sales','custody'))
+  source_module text not null check (source_module in ('expenses','payroll','sales','custody')),
+  payroll_batch_id uuid -- معرّف موحّد لكل عملية ترحيل رواتب شهرية، عشان نلاقي كل القيود المرتبطة بترحيل معيّن بسهولة
 );
+alter table expense_entries add column if not exists payroll_batch_id uuid;
+
+-- توزيع كل موظف على مشروع أو أكتر (نسبة % أو مبلغ ثابت شهري) — يُستخدم وقت ترحيل الرواتب
+-- بدل ما الراتب كله يترحّل بمشروع واحد أو "-"
+create table if not exists employee_project_allocations (
+  id bigint generated always as identity primary key,
+  employee text not null,
+  project text not null,
+  allocation_type text not null default 'percentage' check (allocation_type in ('percentage', 'fixed')),
+  allocation_value numeric not null,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+-- مينفعش يتسجّل تخصيصين فعّالين لنفس (الموظف, المشروع) في نفس الوقت
+create unique index if not exists uq_employee_project_active
+  on employee_project_allocations (employee, project) where active = true;
 
 create table if not exists payments (
   id bigint generated always as identity primary key,
@@ -419,9 +436,11 @@ create table if not exists profiles (
   active boolean not null default true,
   permissions jsonb not null default '{}'::jsonb, -- مفتاح مستقل لكل تبويب: {"procurement":{"view":true,"edit":true,"delete":false}, "sales":{...}, ..., "masterdata":{...}} (18 مفتاح)
   created_at timestamptz not null default now(),
-  requires_approval boolean not null default false -- لو true: أي إضافة/تعديل/حذف من المستخدم ده بيتسجل في pending_changes بدل التنفيذ المباشر، لحد ما المدير يوافق
+  requires_approval boolean not null default false, -- لو true: أي إضافة/تعديل/حذف من المستخدم ده بيتسجل في pending_changes بدل التنفيذ المباشر، لحد ما المدير يوافق
+  allowed_projects int[] not null default '{}' -- أكواد المشاريع المسموح لهذا المستخدم (غير الأدمن) يشتغل عليها؛ فاضية = صفر مشاريع. المدير دايمًا بيشوف الكل بصرف النظر عن العمود ده.
 );
 alter table profiles enable row level security;
+alter table profiles add column if not exists allowed_projects int[] not null default '{}'; -- لتحديث القواعد القديمة اللي اتعملها الجدول قبل إضافة العمود ده
 grant select, insert, update, delete on profiles to service_role; -- جدول جديد محتاج المنحة دي صراحةً عشان الـ Edge Function تقدر تكتب فيه
 
 create or replace function is_admin_user()
@@ -444,6 +463,20 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- تقييد المشاريع: المستخدم غير الأدمن يشتغل بس على المشاريع المدرجة في profiles.allowed_projects بتاعه.
+-- p_project = null (سجل مش مرتبط بمشروع محدد، زي مصروف عام) يفضل ظاهر للجميع بصرف النظر عن التقييد.
+create or replace function has_project_access(p_project text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select
+    p_project is null
+    or is_admin_user()
+    or exists (
+      select 1 from projects pr
+      join profiles pf on pf.id = auth.uid()
+      where pr.name = p_project and pr.code = any(pf.allowed_projects)
+    );
+$$;
+
 drop policy if exists "read own or admin" on profiles;
 create policy "read own or admin" on profiles for select using (id = auth.uid() or is_admin_user());
 
@@ -460,38 +493,39 @@ declare
   rec record;
 begin
   for rec in
+    -- has_project: هل الجدول ده فيه عمود project لازم يتفلتر بيه على مستوى القاعدة نفسها؟
     select * from (values
-      ('procurements','procurement'),
-      ('sales','sales'),
-      ('custodies','custody'),
-      ('employee_advances','payroll'),
-      ('attendance','payroll'),
-      ('assets','assets'),
-      ('daily_journals','dailyjournal'),
-      ('payments','payments'),
-      ('contractor_payments','payments'),
-      ('refunds','payments'),
-      ('obligations','payments'),
-      ('investor_funding','investors'),
-      ('profit_distributions','investors'),
-      ('investor_liabilities','investors'),
-      ('manager_liabilities','investors'),
-      ('manager_payments','investors'),
-      ('external_investments','extinvest'),
-      ('taxes','pl'),
-      ('projects','masterdata'),
-      ('supplies','masterdata'),
-      ('suppliers','masterdata'),
-      ('expense_categories','masterdata'),
-      ('activities','masterdata'),
-      ('names','masterdata'),
-      ('clients','masterdata'),
-      ('investors','masterdata'),
-      ('accounts','masterdata'),
-      ('employees','masterdata'),
-      ('asset_types','masterdata'),
-      ('units','masterdata')
-    ) as t(tbl, module)
+      ('procurements','procurement', true),
+      ('sales','sales', true),
+      ('custodies','custody', true),
+      ('employee_advances','payroll', false),
+      ('attendance','payroll', false),
+      ('assets','assets', false), -- الأصول مربوطة بعمود location مش project — بيتفلتر client-side بس حاليًا
+      ('daily_journals','dailyjournal', true),
+      ('payments','payments', true),
+      ('contractor_payments','payments', true),
+      ('refunds','payments', false),
+      ('obligations','payments', false),
+      ('investor_funding','investors', true),
+      ('profit_distributions','investors', true),
+      ('investor_liabilities','investors', true),
+      ('manager_liabilities','investors', true),
+      ('manager_payments','investors', false),
+      ('external_investments','extinvest', true),
+      ('taxes','pl', false),
+      ('projects','masterdata', false), -- المشروع نفسه ليه سياسة خاصة تحت (بالكود مش بالاسم)
+      ('supplies','masterdata', false),
+      ('suppliers','masterdata', false),
+      ('expense_categories','masterdata', false),
+      ('activities','masterdata', false),
+      ('names','masterdata', false),
+      ('clients','masterdata', false),
+      ('investors','masterdata', false),
+      ('accounts','masterdata', false),
+      ('employees','masterdata', false),
+      ('asset_types','masterdata', false),
+      ('units','masterdata', false)
+    ) as t(tbl, module, has_project)
   loop
     execute format('alter table %I enable row level security;', rec.tbl);
     execute format('drop policy if exists "public full access" on %I;', rec.tbl);
@@ -499,25 +533,62 @@ begin
     execute format('drop policy if exists "insert_module" on %I;', rec.tbl);
     execute format('drop policy if exists "update_module" on %I;', rec.tbl);
     execute format('drop policy if exists "delete_module" on %I;', rec.tbl);
-    execute format('create policy "select_active" on %I for select using (is_active_user());', rec.tbl);
-    execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit''));', rec.tbl, rec.module);
-    execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'')) with check (has_permission(%L, ''edit''));', rec.tbl, rec.module, rec.module);
-    execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete''));', rec.tbl, rec.module);
+    if rec.has_project then
+      execute format('create policy "select_active" on %I for select using (is_active_user() and has_project_access(project));', rec.tbl);
+      execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit'') and has_project_access(project));', rec.tbl, rec.module);
+      execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'') and has_project_access(project)) with check (has_permission(%L, ''edit'') and has_project_access(project));', rec.tbl, rec.module, rec.module);
+      execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete'') and has_project_access(project));', rec.tbl, rec.module);
+    else
+      execute format('create policy "select_active" on %I for select using (is_active_user());', rec.tbl);
+      execute format('create policy "insert_module" on %I for insert with check (has_permission(%L, ''edit''));', rec.tbl, rec.module);
+      execute format('create policy "update_module" on %I for update using (has_permission(%L, ''edit'')) with check (has_permission(%L, ''edit''));', rec.tbl, rec.module, rec.module);
+      execute format('create policy "delete_module" on %I for delete using (has_permission(%L, ''delete''));', rec.tbl, rec.module);
+    end if;
   end loop;
 
+  -- المشاريع نفسها (دليل الأكواد → المشاريع): غير الأدمن يشوف/يعدّل/يحذف بس المشاريع المدرجة
+  -- في allowed_projects بتاعه. الإضافة (insert) تفضل مربوطة بصلاحية دليل الأكواد العادية بس
+  -- (مشروع جديد لسه معندوش كود يتقارن بيه أصلاً وقت الإنشاء).
+  execute 'drop policy if exists "select_active" on projects;';
+  execute 'drop policy if exists "update_module" on projects;';
+  execute 'drop policy if exists "delete_module" on projects;';
+  execute $q$create policy "select_active" on projects for select using (
+    is_active_user() and (is_admin_user() or code = any((select allowed_projects from profiles where id = auth.uid())))
+  );$q$;
+  execute $q$create policy "update_module" on projects for update using (
+    has_permission('masterdata','edit') and (is_admin_user() or code = any((select allowed_projects from profiles where id = auth.uid())))
+  ) with check (
+    has_permission('masterdata','edit') and (is_admin_user() or code = any((select allowed_projects from profiles where id = auth.uid())))
+  );$q$;
+  execute $q$create policy "delete_module" on projects for delete using (
+    has_permission('masterdata','delete') and (is_admin_user() or code = any((select allowed_projects from profiles where id = auth.uid())))
+  );$q$;
+
   -- expense_entries: مشترك بين 4 تبويبات (مصروفات/رواتب/مبيعات/عهد) — الصلاحية
-  -- تُفحص ديناميكيًا من عمود source_module في كل صف بدل موديول ثابت
+  -- تُفحص ديناميكيًا من عمود source_module في كل صف بدل موديول ثابت، وبرضه مقيّدة بالمشروع
   execute 'alter table expense_entries enable row level security;';
   execute 'drop policy if exists "public full access" on expense_entries;';
   execute 'drop policy if exists "select_active" on expense_entries;';
   execute 'drop policy if exists "insert_module" on expense_entries;';
   execute 'drop policy if exists "update_module" on expense_entries;';
   execute 'drop policy if exists "delete_module" on expense_entries;';
-  execute 'create policy "select_active" on expense_entries for select using (is_active_user());';
-  execute 'create policy "insert_module" on expense_entries for insert with check (has_permission(source_module, ''edit''));';
-  execute 'create policy "update_module" on expense_entries for update using (has_permission(source_module, ''edit'')) with check (has_permission(source_module, ''edit''));';
-  execute 'create policy "delete_module" on expense_entries for delete using (has_permission(source_module, ''delete''));';
+  execute 'create policy "select_active" on expense_entries for select using (is_active_user() and has_project_access(project));';
+  execute 'create policy "insert_module" on expense_entries for insert with check (has_permission(source_module, ''edit'') and has_project_access(project));';
+  execute 'create policy "update_module" on expense_entries for update using (has_permission(source_module, ''edit'') and has_project_access(project)) with check (has_permission(source_module, ''edit'') and has_project_access(project));';
+  execute 'create policy "delete_module" on expense_entries for delete using (has_permission(source_module, ''delete'') and has_project_access(project));';
 end $$;
+
+-- employee_project_allocations: إعداد إداري لتوزيع الرواتب — مربوط بصلاحية تبويب "الرواتب" العادية
+-- (view/edit/delete)، من غير تقييد مشروع إضافي (هو أصلاً بيوصف العلاقة موظف↔مشروع نفسها).
+alter table employee_project_allocations enable row level security;
+drop policy if exists "select_active" on employee_project_allocations;
+drop policy if exists "insert_module" on employee_project_allocations;
+drop policy if exists "update_module" on employee_project_allocations;
+drop policy if exists "delete_module" on employee_project_allocations;
+create policy "select_active" on employee_project_allocations for select using (is_active_user());
+create policy "insert_module" on employee_project_allocations for insert with check (has_permission('payroll', 'edit'));
+create policy "update_module" on employee_project_allocations for update using (has_permission('payroll', 'edit')) with check (has_permission('payroll', 'edit'));
+create policy "delete_module" on employee_project_allocations for delete using (has_permission('payroll', 'delete'));
 
 -- audit_log: أي مستخدم مفعّل يقدر يسجّل حركاته هو (INSERT)، لكن القراءة مقفولة
 -- على المدير بس، ومفيش تعديل أو حذف لأي حد — سجل غير قابل للتلاعب.
@@ -557,7 +628,7 @@ begin
     'refunds','investor_funding','profit_distributions','investor_liabilities',
     'manager_liabilities','manager_payments','custodies','employee_advances',
     'attendance','assets','daily_journals','obligations','external_investments',
-    'audit_log','app_settings'
+    'audit_log','app_settings','employee_project_allocations'
   ])
   loop
     begin
@@ -604,7 +675,7 @@ declare
     'investor_funding','profit_distributions','investor_liabilities','manager_liabilities',
     'manager_payments','external_investments','taxes',
     'projects','supplies','suppliers','expense_categories','activities','names','clients',
-    'investors','accounts','employees','asset_types','units'
+    'investors','accounts','employees','asset_types','units','employee_project_allocations'
   ];
 begin
   foreach t in array tables_all loop

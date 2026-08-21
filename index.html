@@ -1153,6 +1153,33 @@
                 </div>
 
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b border-slate-200">
+                        <h3 class="font-bold text-slate-900"><i class="fa-solid fa-diagram-project text-fuchsia-600"></i>
+                            توزيع الموظفين على المشاريع</h3>
+                        <p class="text-xs text-slate-500 mt-1">حدد لكل موظف نسبة % أو مبلغ ثابت شهري من راتبه لكل
+                            مشروع — التوزيع ده بيتسجل مرة واحدة ويتطبق تلقائيًا كل شهر عند الترحيل. الموظف من غير
+                            توزيع محدد يترحّل بمشروع "-" زي المعتاد.</p>
+                    </div>
+                    <div class="p-4 flex flex-col gap-3">
+                        <div class="max-w-xs">
+                            <label class="block text-xs font-bold text-slate-600 mb-1">الموظف</label>
+                            <select id="alloc-employee" onchange="loadEmployeeAllocationEditor()"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        </div>
+                        <div id="alloc-rows" class="flex flex-col gap-2"></div>
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <button type="button" onclick="addAllocationRowUI()"
+                                class="text-xs bg-fuchsia-100 text-fuchsia-700 px-2 py-1 rounded font-bold">+ إضافة
+                                توزيع</button>
+                            <div id="alloc-progress" class="text-xs font-bold"></div>
+                        </div>
+                        <button type="button" onclick="saveEmployeeAllocations()"
+                            class="self-end bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold px-6 p-2 rounded-lg text-sm">حفظ
+                            توزيع الموظف</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div
                         class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2">
                         <h3 class="font-bold text-slate-900"><i
@@ -1160,18 +1187,6 @@
                         <div class="flex flex-wrap gap-2 items-center">
                             <input id="payroll-month" type="month" onchange="renderPayrollSummary()"
                                 class="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
-                            <div class="relative">
-                                <button type="button" id="payroll-project-ms-btn"
-                                    onclick="toggleProjectMultiSelectDropdown('payroll-project-ms')"
-                                    class="bg-white border border-slate-200 rounded px-2 py-1 text-xs flex items-center gap-2">
-                                    <span id="payroll-project-ms-label">حمّل على مشروع...</span>
-                                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
-                                </button>
-                                <div id="payroll-project-ms-panel"
-                                    class="hidden absolute z-20 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-2 w-48 max-h-60 overflow-y-auto">
-                                    <div id="payroll-project-ms-options"></div>
-                                </div>
-                            </div>
                             <button onclick="postPayroll()"
                                 class="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold">💰
                                 ترحيل رواتب الشهر للمصروفات</button>
@@ -1190,7 +1205,7 @@
                                     <th class="p-3">غياب بعذر</th>
                                     <th class="p-3">غياب بدون عذر</th>
                                     <th class="p-3 text-orange-300">خصم سلفة هذا الشهر</th>
-                                    <th class="p-3 text-fuchsia-300">صافي المستلم</th>
+                                    <th class="p-3 text-fuchsia-300">صافي المستلم / التوزيع</th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-payroll"></tbody>
@@ -2817,6 +2832,7 @@
                                     <th class="p-3">تقارير ودفاتر</th>
                                     <th class="p-3">دليل الأكواد</th>
                                     <th class="p-3">أدوات النظام</th>
+                                    <th class="p-3">المشاريع</th>
                                     <th class="p-3 text-center">الحالة</th>
                                     <th class="p-3 text-center">يحتاج موافقة</th>
                                     <th class="p-3"></th>
@@ -2885,6 +2901,14 @@
             </label>
             <p class="text-[10px] text-slate-400 -mt-2">لو مفعّلة، أي إضافة/تعديل/حذف من هذا المستخدم في أي تبويب
                 هيتحفظ كطلب معلّق لحد ما توافق عليه من تاب "طلبات في انتظار الموافقة"</p>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">المشاريع المسموح للمستخدم يشتغل عليها</label>
+                <p class="text-[10px] text-slate-400 mb-1.5">لو ماخترتش أي مشروع، المستخدم مش هيشوف أي مشروع خالص في
+                    أي تبويب (توريدات، مصروفات، مبيعات، عهد، أصول، مستثمرين...) لحد ما تحدد له.</p>
+                <div id="user-projects-list"
+                    class="flex flex-wrap gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-40 overflow-y-auto">
+                </div>
+            </div>
             <div id="user-permissions-editor" class="flex flex-col gap-3"></div>
             <p id="user-modal-error" class="hidden text-rose-600 text-xs font-bold"></p>
             <div class="flex gap-2">
@@ -3354,7 +3378,7 @@
                 projects: [], supplies: [], suppliers: [], expenses: [], activities: [], names: [], clients: [],
                 procurements: [], expensesData: [], payments: [], sales: [],
                 taxes: [], investors: [], investorFunding: [], profitDistributions: [], investorLiabilities: [],
-                custodies: [], accounts: [], employees: [], attendance: [], auditLog: [], assets: [], assetTypes: [], units: [],
+                custodies: [], accounts: [], employees: [], attendance: [], auditLog: [], assets: [], assetTypes: [], units: [], employeeAllocations: [],
                 contractorPayments: [], refunds: [], employeeAdvances: [],
                 managerLiabilities: [], managerPayments: [], dailyJournals: [], obligations: [], externalInvestments: [],
                 pendingChanges: []
@@ -3363,6 +3387,7 @@
 
         let db = seedDb();
         let chartCosts = null, chartShare = null;
+        let payrollBatchIdSupported = false; // بيتحدد فعليًا في loadDb() — false لحد ما migration الإضافة يتشغّل
 
         /* ================= SUPABASE CONFIG ================= */
         const SUPABASE_URL = 'https://mzqkeihrddjddhptansd.supabase.co';
@@ -3543,6 +3568,21 @@
                     console.warn('جدول وحدات القياس مش موجود لسه على قاعدة البيانات (شغّل migration الإضافة):', unitsErr.message || unitsErr);
                     db.units = [];
                 }
+                // نفس المبدأ: جدول توزيع الموظفين على المشاريع وعمود payroll_batch_id لسه محتاجين
+                // migration منفصل — لو لسه ما اتشغّلش، التطبيق يفضل شغّال عادي وميتكسرش، بس بدون التوزيع الجديد
+                try {
+                    const { data: allocData, error: allocError } = await sb.from('employee_project_allocations').select('*').eq('active', true);
+                    if (allocError) throw allocError;
+                    db.employeeAllocations = allocData;
+                } catch (allocErr) {
+                    console.warn('جدول توزيع الموظفين على المشاريع مش موجود لسه (شغّل migration الإضافة):', allocErr.message || allocErr);
+                    db.employeeAllocations = [];
+                }
+                try {
+                    const { error: batchColErr } = await sb.from('expense_entries').select('payroll_batch_id').limit(1);
+                    payrollBatchIdSupported = !batchColErr;
+                } catch (e) { payrollBatchIdSupported = false; }
+                applyProjectAccessFilter();
                 markSaved();
             } catch (err) {
                 console.error('تعذر الاتصال بـ Supabase:', err);
@@ -3550,6 +3590,31 @@
                 const ind = document.getElementById('save-indicator');
                 if (ind) ind.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span class="hidden sm:inline">غير متصل بقاعدة البيانات</span>';
             }
+        }
+
+        // تقييد المستخدم غير الأدمن على المشاريع المسموح له بيها بس — بيتفلتر مرة واحدة هنا بعد كل تحميل،
+        // وكل شاشة/تقرير في التطبيق بيقرا من db.* فبيرث القيود دي أوتوماتيك من غير ما يتلمس أي كود عرض تاني.
+        // سجلات من غير مشروع محدد (project = null، زي مصروف عام أو دفعة من غير مشروع) تفضل ظاهرة للجميع.
+        function applyProjectAccessFilter() {
+            const codes = restrictedProjectCodes();
+            if (codes === null) return; // أدمن، أو الـ migration لسه ما اتعملتش — من غير تقييد
+            const allowedCodes = new Set(codes);
+            const allowedNames = new Set(db.projects.filter(p => allowedCodes.has(p.code)).map(p => p.name));
+            const keep = name => name == null || allowedNames.has(name);
+            db.projects = db.projects.filter(p => allowedCodes.has(p.code));
+            db.procurements = db.procurements.filter(r => keep(r.project));
+            db.sales = db.sales.filter(r => keep(r.project));
+            db.expensesData = db.expensesData.filter(r => keep(r.project));
+            db.payments = db.payments.filter(r => keep(r.project));
+            db.contractorPayments = db.contractorPayments.filter(r => keep(r.project));
+            db.custodies = db.custodies.filter(r => keep(r.project));
+            db.investorFunding = db.investorFunding.filter(r => keep(r.project));
+            db.profitDistributions = db.profitDistributions.filter(r => keep(r.project));
+            db.investorLiabilities = db.investorLiabilities.filter(r => keep(r.project));
+            db.managerLiabilities = db.managerLiabilities.filter(r => keep(r.project));
+            db.dailyJournals = db.dailyJournals.filter(r => keep(r.project));
+            db.externalInvestments = db.externalInvestments.filter(r => keep(r.project));
+            db.assets = db.assets.filter(r => keep(r.location)); // الأصول مربوطة بـ"الموقع" مش عمود مشروع منفصل
         }
 
         async function logAudit(action, entity, entityName, oldValue, newValue) {
@@ -3638,7 +3703,7 @@
                 'accounts', 'employees', 'asset_types', 'taxes', 'units', 'procurements', 'sales', 'expense_entries', 'payments',
                 'contractor_payments', 'refunds', 'investor_funding', 'profit_distributions', 'investor_liabilities',
                 'manager_liabilities', 'manager_payments', 'custodies', 'employee_advances', 'attendance', 'assets',
-                'daily_journals', 'obligations', 'external_investments', 'audit_log', 'pending_changes'];
+                'daily_journals', 'obligations', 'external_investments', 'audit_log', 'pending_changes', 'employee_project_allocations'];
             const channel = sb.channel('dragon-erp-sync');
             tables.forEach(t => {
                 channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, scheduleRealtimeReload);
@@ -3740,8 +3805,19 @@
         async function loadCurrentUserProfile(userId) {
             const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
             if (error || !data || !data.active) return false;
-            currentUser = { id: data.id, username: data.username, isAdmin: data.is_admin, permissions: data.permissions || {}, requiresApproval: !!data.requires_approval };
+            // allowed_projects: null = عمود لسه مش موجود على القاعدة (قبل ما الـ migration يتشغّل) = بدون تقييد.
+            // [] فعلية (بعد الـ migration) = المستخدم ده لسه ما اتحددّلوش أي مشروع = صفر مشاريع، ده مقصود.
+            currentUser = {
+                id: data.id, username: data.username, isAdmin: data.is_admin, permissions: data.permissions || {},
+                requiresApproval: !!data.requires_approval,
+                allowedProjects: Array.isArray(data.allowed_projects) ? data.allowed_projects : null
+            };
             return true;
+        }
+        // null = بدون تقييد (أدمن، أو الـ migration لسه ما اتعملتش). مصفوفة (حتى لو فاضية) = تقييد فعلي بأكواد معيّنة.
+        function restrictedProjectCodes() {
+            if (!currentUser || currentUser.isAdmin) return null;
+            return currentUser.allowedProjects;
         }
 
         async function checkExistingSession() {
@@ -3958,6 +4034,7 @@
             <td class="p-3">${u.is_admin ? '' : summaryBadge(u.permissions, groupReports)}</td>
             <td class="p-3">${u.is_admin ? '' : summaryBadge(u.permissions, groupMasterdata)}</td>
             <td class="p-3">${u.is_admin ? '' : summaryBadge(u.permissions, groupSystemTools)}</td>
+            <td class="p-3">${u.is_admin ? '<span class="text-xs text-slate-400">كل المشاريع</span>' : projectsSummary(u.allowed_projects)}</td>
             <td class="p-3 text-center">${u.active ? '<span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">مفعّل</span>' : '<span class="text-xs font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">معطّل</span>'}</td>
             <td class="p-3 text-center">${u.is_admin ? '<span class="text-xs text-slate-400">-</span>' : (u.requires_approval ? '<span class="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">نعم</span>' : '<span class="text-xs text-slate-400">لا</span>')}</td>
             <td class="p-3">${u.is_admin ? '' : `<div class="flex gap-2">
@@ -3965,7 +4042,19 @@
                 <button onclick="toggleUserActive('${u.id}', ${!u.active})" class="text-amber-500 hover:text-amber-700" title="${u.active ? 'تعطيل' : 'تفعيل'}"><i class="fa-solid fa-power-off"></i></button>
                 <button onclick="deleteUserAccount('${u.id}')" class="text-red-500 hover:text-red-700" title="حذف"><i class="fa-solid fa-trash"></i></button>
             </div>`}</td>
-        </tr>`).join('') : '<tr><td colspan="9" class="p-4 text-center text-slate-400">لا يوجد مستخدمين بعد</td></tr>';
+        </tr>`).join('') : '<tr><td colspan="10" class="p-4 text-center text-slate-400">لا يوجد مستخدمين بعد</td></tr>';
+        }
+        function projectsSummary(allowedCodes) {
+            if (allowedCodes === undefined) {
+                // العمود لسه مش موجود على القاعدة (قبل تشغيل migration تقييد المشاريع) — بدون تقييد فعلي حاليًا
+                return '<span class="text-xs text-slate-400" title="لسه محتاج تشغّل migration تقييد المشاريع">كل المشاريع</span>';
+            }
+            if (!Array.isArray(allowedCodes) || !allowedCodes.length) {
+                return '<span class="text-xs font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">مفيش مشاريع</span>';
+            }
+            const names = allowedCodes.map(c => (db.projects.find(p => p.code === c) || {}).name).filter(Boolean);
+            const label = names.length > 2 ? `${names.slice(0, 2).join('، ')} +${names.length - 2}` : names.join('، ');
+            return `<span class="text-xs font-bold bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full" title="${esc(names.join('، '))}">${esc(label || allowedCodes.length + ' مشروع')}</span>`;
         }
 
         // يبني شاشة الصلاحيات ديناميكيًا من PERMISSION_GROUPS: كل مجموعة قابلة للطي (details)
@@ -4025,6 +4114,21 @@
             }));
             return perms;
         }
+        function buildUserProjectsEditorHTML(selectedCodes) {
+            const list = document.getElementById('user-projects-list');
+            if (!list) return;
+            const selected = new Set(selectedCodes || []);
+            list.innerHTML = db.projects.length
+                ? db.projects.map(p => `
+            <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
+                <input type="checkbox" value="${p.code}" ${selected.has(p.code) ? 'checked' : ''} class="user-project-check">
+                <span>${esc(p.name)}</span>
+            </label>`).join('')
+                : '<span class="text-xs text-slate-400">مفيش مشاريع متسجلة لسه في دليل الأكواد</span>';
+        }
+        function collectUserProjectsFromForm() {
+            return [...document.querySelectorAll('.user-project-check:checked')].map(cb => Number(cb.value));
+        }
         function openAddUserModal() {
             document.getElementById('user-edit-id').value = '';
             document.getElementById('user-modal-title').textContent = 'إضافة مستخدم جديد';
@@ -4032,6 +4136,7 @@
             document.getElementById('user-password').value = '';
             document.getElementById('user-password-label').textContent = 'كلمة المرور (8 حروف على الأقل)';
             document.getElementById('user-requires-approval').checked = false;
+            buildUserProjectsEditorHTML([]);
             buildPermissionEditorHTML();
             resetUserModalPermissions(null);
             document.getElementById('user-modal-error').classList.add('hidden');
@@ -4047,6 +4152,7 @@
             document.getElementById('user-password').value = '';
             document.getElementById('user-password-label').textContent = 'كلمة مرور جديدة (اتركها فاضية لو مش عايز تغيّرها)';
             document.getElementById('user-requires-approval').checked = !!u.requires_approval;
+            buildUserProjectsEditorHTML(u.allowed_projects || []);
             buildPermissionEditorHTML();
             resetUserModalPermissions(u.permissions);
             document.getElementById('user-modal-error').classList.add('hidden');
@@ -4065,19 +4171,20 @@
             const password = document.getElementById('user-password').value;
             const permissions = collectPermissionsFromForm();
             const requiresApproval = document.getElementById('user-requires-approval').checked;
+            const allowedProjects = collectUserProjectsFromForm();
             if (!username) { errEl.textContent = 'أدخل اسم المستخدم'; errEl.classList.remove('hidden'); return; }
             const btn = document.getElementById('user-modal-submit');
             btn.disabled = true;
             try {
                 if (editId) {
-                    await callAdminUsers('update_permissions', { userId: editId, username, permissions, requiresApproval });
+                    await callAdminUsers('update_permissions', { userId: editId, username, permissions, requiresApproval, allowedProjects });
                     if (password) {
                         if (password.length < 8) throw new Error('كلمة المرور الجديدة لازم تكون 8 حروف على الأقل');
                         await callAdminUsers('reset_password', { userId: editId, newPassword: password });
                     }
                 } else {
                     if (password.length < 8) throw new Error('كلمة المرور لازم تكون 8 حروف على الأقل');
-                    await callAdminUsers('create_user', { username, password, permissions, requiresApproval });
+                    await callAdminUsers('create_user', { username, password, permissions, requiresApproval, allowedProjects });
                 }
                 closeUserModal();
                 await renderUsersTab();
@@ -4850,7 +4957,7 @@
             // الإيرادات مكانها الوحيد "مستخلصات العملاء" — أي تصنيف إيراد (revenue/other_revenue) ميظهرش هنا خالص عشان منسجلش نفس الإيراد مرتين
             fillSelect('exp-category', db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue'));
             renderProjectMultiSelectOptions('exp-project-ms');
-            renderProjectMultiSelectOptions('payroll-project-ms');
+            fillSelect('alloc-employee', db.employees);
             fillSelect('filter-exp-project', sortedProjects(), 'كل المشاريع');
             fillSelect('filter-exp-category', db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue'), 'كل التبويبات');
             fillSelect('filter-exp-name', [...db.names, ...db.clients], 'كل الأسماء');
@@ -7139,6 +7246,130 @@
             if (workedHours < 0) workedHours += 24; // لو الانصراف بعد نص الليل
             return workedHours - STANDARD_WORK_HOURS; // موجب = وقت إضافي، سالب = انصراف مبكر
         }
+        /* ================= توزيع الموظفين على المشاريع ================= */
+        function loadEmployeeAllocationEditor() {
+            const employee = document.getElementById('alloc-employee').value;
+            const container = document.getElementById('alloc-rows');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!employee) { updateAllocationProgress(); return; }
+            const existing = (db.employeeAllocations || []).filter(a => a.employee === employee);
+            if (!existing.length) {
+                container.innerHTML = '<p class="text-xs text-slate-400">مفيش توزيع محدد للموظف ده — هيترحّل بمشروع "-" لحد ما تضيف توزيع.</p>';
+            } else {
+                existing.forEach(a => addAllocationRowUI(a));
+            }
+            updateAllocationProgress();
+        }
+        function addAllocationRowUI(existing) {
+            const container = document.getElementById('alloc-rows');
+            if (!container) return;
+            if (container.querySelector('p.text-slate-400')) container.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = 'flex gap-2 items-center alloc-row';
+            const projectOptions = db.projects.map(p => `<option value="${esc(p.name)}" ${existing && existing.project === p.name ? 'selected' : ''}>${p.code} - ${esc(p.name)}</option>`).join('');
+            const type = existing ? existing.allocation_type : 'percentage';
+            div.innerHTML = `
+        <select class="alloc-row-project flex-1 bg-white border border-slate-200 rounded p-1.5 text-xs">${projectOptions}</select>
+        <select class="alloc-row-type w-28 bg-white border border-slate-200 rounded p-1.5 text-xs" onchange="updateAllocationProgress()">
+            <option value="percentage" ${type === 'percentage' ? 'selected' : ''}>نسبة %</option>
+            <option value="fixed" ${type === 'fixed' ? 'selected' : ''}>مبلغ ثابت</option>
+        </select>
+        <input type="number" step="any" min="0" placeholder="القيمة" value="${existing ? existing.allocation_value : ''}"
+            oninput="updateAllocationProgress()" class="alloc-row-value w-24 bg-white border border-slate-200 rounded p-1.5 text-xs">
+        <button type="button" onclick="this.closest('.alloc-row').remove(); updateAllocationProgress();" class="text-red-400 hover:text-red-600 text-xs">🗑</button>
+    `;
+            container.appendChild(div);
+        }
+        function collectAllocationRowsFromForm() {
+            return [...document.querySelectorAll('#alloc-rows .alloc-row')].map(row => ({
+                project: row.querySelector('.alloc-row-project').value,
+                allocationType: row.querySelector('.alloc-row-type').value,
+                allocationValue: Number(row.querySelector('.alloc-row-value').value) || 0
+            }));
+        }
+        function updateAllocationProgress() {
+            const box = document.getElementById('alloc-progress');
+            if (!box) return;
+            const rows = collectAllocationRowsFromForm();
+            if (!rows.length) { box.textContent = ''; return; }
+            const pctSum = rows.filter(r => r.allocationType === 'percentage').reduce((s, r) => s + r.allocationValue, 0);
+            const fixedSum = rows.filter(r => r.allocationType === 'fixed').reduce((s, r) => s + r.allocationValue, 0);
+            const hasPct = rows.some(r => r.allocationType === 'percentage');
+            const fixedLabel = fixedSum > 0 ? ` + ${fmt(fixedSum)} مبلغ ثابت` : '';
+            if (!hasPct) {
+                box.className = 'text-xs font-bold text-slate-500';
+                box.textContent = `توزيع بمبالغ ثابتة بس (${fmt(fixedSum)}) — هيتفحص مقابل صافي الراتب الفعلي وقت الترحيل`;
+                return;
+            }
+            const ok = Math.abs(pctSum - 100) < 0.01;
+            box.className = `text-xs font-bold ${ok ? 'text-emerald-600' : 'text-amber-600'}`;
+            box.textContent = `الموزّع: ${pctSum}%${fixedLabel} — ${ok ? 'مظبوط ✅' : `متبقي: ${(100 - pctSum).toFixed(1)}% غير موزّع`}`;
+        }
+        async function saveEmployeeAllocations() {
+            const employee = document.getElementById('alloc-employee').value;
+            if (!employee) { alert('اختر الموظف الأول'); return; }
+            const rows = collectAllocationRowsFromForm();
+            if (rows.some(r => !r.project || !(r.allocationValue > 0))) { alert('كل سطر توزيع لازم يكون له مشروع وقيمة أكبر من صفر'); return; }
+            const projectNames = rows.map(r => r.project);
+            if (new Set(projectNames).size !== projectNames.length) { alert('مينفعش تكرر نفس المشروع أكتر من مرة للموظف الواحد'); return; }
+            const pctSum = rows.filter(r => r.allocationType === 'percentage').reduce((s, r) => s + r.allocationValue, 0);
+            if (rows.some(r => r.allocationType === 'percentage') && Math.abs(pctSum - 100) > 0.01) {
+                alert(`مجموع نسب التوزيع لازم يساوي 100% بالظبط (حاليًا ${pctSum}%)`);
+                return;
+            }
+            const existing = (db.employeeAllocations || []).filter(a => a.employee === employee);
+            const ops = [
+                ...existing.map(a => ({ table: 'employee_project_allocations', pk_col: 'id', pk_value: a.id, op: 'update', row: { active: false } })),
+                ...rows.map(r => ({ table: 'employee_project_allocations', pk_col: 'id', pk_value: null, op: 'insert', row: { employee, project: r.project, allocation_type: r.allocationType, allocation_value: r.allocationValue, active: true } }))
+            ];
+            if (!ops.length) { alert('مفيش تغيير يتحفظ'); return; }
+            if (await gateOrRun('update', 'payroll', employee, ops)) return;
+            markSaving();
+            if (existing.length) {
+                const { error: deactErr } = await sb.from('employee_project_allocations').update({ active: false }).in('id', existing.map(a => a.id));
+                if (deactErr) { markSaveError(deactErr); return; }
+            }
+            let insertedData = [];
+            if (rows.length) {
+                const insertRows = rows.map(r => ({ employee, project: r.project, allocation_type: r.allocationType, allocation_value: r.allocationValue, active: true }));
+                const { data, error } = await sb.from('employee_project_allocations').insert(insertRows).select();
+                if (error) { markSaveError(error); return; }
+                insertedData = data;
+            }
+            db.employeeAllocations = (db.employeeAllocations || []).filter(a => !existing.some(e => e.id === a.id)).concat(insertedData);
+            logAudit('update', 'توزيع راتب', employee, existing.length ? existing : null, insertedData.length ? insertedData : null);
+            markSaved();
+            loadEmployeeAllocationEditor();
+            renderPayrollSummary();
+        }
+
+        // بيحسب نصيب كل مشروع من صافي راتب موظف معيّن، بناءً على توزيعاته المسجّلة في دليل الأكواد → الرواتب.
+        // من غير أي توزيع محدد: كل الراتب يترحّل بمشروع "-" زي السلوك القديم.
+        // فيه تعارض (مبالغ ثابتة أكبر من الراتب، أو باقي بعد الثابت من غير أي نسبة توزّعه): valid=false ومينفعش يترحّل.
+        function computeProjectShares(employee, netSalary) {
+            const allocs = (db.employeeAllocations || []).filter(a => a.employee === employee);
+            if (!allocs.length) return { shares: [{ project: '-', amount: netSalary }], valid: true };
+            const fixedOnes = allocs.filter(a => a.allocation_type === 'fixed');
+            const pctOnes = allocs.filter(a => a.allocation_type === 'percentage');
+            const fixedTotal = fixedOnes.reduce((s, a) => s + a.allocation_value, 0);
+            const remaining = netSalary - fixedTotal;
+            if (remaining < -0.01) {
+                return { shares: [], valid: false, reason: `مجموع المبالغ الثابتة (${fmt(fixedTotal)}) أكبر من صافي الراتب (${fmt(netSalary)})` };
+            }
+            if (remaining > 0.01 && !pctOnes.length) {
+                return { shares: [], valid: false, reason: `فيه ${fmt(remaining)} من الراتب مش موزّعة على أي مشروع` };
+            }
+            const pctSum = pctOnes.reduce((s, a) => s + a.allocation_value, 0);
+            if (pctOnes.length && Math.abs(pctSum - 100) > 0.01) {
+                return { shares: [], valid: false, reason: `مجموع نسب التوزيع ${pctSum}% مش 100%` };
+            }
+            const shares = [
+                ...fixedOnes.map(a => ({ project: a.project, amount: a.allocation_value })),
+                ...pctOnes.map(a => ({ project: a.project, amount: remaining * (a.allocation_value / 100) }))
+            ];
+            return { shares, valid: true };
+        }
         function computeMonthlyPayroll(monthStr) {
             // monthStr بصيغة YYYY-MM
             return db.employees.map(emp => {
@@ -7161,7 +7392,8 @@
                 });
                 advanceDeduction = Math.min(advanceDeduction, grossSalary);
                 const netSalary = grossSalary - advanceDeduction;
-                return { employee: emp.name, salary: emp.monthlySalary || 0, presentDays, absentDays, excusedDays, unexcusedDays, totalHoursDiff, grossSalary, advanceDeduction, netSalary };
+                const { shares: projectShares, valid: allocationValid, reason: allocationReason } = computeProjectShares(emp.name, netSalary);
+                return { employee: emp.name, salary: emp.monthlySalary || 0, presentDays, absentDays, excusedDays, unexcusedDays, totalHoursDiff, grossSalary, advanceDeduction, netSalary, projectShares, allocationValid, allocationReason };
             });
         }
         function renderPayrollSummary() {
@@ -7185,15 +7417,28 @@
 
             const rows = computeMonthlyPayroll(month);
             tbody.innerHTML = rows.length
-                ? rows.map(r => `<tr class="border-b border-slate-50 hover:bg-slate-50">
+                ? rows.map(r => {
+                    let shareCell;
+                    if (!r.allocationValid) {
+                        shareCell = `<span class="text-rose-600 font-bold" title="${esc(r.allocationReason)}">⚠️ ${fmt(r.netSalary)} — توزيعه مش مظبوط</span>`;
+                    } else if (r.projectShares.length === 1 && r.projectShares[0].project === '-') {
+                        shareCell = `<span class="font-bold text-fuchsia-700">${fmt(r.netSalary)}</span> <span class="text-amber-500" title="مفيش توزيع محدد — هيترحّل بدون مشروع">⚠️</span>`;
+                    } else if (r.projectShares.length === 1) {
+                        shareCell = `<span class="font-bold text-fuchsia-700">${fmt(r.netSalary)}</span> <span class="text-slate-400 text-xs">(${esc(r.projectShares[0].project)})</span>`;
+                    } else {
+                        const detail = r.projectShares.map(s => `${esc(s.project)}: ${fmt(s.amount)}`).join('\n');
+                        shareCell = `<span class="font-bold text-fuchsia-700" title="${esc(detail)}">${fmt(r.netSalary)}</span> <span class="text-slate-400 text-xs">(${r.projectShares.length} مشاريع)</span>`;
+                    }
+                    return `<tr class="border-b border-slate-50 hover:bg-slate-50">
             <td class="p-3 font-bold">${esc(r.employee)}</td>
             <td class="p-3">${fmt(r.salary)}</td>
             <td class="p-3 text-emerald-600">${r.presentDays}</td>
             <td class="p-3 text-amber-600">${r.excusedDays}</td>
             <td class="p-3 text-rose-600 font-bold">${r.unexcusedDays}</td>
             <td class="p-3 ${r.advanceDeduction > 0 ? 'text-orange-600 font-bold' : 'text-slate-400'}">${r.advanceDeduction > 0 ? fmt(r.advanceDeduction) : '-'}</td>
-            <td class="p-3 font-bold text-fuchsia-700">${fmt(r.netSalary)}</td>
-        </tr>`).join('')
+            <td class="p-3">${shareCell}</td>
+        </tr>`;
+                }).join('')
                 : '<tr><td colspan="7" class="p-4 text-center text-slate-400">أضف موظفين من دليل الأكواد أولاً</td></tr>';
         }
         function searchPostedPayroll() {
@@ -7221,28 +7466,34 @@
                 alert(`رواتب شهر ${month} مترحّلة بالفعل من قبل. لو عايز تعدّل، احذف السجلات القديمة الأول من تاب المصروفات أو سجل التعديلات.`);
                 return;
             }
-            const projects = getProjectMultiSelectValues('payroll-project-ms');
-            const projectLabel = projects.length ? ` — موزّعة على ${projects.length > 1 ? projects.length + ' مشاريع' : projects[0]}` : '';
-            if (!confirm(`ترحيل رواتب ${rows.length} موظف لشهر ${month} كمصروف "أجور"${projectLabel}؟`)) return;
+            // لو أي موظف توزيعه مش مظبوط (نسب مش بتجمع 100%، أو باقي بعد المبالغ الثابتة من غير توزيع)،
+            // بنمنع ترحيل الشهر كله لحد ما يتصلح — عشان منسيبش دفعة ترحيل ناقصة مينفعش نكمّلها بعدين
+            const invalidRows = rows.filter(r => !r.allocationValid);
+            if (invalidRows.length) {
+                alert(`في ${invalidRows.length} موظف توزيعهم على المشاريع مش مظبوط، لازم تصلحه الأول من قسم "توزيع الموظفين على المشاريع" فوق:\n` +
+                    invalidRows.map(r => `- ${r.employee}: ${r.allocationReason}`).join('\n'));
+                return;
+            }
+            const unallocatedCount = rows.filter(r => r.projectShares.length === 1 && r.projectShares[0].project === '-').length;
+            const unallocatedWarning = unallocatedCount ? `\n\n⚠️ تنبيه: ${unallocatedCount} موظف مفيش لهم توزيع محدد، هيترحّلوا بمشروع "-".` : '';
+            if (!confirm(`ترحيل رواتب ${rows.length} موظف لشهر ${month} كمصروف "أجور"، موزّعة على مشاريع كل موظف؟${unallocatedWarning}`)) return;
             const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
             const dateStr = `${month}-${String(lastDay).padStart(2, '0')}`;
             const activityName = db.activities[0] ? db.activities[0].name : 'رواتب';
-            // من غير مشروع مختار: يفضل السلوك القديم زي ما هو (سطر واحد بمشروع "-"). لو اتحدد مشروع أو أكتر: يتقسم بالتساوي بينهم
-            const newRows = projects.length
-                ? rows.flatMap(r => {
-                    const totalSplits = splitAmountEqually(r.grossSalary, projects.length);
-                    const paidSplits = splitAmountEqually(r.netSalary, projects.length);
-                    return projects.map((project, i) => ({
-                        category: 'أجور', activity: activityName, name: r.employee, project,
-                        total: totalSplits[i], paid: paidSplits[i], remaining: 0,
+            const batchId = crypto.randomUUID();
+            const newRows = rows.flatMap(r => {
+                const totalShares = r.projectShares.reduce((s, p) => s + p.amount, 0);
+                return r.projectShares.map(share => {
+                    const proportion = totalShares > 0 ? (share.amount / totalShares) : (1 / r.projectShares.length);
+                    const row = {
+                        category: 'أجور', activity: activityName, name: r.employee, project: share.project,
+                        total: r.grossSalary * proportion, paid: share.amount, remaining: 0,
                         date: dateStr, notes: `راتب شهر ${month}`, source_module: 'payroll'
-                    }));
-                })
-                : rows.map(r => ({
-                    category: 'أجور', activity: activityName, name: r.employee, project: '-',
-                    total: r.grossSalary, paid: r.netSalary, remaining: 0,
-                    date: dateStr, notes: `راتب شهر ${month}`, source_module: 'payroll'
-                }));
+                    };
+                    if (payrollBatchIdSupported) row.payroll_batch_id = batchId;
+                    return row;
+                });
+            });
             if (await gateOrRunAccrual('post_payroll', 'payroll', `رواتب شهر ${month}`, { month, rows: newRows })) return;
             markSaving();
             const { data, error } = await sb.from('expense_entries').insert(newRows).select();
@@ -7251,7 +7502,6 @@
                 db.expensesData.push(rec);
                 logAudit('create', 'راتب', `${rec.name} - ${month}`, null, rec);
             });
-            resetProjectMultiSelect('payroll-project-ms');
             markSaved();
             renderAll();
             alert('تم ترحيل الرواتب بنجاح ✅');
