@@ -3165,6 +3165,7 @@
                         <option value="accounts">9. الحسابات البنكية/النقدية</option>
                         <option value="employees">10. الموظفون (رواتب)</option>
                         <option value="assetTypes">11. أنواع الأصول والمعدات</option>
+                        <option value="units">12. وحدات القياس</option>
                     </select>
                 </div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">الاسم</label><input id="master-name"
@@ -3172,16 +3173,8 @@
                 </div>
                 <div id="master-unit-wrap" class="hidden">
                     <label class="block text-xs font-bold text-slate-600 mb-1">وحدة القياس الافتراضية</label>
-                    <select id="master-unit" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
-                        <option value="طن">طن</option>
-                        <option value="م3">م3</option>
-                        <option value="ألف">ألف</option>
-                        <option value="بند">بند</option>
-                        <option value="متر">متر</option>
-                        <option value="كجم">كجم</option>
-                        <option value="عدد">عدد</option>
-                        <option value="فاتورة">فاتورة</option>
-                    </select>
+                    <select id="master-unit" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                    <p class="text-[11px] text-slate-400 mt-1">مفيش الوحدة اللي محتاجها؟ ضيفها من "دليل الأكواد" ← "12. وحدات القياس"</p>
                 </div>
                 <div id="master-pltype-wrap" class="hidden flex flex-col gap-3">
                     <div>
@@ -3340,7 +3333,7 @@
                 projects: [], supplies: [], suppliers: [], expenses: [], activities: [], names: [], clients: [],
                 procurements: [], expensesData: [], payments: [], sales: [],
                 taxes: [], investors: [], investorFunding: [], profitDistributions: [], investorLiabilities: [],
-                custodies: [], accounts: [], employees: [], attendance: [], auditLog: [], assets: [], assetTypes: [],
+                custodies: [], accounts: [], employees: [], attendance: [], auditLog: [], assets: [], assetTypes: [], units: [],
                 contractorPayments: [], refunds: [], employeeAdvances: [],
                 managerLiabilities: [], managerPayments: [], dailyJournals: [], obligations: [], externalInvestments: [],
                 pendingChanges: []
@@ -3358,7 +3351,7 @@
         const TABLES = {
             projects: 'projects', supplies: 'supplies', suppliers: 'suppliers', expenses: 'expense_categories',
             activities: 'activities', names: 'names', clients: 'clients', investors: 'investors',
-            accounts: 'accounts', employees: 'employees', assetTypes: 'asset_types', taxes: 'taxes'
+            accounts: 'accounts', employees: 'employees', assetTypes: 'asset_types', taxes: 'taxes', units: 'units'
         };
 
         function masterRowToItem(cat, row) {
@@ -3441,7 +3434,7 @@
         async function loadDb() {
             try {
                 const [projRes, supRes, supplierRes, expCatRes, actRes, namesRes, clientsRes, investorsRes,
-                    accountsRes, employeesRes, assetTypesRes, taxesRes,
+                    accountsRes, employeesRes, assetTypesRes, taxesRes, unitsRes,
                     procRes, salesRes, expDataRes, payRes, cpayRes, refundsRes,
                     invFundRes, distRes, invLiabRes, mgrLiabRes, mgrPayRes,
                     custodyRes, advanceRes, attendanceRes, assetsRes, djRes, obligRes, extInvRes, auditRes, pendingRes] = await Promise.all([
@@ -3457,6 +3450,7 @@
                         sb.from('employees').select('*').order('code'),
                         sb.from('asset_types').select('*').order('code'),
                         sb.from('taxes').select('*').order('code'),
+                        sb.from('units').select('*').order('code'),
                         sb.from('procurements').select('*').order('id'),
                         sb.from('sales').select('*').order('id'),
                         sb.from('expense_entries').select('*').order('id'),
@@ -3479,7 +3473,7 @@
                         sb.from('pending_changes').select('*').order('created_at', { ascending: false })
                     ]);
                 const allRes = [projRes, supRes, supplierRes, expCatRes, actRes, namesRes, clientsRes, investorsRes,
-                    accountsRes, employeesRes, assetTypesRes, taxesRes, procRes, salesRes, expDataRes, payRes, cpayRes, refundsRes,
+                    accountsRes, employeesRes, assetTypesRes, taxesRes, unitsRes, procRes, salesRes, expDataRes, payRes, cpayRes, refundsRes,
                     invFundRes, distRes, invLiabRes, mgrLiabRes, mgrPayRes, custodyRes, advanceRes, attendanceRes, assetsRes, djRes, obligRes, extInvRes, auditRes, pendingRes];
                 const firstError = allRes.find(r => r.error);
                 if (firstError) throw firstError.error;
@@ -3497,6 +3491,7 @@
                     employees: employeesRes.data.map(r => masterRowToItem('employees', r)),
                     assetTypes: assetTypesRes.data.map(r => masterRowToItem('assetTypes', r)),
                     taxes: taxesRes.data.map(r => masterRowToItem('taxes', r)),
+                    units: unitsRes.data.map(r => masterRowToItem('units', r)),
                     procurements: procRes.data.map(procRowToRecord),
                     sales: salesRes.data.map(saleRowToRecord),
                     expensesData: expDataRes.data.map(expenseRowToRecord),
@@ -3610,7 +3605,7 @@
         }
         function setupRealtime() {
             const tables = ['projects', 'supplies', 'suppliers', 'expense_categories', 'activities', 'names', 'clients', 'investors',
-                'accounts', 'employees', 'asset_types', 'taxes', 'procurements', 'sales', 'expense_entries', 'payments',
+                'accounts', 'employees', 'asset_types', 'taxes', 'units', 'procurements', 'sales', 'expense_entries', 'payments',
                 'contractor_payments', 'refunds', 'investor_funding', 'profit_distributions', 'investor_liabilities',
                 'manager_liabilities', 'manager_payments', 'custodies', 'employee_advances', 'attendance', 'assets',
                 'daily_journals', 'obligations', 'external_investments', 'audit_log', 'pending_changes'];
@@ -4089,8 +4084,10 @@
         function auditTooltip(row) {
             if (!row || !row.created_by) return '';
             const fmtDt = v => { if (!v) return ''; const d = new Date(v); return isNaN(d.getTime()) ? '' : d.toLocaleString('ar-EG'); };
-            const lines = [`أُضيف بواسطة: ${row.created_by}`];
-            if (row.updated_by && (row.updated_by !== row.created_by)) {
+            const lines = [`أُضيف بواسطة: ${row.created_by}${fmtDt(row.created_at) ? ' في ' + fmtDt(row.created_at) : ''}`];
+            // نقارن بالتوقيت مش بالاسم بس — عشان لو نفس الشخص عدّل تاني بعد الإضافة يظهر برضه، مش بس لو حد تاني عدّل
+            const wasEdited = row.updated_at && row.created_at && new Date(row.updated_at).getTime() !== new Date(row.created_at).getTime();
+            if (wasEdited && row.updated_by) {
                 lines.push(`آخر تعديل بواسطة: ${row.updated_by}${fmtDt(row.updated_at) ? ' في ' + fmtDt(row.updated_at) : ''}`);
             }
             return lines.join('\n');
@@ -4432,6 +4429,7 @@
             accounts: { label: '9. الحسابات البنكية/النقدية', color: 'bg-teal-100 text-teal-800' },
             employees: { label: '10. الموظفون (رواتب)', color: 'bg-fuchsia-100 text-fuchsia-800' },
             assetTypes: { label: '11. أنواع الأصول والمعدات', color: 'bg-lime-100 text-lime-800' },
+            units: { label: '12. وحدات القياس', color: 'bg-sky-100 text-sky-800' },
         };
 
         function renderMasterData() {
@@ -4539,9 +4537,6 @@
             document.getElementById('master-type').value = cat;
             document.getElementById('master-type').disabled = true;
             document.getElementById('master-name').value = item.name;
-            if (cat === 'supplies') {
-                document.getElementById('master-unit').value = item.unit || 'بند';
-            }
             if (cat === 'expenses') {
                 document.getElementById('master-pltype').value = item.plType || 'operating';
                 if (item.plBucket) document.getElementById('master-plbucket').value = item.plBucket;
@@ -4556,6 +4551,9 @@
             document.getElementById('add-master-modal').classList.remove('hidden');
             document.getElementById('add-master-modal').classList.add('flex');
             toggleMasterFields();
+            if (cat === 'supplies') {
+                document.getElementById('master-unit').value = item.unit || 'بند';
+            }
             if (cat === 'suppliers') {
                 const checks = document.querySelectorAll('.supplier-item-check');
                 const assigned = item.items || [];
@@ -4588,6 +4586,7 @@
         function toggleMasterFields() {
             const type = document.getElementById('master-type').value;
             document.getElementById('master-unit-wrap').classList.toggle('hidden', type !== 'supplies');
+            if (type === 'supplies') fillSelect('master-unit', db.units);
             document.getElementById('master-pltype-wrap').classList.toggle('hidden', type !== 'expenses');
             const plType = document.getElementById('master-pltype').value;
             document.getElementById('master-plbucket-wrap').classList.toggle('hidden', !(type === 'expenses' && plType === 'operating'));
@@ -4645,7 +4644,7 @@
         }
 
         function nextCode(cat) {
-            const base = { projects: 1000, supplies: 2000, suppliers: 3000, expenses: 4000, activities: 5000, names: 6000, clients: 7000, investors: 8000, taxes: 9000, accounts: 9500, employees: 9600, assetTypes: 9700 }[cat];
+            const base = { projects: 1000, supplies: 2000, suppliers: 3000, expenses: 4000, activities: 5000, names: 6000, clients: 7000, investors: 8000, taxes: 9000, accounts: 9500, employees: 9600, assetTypes: 9700, units: 9800 }[cat];
             if (!base) return Date.now(); // fallback
             if (!db[cat]) db[cat] = []; // safety: ensure array exists
             const max = db[cat].reduce((m, it) => Math.max(m, it.code || 0), base);
@@ -7439,7 +7438,7 @@
             (db.sales || []).forEach(s => {
                 if (s.client !== client) return;
                 const key = s.groupId || s.id;
-                if (!invoices[key]) invoices[key] = { groupId: key, invoiceNumber: s.invoiceNumber, client: s.client, project: s.project, date: s.date, total: 0, created_by: s.created_by, updated_by: s.updated_by, updated_at: s.updated_at };
+                if (!invoices[key]) invoices[key] = { groupId: key, invoiceNumber: s.invoiceNumber, client: s.client, project: s.project, date: s.date, total: 0, created_by: s.created_by, created_at: s.created_at, updated_by: s.updated_by, updated_at: s.updated_at };
                 invoices[key].total += s.total;
             });
             const list = Object.values(invoices).sort((a, b) => a.date.localeCompare(b.date) || (a.groupId - b.groupId));
@@ -7872,7 +7871,7 @@
             const supplierOptions = '<option value="">المورد...</option>' + (db.suppliers || []).map(s =>
                 `<option value="${esc(s.name)}" ${s.name === data.supplier ? 'selected' : ''}>${esc(s.name)}</option>`
             ).join('');
-            const unitList = ['طن', 'كيس', 'م3', 'م2', 'متر طولي', 'عدد', 'لتر', 'شيكارة', 'رول', 'جركن', 'برميل'];
+            const unitList = (db.units && db.units.length) ? db.units.map(u => u.name) : ['طن', 'كيس', 'م3', 'م2', 'متر طولي', 'عدد', 'لتر', 'شيكارة', 'رول', 'جركن', 'برميل'];
             const unitIsOther = data.unit && !unitList.includes(data.unit);
             const unitOptions = '<option value="">وحدة...</option>' + unitList.map(u =>
                 `<option value="${u}" ${u === data.unit ? 'selected' : ''}>${u}</option>`
@@ -8558,7 +8557,7 @@
             let flatRows = [];
             (db.obligations || []).forEach(o => {
                 (o.installments || []).forEach(inst => {
-                    flatRows.push({ obligId: o.id, instId: inst.id, type: o.type, desc: o.desc, party: o.party, num: inst.num, totalInstallments: (o.installments || []).length, amount: inst.amount, dueDate: inst.dueDate, status: inst.status, created_by: o.created_by, updated_by: o.updated_by, updated_at: o.updated_at });
+                    flatRows.push({ obligId: o.id, instId: inst.id, type: o.type, desc: o.desc, party: o.party, num: inst.num, totalInstallments: (o.installments || []).length, amount: inst.amount, dueDate: inst.dueDate, status: inst.status, created_by: o.created_by, created_at: o.created_at, updated_by: o.updated_by, updated_at: o.updated_at });
                 });
             });
 

@@ -78,6 +78,11 @@ create table if not exists asset_types (
   name text not null unique
 );
 
+create table if not exists units (
+  code integer primary key,
+  name text not null unique
+);
+
 create table if not exists taxes (
   code integer primary key,
   name text not null,
@@ -380,6 +385,12 @@ insert into taxes (code, name, rate, active) values
   (9002, 'ضريبة القيمة المضافة (VAT)', 14, false),
   (9003, 'ضريبة الدمغة', 0.3, false)
 on conflict (code) do nothing;
+insert into units (code, name) values
+  (9800, 'طن'), (9801, 'م3'), (9802, 'ألف'), (9803, 'بند'), (9804, 'متر'),
+  (9805, 'كجم'), (9806, 'عدد'), (9807, 'فاتورة'), (9808, 'كيس'), (9809, 'م2'),
+  (9810, 'متر طولي'), (9811, 'لتر'), (9812, 'شيكارة'), (9813, 'رول'), (9814, 'جركن'),
+  (9815, 'برميل'), (9816, 'باستلة')
+on conflict (code) do nothing;
 
 -- ---------- فهارس لتسريع الفلاتر الشائعة ----------
 create index if not exists idx_procurements_project on procurements(project);
@@ -478,7 +489,8 @@ begin
       ('investors','masterdata'),
       ('accounts','masterdata'),
       ('employees','masterdata'),
-      ('asset_types','masterdata')
+      ('asset_types','masterdata'),
+      ('units','masterdata')
     ) as t(tbl, module)
   loop
     execute format('alter table %I enable row level security;', rec.tbl);
@@ -540,7 +552,7 @@ declare t text;
 begin
   for t in select unnest(array[
     'projects','supplies','suppliers','expense_categories','activities',
-    'names','clients','investors','accounts','employees','asset_types','taxes',
+    'names','clients','investors','accounts','employees','asset_types','taxes','units',
     'procurements','sales','expense_entries','payments','contractor_payments',
     'refunds','investor_funding','profit_distributions','investor_liabilities',
     'manager_liabilities','manager_payments','custodies','employee_advances',
@@ -592,7 +604,7 @@ declare
     'investor_funding','profit_distributions','investor_liabilities','manager_liabilities',
     'manager_payments','external_investments','taxes',
     'projects','supplies','suppliers','expense_categories','activities','names','clients',
-    'investors','accounts','employees','asset_types'
+    'investors','accounts','employees','asset_types','units'
   ];
 begin
   foreach t in array tables_all loop
