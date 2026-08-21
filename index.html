@@ -576,7 +576,8 @@
                     <h3 class="font-bold text-slate-900 mb-4"><i class="fa-solid fa-file-signature text-amber-500"></i>
                         تسجيل فاتورة توريد (أكتر من صنف)</h3>
                     <p class="text-xs text-slate-500 -mt-3 mb-3">الفاتورة تُسجَّل بقيمتها الكاملة وتدخل قائمة الدخل
-                        فوراً وتزيد رصيد المخزون. الدفع للمورد يُسجَّل لاحقاً من تبويب "مدفوعات الموردين".</p>
+                        فوراً وتزيد رصيد المخزون. لو الدفع "أجل" هيتسدد لاحقاً من تبويب "مدفوعات الموردين"، ولو
+                        "كاش" هيتسجل السداد فورًا تلقائيًا.</p>
                     <form onsubmit="addProcurement(event)" class="flex flex-col gap-4">
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                             <div><label class="block text-xs font-bold text-slate-600 mb-1">المورد</label><select
@@ -593,6 +594,26 @@
                             <div><label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input
                                     id="proc-notes" type="text"
                                     class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">طريقة الدفع</label>
+                                <div class="flex gap-4 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                                    <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                                        <input type="radio" name="proc-pay-method" value="credit" checked
+                                            onchange="toggleProcCashAccount()"> أجل
+                                    </label>
+                                    <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                                        <input type="radio" name="proc-pay-method" value="cash"
+                                            onchange="toggleProcCashAccount()"> كاش (يتسدد فورًا)
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="proc-cash-account-wrap" class="hidden">
+                                <label class="block text-xs font-bold text-slate-600 mb-1">الحساب اللي هيتخصم منه</label>
+                                <select id="proc-account"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                            </div>
                         </div>
 
                         <!-- سلة أصناف الشراء -->
@@ -4779,6 +4800,7 @@
             if (document.getElementById('coll-date') && !document.getElementById('coll-date').value) document.getElementById('coll-date').value = todayISO();
             fillSelect('proc-supplier', db.suppliers);
             fillSelect('proc-project', sortedProjects());
+            fillSelect('proc-account', db.accounts);
 
             if (document.getElementById('inv-date') && !document.getElementById('inv-date').value) document.getElementById('inv-date').value = todayISO();
 
@@ -4922,6 +4944,10 @@
             const el = document.getElementById('proc-grand-total');
             if (el) el.textContent = fmt(grand);
         }
+        function toggleProcCashAccount() {
+            const isCash = document.querySelector('input[name="proc-pay-method"]:checked')?.value === 'cash';
+            document.getElementById('proc-cash-account-wrap').classList.toggle('hidden', !isCash);
+        }
         async function addProcurement(e) {
             e.preventDefault();
             const supplier = document.getElementById('proc-supplier').value;
@@ -4929,6 +4955,9 @@
             const project = document.getElementById('proc-project').value;
             const date = document.getElementById('proc-date').value || todayISO();
             const notes = document.getElementById('proc-notes').value.trim();
+            const payMethod = document.querySelector('input[name="proc-pay-method"]:checked')?.value || 'credit';
+            const cashAccount = document.getElementById('proc-account')?.value || '';
+            if (payMethod === 'cash' && !cashAccount) { alert('اختر الحساب اللي هيتخصم منه المبلغ الكاش'); return; }
 
             const allLines = [...document.querySelectorAll('#proc-lines .proc-line-row')].map(row => ({
                 item: row.querySelector('.proc-line-item')?.value || '',
@@ -4954,22 +4983,47 @@
                 date, notes
             }));
             const ops = rows.map(row => ({ table: 'procurements', pk_col: 'id', pk_value: null, op: 'insert', row }));
+
+            // لو الدفع كاش، السداد بيتسجّل فورًا كدفعة كاملة لنفس الفاتورة — رصيد المورد يصفّر توًا
+            const grandTotal = lines.reduce((s, l) => s + l.qty * l.price, 0);
+            let paymentRow = null;
+            if (payMethod === 'cash') {
+                paymentRow = {
+                    supplier, amount: grandTotal, project: project || null, account: cashAccount, date,
+                    notes: `سداد كاش فوري — فاتورة ${invoiceNumber}`, items: lines.map(l => l.item), discount: 0
+                };
+                ops.push({ table: 'payments', pk_col: 'id', pk_value: null, op: 'insert', row: paymentRow });
+            }
+
             if (await gateOrRun('create', 'procurement', `${invoiceNumber} - ${supplier} - ${lines.length} صنف`, ops)) {
                 e.target.reset();
                 document.getElementById('proc-lines').innerHTML = '';
                 document.getElementById('proc-date').value = todayISO();
                 updateProcGrandTotal();
+                toggleProcCashAccount();
                 return;
             }
             const { data, error } = await sb.from('procurements').insert(rows).select();
             if (error) { markSaveError(error); return; }
             db.procurements.push(...data.map(procRowToRecord));
 
+            if (paymentRow) {
+                const { data: payData, error: payError } = await sb.from('payments').insert(paymentRow).select().single();
+                if (payError) {
+                    alert(`اتسجلت فاتورة التوريد، لكن تعذر تسجيل السداد الكاش تلقائيًا (${payError.message}). سجّله يدويًا من تبويب "مدفوعات الموردين".`);
+                } else {
+                    const payRec = paymentRowToRecord(payData);
+                    db.payments.push(payRec);
+                    logAudit('create', 'دفعة مورد', payRec.supplier, null, payRec);
+                }
+            }
+
             logAudit('create', 'فاتورة شراء', `${invoiceNumber} - ${supplier} - ${lines.length} صنف`, null, { groupId, invoiceNumber, supplier, lines });
             e.target.reset();
             document.getElementById('proc-lines').innerHTML = '';
             document.getElementById('proc-date').value = todayISO();
             updateProcGrandTotal();
+            toggleProcCashAccount();
             markSaved();
             renderAll();
         }
