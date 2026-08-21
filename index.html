@@ -3434,7 +3434,7 @@
         async function loadDb() {
             try {
                 const [projRes, supRes, supplierRes, expCatRes, actRes, namesRes, clientsRes, investorsRes,
-                    accountsRes, employeesRes, assetTypesRes, taxesRes, unitsRes,
+                    accountsRes, employeesRes, assetTypesRes, taxesRes,
                     procRes, salesRes, expDataRes, payRes, cpayRes, refundsRes,
                     invFundRes, distRes, invLiabRes, mgrLiabRes, mgrPayRes,
                     custodyRes, advanceRes, attendanceRes, assetsRes, djRes, obligRes, extInvRes, auditRes, pendingRes] = await Promise.all([
@@ -3450,7 +3450,6 @@
                         sb.from('employees').select('*').order('code'),
                         sb.from('asset_types').select('*').order('code'),
                         sb.from('taxes').select('*').order('code'),
-                        sb.from('units').select('*').order('code'),
                         sb.from('procurements').select('*').order('id'),
                         sb.from('sales').select('*').order('id'),
                         sb.from('expense_entries').select('*').order('id'),
@@ -3473,7 +3472,7 @@
                         sb.from('pending_changes').select('*').order('created_at', { ascending: false })
                     ]);
                 const allRes = [projRes, supRes, supplierRes, expCatRes, actRes, namesRes, clientsRes, investorsRes,
-                    accountsRes, employeesRes, assetTypesRes, taxesRes, unitsRes, procRes, salesRes, expDataRes, payRes, cpayRes, refundsRes,
+                    accountsRes, employeesRes, assetTypesRes, taxesRes, procRes, salesRes, expDataRes, payRes, cpayRes, refundsRes,
                     invFundRes, distRes, invLiabRes, mgrLiabRes, mgrPayRes, custodyRes, advanceRes, attendanceRes, assetsRes, djRes, obligRes, extInvRes, auditRes, pendingRes];
                 const firstError = allRes.find(r => r.error);
                 if (firstError) throw firstError.error;
@@ -3491,7 +3490,7 @@
                     employees: employeesRes.data.map(r => masterRowToItem('employees', r)),
                     assetTypes: assetTypesRes.data.map(r => masterRowToItem('assetTypes', r)),
                     taxes: taxesRes.data.map(r => masterRowToItem('taxes', r)),
-                    units: unitsRes.data.map(r => masterRowToItem('units', r)),
+                    units: [],
                     procurements: procRes.data.map(procRowToRecord),
                     sales: salesRes.data.map(saleRowToRecord),
                     expensesData: expDataRes.data.map(expenseRowToRecord),
@@ -3513,6 +3512,16 @@
                     auditLog: auditRes.data.map(auditRowToRecord),
                     pendingChanges: pendingRes.data.map(pendingChangeRowToRecord)
                 };
+                // جدول وحدات القياس منفصل عن التحميل الأساسي عمدًا: لو لسه ماتعملوش migration للجدول ده
+                // على قاعدة البيانات، ميبقاش سبب إن كل التطبيق يفشل في التحميل — بس وحدات القياس تفضل فاضية مؤقتًا
+                try {
+                    const { data: unitsData, error: unitsError } = await sb.from('units').select('*').order('code');
+                    if (unitsError) throw unitsError;
+                    db.units = unitsData.map(r => masterRowToItem('units', r));
+                } catch (unitsErr) {
+                    console.warn('جدول وحدات القياس مش موجود لسه على قاعدة البيانات (شغّل migration الإضافة):', unitsErr.message || unitsErr);
+                    db.units = [];
+                }
                 markSaved();
             } catch (err) {
                 console.error('تعذر الاتصال بـ Supabase:', err);
