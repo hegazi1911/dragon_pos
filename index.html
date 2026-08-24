@@ -65,6 +65,38 @@
             border-color: #2563eb;
         }
 
+        /* ===== تحسين قراءة الجداول/القوائم في كل التبويبات (بدل الشكل الأبيض المسطح) ===== */
+        main table thead:not(.text-white) th {
+            font-weight: 700;
+            font-size: .72rem;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        main table thead.text-white th {
+            border-bottom: 1px solid rgba(255, 255, 255, .15);
+        }
+
+        main table tbody tr {
+            border-bottom-color: #e2e8f0;
+        }
+
+        main table tbody tr:nth-child(even) {
+            background-image: linear-gradient(rgba(15, 23, 42, .028), rgba(15, 23, 42, .028));
+        }
+
+        main table tbody tr:hover {
+            background-image: linear-gradient(rgba(15, 23, 42, .05), rgba(15, 23, 42, .05));
+        }
+
+        /* شرائح المشاريع في مودال المستخدم: تمييز واضح للمشاريع المختارة */
+        #user-projects-list label:has(input:checked) {
+            background: #eef2ff;
+            border-color: #6366f1;
+            color: #4338ca;
+            font-weight: 700;
+        }
+
         @media print {
             body * {
                 visibility: hidden;
@@ -2875,47 +2907,81 @@
 
     <!-- USER ADD/EDIT MODAL -->
     <div id="user-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4">
-        <div
-            class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="font-bold text-slate-900" id="user-modal-title">إضافة مستخدم جديد</h3>
-                <button onclick="closeUserModal()"
-                    class="text-slate-400 hover:text-slate-600 text-xl font-bold">×</button>
-            </div>
-            <input type="hidden" id="user-edit-id" value="">
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">اسم المستخدم</label>
-                <input id="user-username" type="text" placeholder="حروف/أرقام إنجليزية بدون مسافات"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1" id="user-password-label">كلمة المرور (8 حروف
-                    على الأقل)</label>
-                <input id="user-password" type="text" autocomplete="new-password"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
-            </div>
-            <label
-                class="flex items-center gap-2 text-sm bg-amber-50 border border-amber-200 rounded-lg p-2.5 cursor-pointer">
-                <input id="user-requires-approval" type="checkbox" class="w-4 h-4">
-                <span class="font-bold text-amber-800">يحتاج موافقة الأدمن قبل التنفيذ</span>
-            </label>
-            <p class="text-[10px] text-slate-400 -mt-2">لو مفعّلة، أي إضافة/تعديل/حذف من هذا المستخدم في أي تبويب
-                هيتحفظ كطلب معلّق لحد ما توافق عليه من تاب "طلبات في انتظار الموافقة"</p>
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">المشاريع المسموح للمستخدم يشتغل عليها</label>
-                <p class="text-[10px] text-slate-400 mb-1.5">لو ماخترتش أي مشروع، المستخدم مش هيشوف أي مشروع خالص في
-                    أي تبويب (توريدات، مصروفات، مبيعات، عهد، أصول، مستثمرين...) لحد ما تحدد له.</p>
-                <div id="user-projects-list"
-                    class="flex flex-wrap gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-40 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[92vh]">
+            <div class="flex justify-between items-center border-b border-slate-100 px-6 py-4 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-user-gear"></i>
+                    </span>
+                    <h3 class="font-bold text-slate-900" id="user-modal-title">إضافة مستخدم جديد</h3>
                 </div>
-            </div>
-            <div id="user-permissions-editor" class="flex flex-col gap-3"></div>
-            <p id="user-modal-error" class="hidden text-rose-600 text-xs font-bold"></p>
-            <div class="flex gap-2">
                 <button onclick="closeUserModal()"
-                    class="flex-1 py-2.5 rounded-lg bg-slate-100 text-slate-700 font-bold text-sm">إلغاء</button>
+                    class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 text-xl font-bold">×</button>
+            </div>
+
+            <div class="overflow-y-auto px-6 py-5 flex flex-col gap-4">
+                <input type="hidden" id="user-edit-id" value="">
+
+                <!-- بيانات الدخول -->
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-3">
+                    <span class="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                        <i class="fa-solid fa-id-badge text-slate-400"></i>بيانات الدخول
+                    </span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">اسم المستخدم</label>
+                            <input id="user-username" type="text" placeholder="حروف/أرقام إنجليزية بدون مسافات"
+                                class="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1" id="user-password-label">كلمة
+                                المرور (8 حروف على الأقل)</label>
+                            <input id="user-password" type="text" autocomplete="new-password"
+                                class="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-sm">
+                        </div>
+                    </div>
+                    <label
+                        class="flex items-center gap-2 text-sm bg-amber-50 border border-amber-200 rounded-lg p-2.5 cursor-pointer">
+                        <input id="user-requires-approval" type="checkbox" class="w-4 h-4 accent-amber-600">
+                        <span class="font-bold text-amber-800">يحتاج موافقة الأدمن قبل التنفيذ</span>
+                    </label>
+                    <p class="text-[10px] text-slate-400">لو مفعّلة، أي إضافة/تعديل/حذف من هذا المستخدم في أي تبويب
+                        هيتحفظ كطلب معلّق لحد ما توافق عليه من تاب "طلبات في انتظار الموافقة"</p>
+                </div>
+
+                <!-- المشاريع -->
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-2">
+                    <span class="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                        <i class="fa-solid fa-diagram-project text-slate-400"></i>المشاريع المسموح للمستخدم يشتغل
+                        عليها
+                    </span>
+                    <p class="text-[10px] text-slate-400">لو ماخترتش أي مشروع، المستخدم مش هيشوف أي مشروع خالص في أي
+                        تبويب (توريدات، مصروفات، مبيعات، عهد، أصول، مستثمرين...) لحد ما تحدد له.</p>
+                    <div id="user-projects-list"
+                        class="flex flex-wrap gap-1.5 bg-white border border-slate-200 rounded-lg p-2 max-h-36 overflow-y-auto">
+                    </div>
+                </div>
+
+                <!-- الصلاحيات -->
+                <div class="flex flex-col gap-2">
+                    <span class="text-xs font-bold text-slate-500 flex items-center gap-1.5 px-1">
+                        <i class="fa-solid fa-shield-halved text-slate-400"></i>صلاحيات التبويبات
+                    </span>
+                    <div id="user-permissions-editor" class="flex flex-col gap-3"></div>
+                </div>
+
+                <p id="user-modal-error"
+                    class="hidden text-rose-600 text-xs font-bold bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+                </p>
+            </div>
+
+            <div class="flex gap-2 border-t border-slate-100 px-6 py-4 shrink-0">
+                <button onclick="closeUserModal()"
+                    class="flex-1 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm">إلغاء</button>
                 <button onclick="submitUserModal()" id="user-modal-submit"
-                    class="flex-1 py-2.5 rounded-lg bg-blue-600 text-white font-bold text-sm">حفظ</button>
+                    class="flex-1 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i>حفظ
+                </button>
             </div>
         </div>
     </div>
@@ -4063,23 +4129,26 @@
             const container = document.getElementById('user-permissions-editor');
             if (!container) return;
             container.innerHTML = PERMISSION_GROUPS.map(g => `
-                <details class="border border-slate-200 rounded-lg overflow-hidden" open>
-                    <summary class="bg-slate-50 px-3 py-2 font-bold text-xs text-slate-700 cursor-pointer flex flex-wrap items-center justify-between gap-2">
-                        <span>${g.label}</span>
+                <details class="group border border-slate-200 rounded-xl overflow-hidden bg-white" open>
+                    <summary class="list-none bg-slate-50 px-3.5 py-2.5 font-bold text-xs text-slate-700 cursor-pointer flex flex-wrap items-center justify-between gap-2 select-none">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform group-open:rotate-180"></i>
+                            ${g.label}
+                        </span>
                         <span class="flex gap-3 font-normal text-slate-500 text-[11px]" onclick="event.stopPropagation()">
-                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" onchange="toggleGroupPerm('${g.key}','view',this.checked)" class="w-3.5 h-3.5">الكل مشاهدة</label>
-                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" onchange="toggleGroupPerm('${g.key}','edit',this.checked)" class="w-3.5 h-3.5">الكل تعديل</label>
-                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" onchange="toggleGroupPerm('${g.key}','delete',this.checked)" class="w-3.5 h-3.5">الكل حذف</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" onchange="toggleGroupPerm('${g.key}','view',this.checked)" class="w-3.5 h-3.5 accent-sky-600">الكل مشاهدة</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" onchange="toggleGroupPerm('${g.key}','edit',this.checked)" class="w-3.5 h-3.5 accent-amber-600">الكل تعديل</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" onchange="toggleGroupPerm('${g.key}','delete',this.checked)" class="w-3.5 h-3.5 accent-rose-600">الكل حذف</label>
                         </span>
                     </summary>
                     <div class="divide-y divide-slate-100">
-                        ${g.tabs.map(t => `
-                        <div class="flex items-center justify-between gap-2 px-3 py-1.5 text-xs">
-                            <span class="text-slate-600">${t.label}</span>
+                        ${g.tabs.map((t, i) => `
+                        <div class="flex items-center justify-between gap-2 px-3.5 py-2 text-xs ${i % 2 ? 'bg-slate-50/70' : ''} hover:bg-slate-50">
+                            <span class="text-slate-600 font-medium">${t.label}</span>
                             <span class="flex gap-4">
-                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-${t.id}-view" class="w-4 h-4">مشاهدة</label>
-                                <label class="flex items-center gap-1.5 cursor-pointer ${t.viewOnly ? 'opacity-30' : ''}"><input type="checkbox" id="perm-${t.id}-edit" class="w-4 h-4" ${t.viewOnly ? 'disabled' : ''}>تعديل</label>
-                                <label class="flex items-center gap-1.5 cursor-pointer ${t.viewOnly ? 'opacity-30' : ''}"><input type="checkbox" id="perm-${t.id}-delete" class="w-4 h-4" ${t.viewOnly ? 'disabled' : ''}>حذف</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer w-14 justify-center"><input type="checkbox" id="perm-${t.id}-view" class="w-4 h-4 accent-sky-600">مشاهدة</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer w-12 justify-center ${t.viewOnly ? 'opacity-30' : ''}"><input type="checkbox" id="perm-${t.id}-edit" class="w-4 h-4 accent-amber-600" ${t.viewOnly ? 'disabled' : ''}>تعديل</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer w-10 justify-center ${t.viewOnly ? 'opacity-30' : ''}"><input type="checkbox" id="perm-${t.id}-delete" class="w-4 h-4 accent-rose-600" ${t.viewOnly ? 'disabled' : ''}>حذف</label>
                             </span>
                         </div>`).join('')}
                     </div>
@@ -4120,8 +4189,8 @@
             const selected = new Set(selectedCodes || []);
             list.innerHTML = db.projects.length
                 ? db.projects.map(p => `
-            <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
-                <input type="checkbox" value="${p.code}" ${selected.has(p.code) ? 'checked' : ''} class="user-project-check">
+            <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded-full px-2.5 py-1 cursor-pointer hover:bg-slate-50 transition-colors">
+                <input type="checkbox" value="${p.code}" ${selected.has(p.code) ? 'checked' : ''} class="user-project-check w-3.5 h-3.5 accent-indigo-600">
                 <span>${esc(p.name)}</span>
             </label>`).join('')
                 : '<span class="text-xs text-slate-400">مفيش مشاريع متسجلة لسه في دليل الأكواد</span>';
