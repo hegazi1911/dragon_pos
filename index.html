@@ -3439,6 +3439,15 @@
             other_operating: 'مصروفات تشغيلية أخرى'
         };
 
+        // مصدر الحقيقة الوحيد لتحديد plType لأي تصنيف — حماية صريحة غير قابلة للكسر:
+        // أي حركة category==='إيراد' هي إيراد رئيسي دايمًا، بغض النظر عن أي تعديل قد
+        // يحصل بالغلط على plType بتاعها في دليل الأكواد.
+        function getCategoryPLType(categoryName) {
+            if (categoryName === 'إيراد') return 'revenue';
+            const catDef = db.expenses.find(c => c.name === categoryName);
+            return catDef ? catDef.plType : 'operating';
+        }
+
         function seedDb() {
             return {
                 projects: [], supplies: [], suppliers: [], expenses: [], activities: [], names: [], clients: [],
@@ -4873,6 +4882,9 @@
             }
             if (type === 'expenses') {
                 item.plType = document.getElementById('master-pltype').value;
+                if (name === 'إيراد' && item.plType !== 'revenue') {
+                    if (!confirm('تحذير: تصنيف "إيراد" محجوز لمبيعات العملاء ولازم يفضل plType=إيرادات رئيسية. تغييره ممكن يسبب أخطاء في قائمة الدخل. متأكد إنك عايز تكمل؟')) return;
+                }
                 if (item.plType === 'operating') item.plBucket = document.getElementById('master-plbucket').value;
                 item.nameType = document.getElementById('master-name-type').value;
             }
@@ -5632,8 +5644,8 @@
         async function addExpense(e) {
             e.preventDefault();
             const cat = document.getElementById('exp-category').value;
-            const catDef = db.expenses.find(c => c.name === cat);
-            if (cat === 'إيراد' || (catDef && (catDef.plType === 'revenue' || catDef.plType === 'other_revenue'))) {
+            const catPlType = getCategoryPLType(cat);
+            if (catPlType === 'revenue' || catPlType === 'other_revenue') {
                 alert('تسجيل الإيرادات مكانه الوحيد تاب "مستخلصات العملاء" — مينفعش يتسجل من هنا.');
                 return;
             }
@@ -5756,8 +5768,8 @@
 
             const rows = db.expensesData.filter(x => {
                 // تحصيلات العملاء ليها سجلها الخاص تحت "مستخلصات العملاء" — أي حركة تصنيفها إيراد (بأي اسم) متتكررش هنا
-                const catDef = db.expenses.find(c => c.name === x.category);
-                if (x.category === 'إيراد' || (catDef && (catDef.plType === 'revenue' || catDef.plType === 'other_revenue'))) return false;
+                const plType = getCategoryPLType(x.category);
+                if (plType === 'revenue' || plType === 'other_revenue') return false;
                 if (fp !== 'ALL' && fp && x.project !== fp) return false;
                 if (fc !== 'ALL' && fc && x.category !== fc) return false;
                 if (fn !== 'ALL' && fn && x.name !== fn) return false;
@@ -6279,8 +6291,8 @@
             // Group expensesData by category name
             const catGroups = {};
             db.expensesData.filter(x => match(x)).forEach(x => {
+                const plType = getCategoryPLType(x.category);
                 const catDef = db.expenses.find(c => c.name === x.category);
-                const plType = catDef ? catDef.plType : 'operating';
                 const plBucket = catDef ? catDef.plBucket : 'other_operating';
                 if (!catGroups[x.category]) catGroups[x.category] = { plType, plBucket, total: 0 };
                 catGroups[x.category].total += x.total;
