@@ -58,10 +58,8 @@ create table if not exists clients (
 create table if not exists investors (
   code integer primary key,
   name text not null unique,
-  management_fee_pct numeric, -- نسبة إدارة أموال هذا المستثمر تُخصم من نصيبه في الربح فقط
-  project_contracts jsonb -- قيمة عقد الاستثمار لكل مشروع يشارك فيه: {"اسم المشروع": قيمة العقد, ...} — أساس حساب نسبة توزيع الربح
+  management_fee_pct numeric -- نسبة إدارة أموال هذا المستثمر تُخصم من نصيبه في الربح فقط
 );
-alter table investors add column if not exists project_contracts jsonb;
 
 create table if not exists accounts (
   code integer primary key,
