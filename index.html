@@ -2434,7 +2434,7 @@
                             class="fa-solid fa-hand-holding-dollar text-orange-500"></i> ربط مستثمر بمشروع</h3>
                     <form onsubmit="addInvestorFunding(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">المستثمر</label><select
-                                id="inv-investor" required
+                                id="inv-investor" required onchange="calcInvAutoPct()"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
                         </div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label><select
@@ -2442,13 +2442,13 @@
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
                         </div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">مبلغ التمويل (ج.م)</label><input
-                                id="inv-amount" type="number" step="any" oninput="calcInvAutoPct()"
+                                id="inv-amount" type="number" step="any"
                                 placeholder="أدخل المبلغ"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                         <div>
                             <label class="block text-xs font-bold text-emerald-700 mb-1">نسبة المستثمر % <span
-                                    class="text-slate-400 font-normal">(تلقائية من نسبة التمويل، وتقدر تعدّلها
-                                    يدوي)</span></label>
+                                    class="text-slate-400 font-normal">(تلقائية من قيمة عقده المسجلة في دليل الأكواد
+                                    ÷ رأس مال المشروع، وتقدر تعدّلها يدوي)</span></label>
                             <div
                                 class="flex items-center bg-emerald-50 border border-emerald-200 rounded-lg overflow-hidden">
                                 <input id="inv-auto-pct" type="number" step="any" min="0" max="100" placeholder="---"
@@ -3365,6 +3365,18 @@
                         كل مستثمر ليه نسبته الخاصة</p>
                 </div>
 
+                <div id="master-inv-contracts-wrap" class="hidden flex flex-col gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">قيمة عقد الاستثمار لكل مشروع
+                            (اختياري)</label>
+                        <div id="master-inv-contracts-list"
+                            class="flex flex-col gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-2 max-h-40 overflow-y-auto">
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">نسبة المستثمر من ربح كل مشروع بتتحسب تلقائياً =
+                            قيمة عقده في المشروع ÷ رأس مال المشروع المسجل في دليل الأكواد</p>
+                    </div>
+                </div>
+
                 <!-- ربط النشاط بالتبويبات -->
                 <div id="master-activity-cats-wrap" class="hidden flex flex-col gap-2">
                     <div>
@@ -3484,7 +3496,7 @@
             else if (cat === 'supplies') item = { code: row.code, name: row.name, unit: row.unit || undefined };
             else if (cat === 'activities') item = { code: row.code, name: row.name, categories: (row.categories && row.categories.length) ? row.categories : undefined, linkedNames: (row.linked_names && row.linked_names.length) ? row.linked_names : undefined };
             else if (cat === 'projects') item = { code: row.code, name: row.name, capital: row.capital || undefined, status: row.status || 'active' };
-            else if (cat === 'investors') item = { code: row.code, name: row.name, managementFeePct: row.management_fee_pct || undefined };
+            else if (cat === 'investors') item = { code: row.code, name: row.name, managementFeePct: row.management_fee_pct || undefined, projectContracts: (row.project_contracts && Object.keys(row.project_contracts).length) ? row.project_contracts : undefined };
             else if (cat === 'accounts') item = { code: row.code, name: row.name, openingBalance: row.opening_balance || 0 };
             else if (cat === 'employees') item = { code: row.code, name: row.name, monthlySalary: row.monthly_salary || 0 };
             else if (cat === 'assetTypes') item = { code: row.code, name: row.name };
@@ -3503,7 +3515,7 @@
             if (cat === 'supplies') return { code: item.code, name: item.name, unit: item.unit || null };
             if (cat === 'activities') return { code: item.code, name: item.name, categories: item.categories || null, linked_names: item.linkedNames || null };
             if (cat === 'projects') return { code: item.code, name: item.name, capital: item.capital || null, status: item.status || 'active' };
-            if (cat === 'investors') return { code: item.code, name: item.name, management_fee_pct: item.managementFeePct || null };
+            if (cat === 'investors') return { code: item.code, name: item.name, management_fee_pct: item.managementFeePct || null, project_contracts: item.projectContracts || null };
             if (cat === 'accounts') return { code: item.code, name: item.name, opening_balance: item.openingBalance || 0 };
             if (cat === 'employees') return { code: item.code, name: item.name, monthly_salary: item.monthlySalary || 0 };
             if (cat === 'assetTypes') return { code: item.code, name: item.name };
@@ -4673,6 +4685,12 @@
                     <span class="text-rose-700 font-bold">المتبقي: ${fmt(remaining)}</span>
                 </div>`;
                     }
+                    if (cat === 'investors' && it.projectContracts && Object.keys(it.projectContracts).length) {
+                        const parts = Object.entries(it.projectContracts).filter(([, v]) => v > 0).map(([proj, v]) => `${proj}: ${fmt(v)}`).join('، ');
+                        if (parts) contractLine = `<div class="w-full flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mt-1.5 text-sm">
+                    <span class="text-slate-600 font-semibold">عقود الاستثمار: <b class="text-slate-900">${esc(parts)}</b></span>
+                </div>`;
+                    }
                     if (cat === 'suppliers') {
                         const configItems = it.items || [];
                         const histItems = [...new Set(db.procurements.filter(p => p.supplier === it.name).map(p => p.item))];
@@ -4739,6 +4757,7 @@
             document.getElementById('master-name').value = '';
             document.getElementById('master-contract').value = '';
             if (document.getElementById('master-project-status')) document.getElementById('master-project-status').value = 'active';
+            document.getElementById('master-inv-contracts-list').innerHTML = '';
             document.getElementById('add-master-modal').classList.remove('hidden');
             document.getElementById('add-master-modal').classList.add('flex');
             toggleMasterFields();
@@ -4784,6 +4803,12 @@
                 const assigned = (item.activityCodes || []).map(String);
                 checks.forEach(cb => { cb.checked = assigned.includes(cb.value); });
             }
+            if (cat === 'investors') {
+                const contracts = item.projectContracts || {};
+                document.querySelectorAll('#master-inv-contracts-list input[data-project]').forEach(inp => {
+                    inp.value = contracts[inp.dataset.project] || '';
+                });
+            }
             if (cat === 'taxes') {
                 document.getElementById('master-tax-rate').value = item.rate || 0;
                 document.getElementById('master-tax-active').checked = !!item.active;
@@ -4824,6 +4849,7 @@
             }
             document.getElementById('master-salary-wrap')?.classList.toggle('hidden', type !== 'employees');
             document.getElementById('master-mgmt-fee-wrap')?.classList.toggle('hidden', type !== 'investors');
+            document.getElementById('master-inv-contracts-wrap')?.classList.toggle('hidden', type !== 'investors');
             document.getElementById('master-supplier-items-wrap').classList.toggle('hidden', type !== 'suppliers');
             document.getElementById('master-tax-wrap').style.display = type === 'taxes' ? 'flex' : 'none';
             document.getElementById('master-activity-cats-wrap').classList.toggle('hidden', type !== 'activities');
@@ -4855,6 +4881,17 @@
                 <input type="checkbox" value="${a.code}" ${currentChecked.includes(String(a.code)) ? 'checked' : ''} class="name-activity-check">
                 <span>${esc(a.name)}</span>
             </label>`).join('');
+            }
+            if (type === 'investors') {
+                const list = document.getElementById('master-inv-contracts-list');
+                const currentVals = {};
+                list.querySelectorAll('input[data-project]').forEach(inp => { currentVals[inp.dataset.project] = inp.value; });
+                list.innerHTML = db.projects.length ? db.projects.map(p => `
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-600 flex-1 truncate">${esc(p.name)} <span class="text-slate-400">(رأس المال: ${p.capital ? fmt(p.capital) : '-'})</span></span>
+                <input type="number" step="any" min="0" data-project="${esc(p.name)}" value="${esc(currentVals[p.name] || '')}" placeholder="0"
+                    class="w-32 bg-white border border-slate-200 rounded px-2 py-1 text-xs inv-contract-input">
+            </div>`).join('') : '<p class="text-[10px] text-slate-400 p-1">لا توجد مشاريع مسجلة بعد في دليل الأكواد</p>';
             }
         }
 
@@ -4924,6 +4961,12 @@
             if (type === 'investors') {
                 const fee = Number(document.getElementById('master-mgmt-fee').value);
                 if (fee > 0) item.managementFeePct = fee;
+                const contracts = {};
+                document.querySelectorAll('#master-inv-contracts-list input[data-project]').forEach(inp => {
+                    const v = Number(inp.value);
+                    if (v > 0) contracts[inp.dataset.project] = v;
+                });
+                if (Object.keys(contracts).length) item.projectContracts = contracts;
             }
             if (type === 'taxes') {
                 item.rate = Number(document.getElementById('master-tax-rate').value) || 0;
@@ -9213,11 +9256,19 @@
             return r ? r.profitBeforeTax : 0;
         }
 
+        // قيمة عقد الاستثمار المسجلة لهذا المستثمر في دليل الأكواد لمشروع معيّن
+        function investorContractValue(investorName, projectName) {
+            const inv = db.investors.find(i => i.name === investorName);
+            return (inv && inv.projectContracts && inv.projectContracts[projectName]) || 0;
+        }
+        // نسبة المستثمر = قيمة عقده المسجلة في دليل الأكواد ÷ رأس مال المشروع (إلا لو فيه نسبة يدوية مسجلة على الربط)
         function investorAutoPct(funding) {
             if (funding.pct) return funding.pct;
-            const totalFunding = db.investorFunding.filter(f => f.project === funding.project).reduce((s, f) => s + (f.amount || 0), 0);
-            if (!totalFunding) return 0;
-            return (funding.amount / totalFunding) * 100;
+            const project = db.projects.find(p => p.name === funding.project);
+            const capital = project?.capital || 0;
+            if (!capital) return 0;
+            const contractValue = investorContractValue(funding.investor, funding.project);
+            return (contractValue / capital) * 100;
         }
 
         function investorShareForProject(funding) {
@@ -9244,19 +9295,20 @@
         }
 
         function calcInvAutoPct() {
-            const amount = Number(document.getElementById('inv-amount')?.value) || 0;
+            const investor = document.getElementById('inv-investor')?.value;
             const project = document.getElementById('inv-project')?.value;
             const pctEl = document.getElementById('inv-auto-pct');
             const shareEl = document.getElementById('inv-proj-share');
             if (!pctEl) return;
-            if (!project || !amount) { pctEl.value = ''; if (shareEl) shareEl.textContent = '-'; return; }
-            const existingFunding = db.investorFunding.filter(f => f.project === project).reduce((s, f) => s + (f.amount || 0), 0);
-            const total = existingFunding + amount;
-            const pct = total > 0 ? (amount / total * 100) : 0;
-            pctEl.value = pct.toFixed(1);
+            if (!project || !investor) { pctEl.value = ''; if (shareEl) shareEl.textContent = '-'; return; }
+            const projectRec = db.projects.find(p => p.name === project);
+            const capital = projectRec?.capital || 0;
+            const contractValue = investorContractValue(investor, project);
+            const pct = capital > 0 ? (contractValue / capital * 100) : 0;
+            pctEl.value = pct > 0 ? pct.toFixed(1) : '';
             if (shareEl) {
                 const profit = projectProfitForInvestor(project);
-                shareEl.textContent = profit > 0 ? fmt(profit * (pct / 100)) : '-';
+                shareEl.textContent = (pct > 0 && profit > 0) ? fmt(profit * (pct / 100)) : '-';
             }
         }
 
@@ -9284,10 +9336,11 @@
             if (!investor || !project) { alert('اختر المستثمر والمشروع'); return; }
             if (!amount) { alert('أدخل مبلغ التمويل'); return; }
 
-            // احسب النسبة التلقائية (نفس منطق calcInvAutoPct) عشان نعرف هل المستخدم عدّلها يدوي ولا سايبها زي ما هي
-            const existingFunding = db.investorFunding.filter(f => f.project === project).reduce((s, f) => s + (f.amount || 0), 0);
-            const totalAfter = existingFunding + amount;
-            const autoPct = totalAfter > 0 ? (amount / totalAfter * 100) : 0;
+            // احسب النسبة التلقائية (نفس منطق calcInvAutoPct: قيمة العقد ÷ رأس مال المشروع) عشان نعرف هل المستخدم عدّلها يدوي ولا سايبها زي ما هي
+            const projectRec = db.projects.find(p => p.name === project);
+            const capital = projectRec?.capital || 0;
+            const contractValue = investorContractValue(investor, project);
+            const autoPct = capital > 0 ? (contractValue / capital * 100) : 0;
             const enteredPct = Number(document.getElementById('inv-auto-pct')?.value);
             const isManualOverride = !isNaN(enteredPct) && Math.abs(enteredPct - autoPct) > 0.05;
 
