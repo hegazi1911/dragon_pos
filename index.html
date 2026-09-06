@@ -1250,6 +1250,9 @@
                                 class="bg-white border border-slate-200 rounded px-2 py-1 text-xs">
                             <button onclick="searchPostedPayroll()"
                                 class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold">بحث</button>
+                            <button id="btn-delete-posted-payroll-month" onclick="deleteAllPostedPayrollForMonth()"
+                                class="hidden bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold">🗑
+                                حذف رواتب الشهر بالكامل</button>
                         </div>
                     </div>
                     <div class="overflow-x-auto max-h-64">
@@ -1260,11 +1263,12 @@
                                     <th class="p-3">التكلفة الكاملة</th>
                                     <th class="p-3">المدفوع فعلياً</th>
                                     <th class="p-3">التاريخ</th>
+                                    <th class="p-3"></th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-search-posted">
                                 <tr>
-                                    <td colspan="4" class="p-4 text-center text-slate-400">اختر شهر واضغط بحث</td>
+                                    <td colspan="5" class="p-4 text-center text-slate-400">اختر شهر واضغط بحث</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -7565,16 +7569,38 @@
         function searchPostedPayroll() {
             const month = document.getElementById('search-posted-month').value;
             const tbody = document.getElementById('tbody-search-posted');
+            const bulkDeleteBtn = document.getElementById('btn-delete-posted-payroll-month');
             if (!month) { alert('اختر شهر للبحث'); return; }
             const rows = db.expensesData.filter(x => x.category === 'أجور' && x.notes === `راتب شهر ${month}`);
+            if (bulkDeleteBtn) bulkDeleteBtn.classList.toggle('hidden', !rows.length);
             tbody.innerHTML = rows.length
                 ? rows.map(r => `<tr class="border-b border-slate-50">
             <td class="p-3 font-bold">${esc(r.name)}</td>
             <td class="p-3">${fmt(r.total)}</td>
             <td class="p-3 font-bold text-fuchsia-700">${fmt(r.paid)}</td>
             <td class="p-3 text-slate-500">${r.date}</td>
+            <td class="p-3"><button onclick="deleteExpense(${r.id}).then(searchPostedPayroll)" class="text-red-400 hover:text-red-600" title="حذف هذا السطر بس"><i class="fa-solid fa-trash"></i></button></td>
         </tr>`).join('')
-                : '<tr><td colspan="4" class="p-4 text-center text-slate-400">لا توجد رواتب مرحّلة لشهر ' + month + '</td></tr>';
+                : '<tr><td colspan="5" class="p-4 text-center text-slate-400">لا توجد رواتب مرحّلة لشهر ' + month + '</td></tr>';
+        }
+        // بيحذف كل سطور راتب شهر معيّن دفعة واحدة (كل الموظفين وكل توزيعاتهم على المشاريع)،
+        // عشان لو الترحيل غلط تقدر تصلحه وتعيد الترحيل من غير ما تدوّر على كل سطر لوحده في تاب المصروفات
+        async function deleteAllPostedPayrollForMonth() {
+            const month = document.getElementById('search-posted-month').value;
+            if (!month) return;
+            const rows = db.expensesData.filter(x => x.category === 'أجور' && x.notes === `راتب شهر ${month}`);
+            if (!rows.length) { alert('مفيش رواتب مرحّلة لشهر ' + month + ' أصلاً'); return; }
+            if (!confirm(`هتحذف ${rows.length} حركة راتب مرحّلة لشهر ${month} بالكامل (كل الموظفين وكل توزيعاتهم على المشاريع). العملية دي مش هترجع، متأكد؟`)) return;
+            const ops = rows.map(r => ({ table: 'expense_entries', pk_col: 'id', pk_value: r.id, op: 'delete' }));
+            if (await gateOrRun('delete', 'payroll', `رواتب شهر ${month}`, ops, rows)) return;
+            markSaving();
+            const { error } = await sb.from('expense_entries').delete().in('id', rows.map(r => r.id));
+            if (error) { markSaveError(error); return; }
+            logAudit('delete', 'رواتب شهر', month, rows, null);
+            db.expensesData = db.expensesData.filter(x => !rows.some(r => r.id === x.id));
+            markSaved();
+            renderAll();
+            searchPostedPayroll();
         }
         async function postPayroll() {
             const monthInput = document.getElementById('payroll-month');
