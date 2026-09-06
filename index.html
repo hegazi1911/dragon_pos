@@ -98,16 +98,24 @@
         }
 
         @media print {
-            body * {
-                visibility: hidden;
+
+            /* تخفي عناصر شقيقة السلسلة المؤدية لـ .print-target (عن طريق JS في preparePrintIsolation)
+               باستخدام display:none بدل visibility:hidden، عشان المتصفح يحسب ارتفاع الصفحات فعليًا
+               من محتوى .print-target الحقيقي بدل ما يفضل متقيّد بارتفاع الشاشة (h-screen/overflow-hidden)
+               ويطبع صفحة بيضة فاضية — الجداول الطويلة كانت بتختفي تمامًا من غير الإصلاح ده */
+            .print-flow-hidden {
+                display: none !important;
+            }
+
+            .print-flow-ancestor {
+                display: block !important;
+                overflow: visible !important;
+                height: auto !important;
+                max-height: none !important;
+                position: static !important;
             }
 
             /* توقيع صغير أسفل الصفحة يسار - يظهر في الطباعة */
-            #print-watermark,
-            #print-watermark * {
-                visibility: visible;
-            }
-
             #print-watermark {
                 position: fixed;
                 bottom: 10px;
@@ -118,21 +126,6 @@
                 z-index: 20;
                 letter-spacing: 2px;
                 pointer-events: none;
-            }
-
-            .print-target,
-            .print-target * {
-                visibility: visible;
-                position: relative;
-                z-index: 10;
-            }
-
-            .print-target {
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 100%;
-                padding: 20px;
             }
 
             .pl-no-print-hide {
@@ -1188,9 +1181,10 @@
                     <div class="p-4 bg-slate-50 border-b border-slate-200">
                         <h3 class="font-bold text-slate-900"><i class="fa-solid fa-diagram-project text-fuchsia-600"></i>
                             توزيع الموظفين على المشاريع</h3>
-                        <p class="text-xs text-slate-500 mt-1">حدد لكل موظف نسبة % أو مبلغ ثابت شهري من راتبه لكل
-                            مشروع — التوزيع ده بيتسجل مرة واحدة ويتطبق تلقائيًا كل شهر عند الترحيل. الموظف من غير
-                            توزيع محدد يترحّل بمشروع "-" زي المعتاد.</p>
+                        <p class="text-xs text-slate-500 mt-1">اختار للموظف المشاريع اللي شغال عليها — لو سبتِ خانة "القيمة" فاضية
+                            هيتقسم راتبه بالتساوي تلقائيًا على كل المشاريع دي (مثلاً مشروعين = 50% لكل واحد لوحدهم)، أو تقدر تكتب
+                            نسبة % أو مبلغ ثابت مخصوص لأي مشروع يدويًا لو مش عايز التقسيم بالتساوي. التوزيع ده بيتسجل مرة واحدة
+                            ويتطبق تلقائيًا كل شهر عند الترحيل. الموظف من غير توزيع محدد يترحّل بمشروع "-" زي المعتاد.</p>
                     </div>
                     <div class="p-4 flex flex-col gap-3">
                         <div class="max-w-xs">
@@ -6046,6 +6040,7 @@
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-target'));
             container.classList.remove('dj-print-hidden');
             container.classList.add('print-target');
+            preparePrintIsolation(container);
             window.print();
         }
         function sendMonthlyReportWhatsapp() {
@@ -7093,9 +7088,28 @@
         }
 
         /* ================= PRINT ================= */
+        // بتشيل كل حاجة من الصفحة ما عدا سلسلة أجداد .print-target (وتفضّي ارتفاعها/تقييد التمرير بتاعها)،
+        // عشان المتصفح يحسب عدد صفحات الطباعة من ارتفاع المحتوى الحقيقي، مش من ارتفاع الشاشة الأصلي.
+        function preparePrintIsolation(target) {
+            document.querySelectorAll('.print-flow-hidden').forEach(el => el.classList.remove('print-flow-hidden'));
+            document.querySelectorAll('.print-flow-ancestor').forEach(el => el.classList.remove('print-flow-ancestor'));
+            let el = target;
+            while (el && el !== document.body) {
+                const parent = el.parentElement;
+                if (parent) {
+                    [...parent.children].forEach(sibling => {
+                        if (sibling !== el && sibling.id !== 'print-watermark') sibling.classList.add('print-flow-hidden');
+                    });
+                    parent.classList.add('print-flow-ancestor');
+                }
+                el = parent;
+            }
+        }
         function printSection(id) {
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-target'));
-            document.getElementById(id).classList.add('print-target');
+            const target = document.getElementById(id);
+            target.classList.add('print-target');
+            preparePrintIsolation(target);
             window.print();
         }
         function printCurrentTab() {
@@ -7103,6 +7117,7 @@
             if (!activeTab) return;
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-target'));
             activeTab.classList.add('print-target');
+            preparePrintIsolation(activeTab);
             window.print();
         }
 
@@ -7351,17 +7366,41 @@
             div.className = 'flex gap-2 items-center alloc-row';
             const projectOptions = db.projects.map(p => `<option value="${esc(p.name)}" ${existing && existing.project === p.name ? 'selected' : ''}>${p.code} - ${esc(p.name)}</option>`).join('');
             const type = existing ? existing.allocation_type : 'percentage';
+            // existing (محمّل من قاعدة البيانات) = قيمة اتحددت قصدياً قبل كده فمتتغيرش لوحدها.
+            // سطر جديد فاضي = "تلقائي"، هيشارك في التوزيع بالتساوي مع باقي السطور التلقائية كل ما تتضاف/تتشال مشاريع
+            const dirty = existing ? '1' : '0';
             div.innerHTML = `
         <select class="alloc-row-project flex-1 bg-white border border-slate-200 rounded p-1.5 text-xs">${projectOptions}</select>
-        <select class="alloc-row-type w-28 bg-white border border-slate-200 rounded p-1.5 text-xs" onchange="updateAllocationProgress()">
+        <select class="alloc-row-type w-28 bg-white border border-slate-200 rounded p-1.5 text-xs" onchange="equalizeAllocationPercentages(); updateAllocationProgress()">
             <option value="percentage" ${type === 'percentage' ? 'selected' : ''}>نسبة %</option>
             <option value="fixed" ${type === 'fixed' ? 'selected' : ''}>مبلغ ثابت</option>
         </select>
-        <input type="number" step="any" min="0" placeholder="القيمة" value="${existing ? existing.allocation_value : ''}"
-            oninput="updateAllocationProgress()" class="alloc-row-value w-24 bg-white border border-slate-200 rounded p-1.5 text-xs">
-        <button type="button" onclick="this.closest('.alloc-row').remove(); updateAllocationProgress();" class="text-red-400 hover:text-red-600 text-xs">🗑</button>
+        <input type="number" step="any" min="0" placeholder="تلقائي (بالتساوي)" value="${existing ? existing.allocation_value : ''}" data-dirty="${dirty}"
+            oninput="this.dataset.dirty = '1'; updateAllocationProgress()" class="alloc-row-value w-28 bg-white border border-slate-200 rounded p-1.5 text-xs">
+        <button type="button" onclick="this.closest('.alloc-row').remove(); equalizeAllocationPercentages(); updateAllocationProgress();" class="text-red-400 hover:text-red-600 text-xs">🗑</button>
     `;
             container.appendChild(div);
+            equalizeAllocationPercentages();
+        }
+        // بيوزّع 100% بالتساوي على كل سطور "النسبة %" اللي معملهاش المستخدم تعديل يدوي (data-dirty=0)،
+        // بعد ما ياخد باله الأول من أي نسبة/مبلغ ثابت اتحدد يدوياً عشان يوزّع بس الباقي. كده لو موظف
+        // شغال على مشروعين، بمجرد ما تضيفهم من غير ما تكتب أرقام، بيتقسموا 50/50 لوحدهم تلقائياً.
+        function equalizeAllocationPercentages() {
+            const rows = [...document.querySelectorAll('#alloc-rows .alloc-row')];
+            const pctRows = rows.filter(r => r.querySelector('.alloc-row-type').value === 'percentage');
+            const autoRows = pctRows.filter(r => r.querySelector('.alloc-row-value').dataset.dirty !== '1');
+            if (!autoRows.length) return;
+            const dirtyPctSum = pctRows
+                .filter(r => !autoRows.includes(r))
+                .reduce((s, r) => s + (Number(r.querySelector('.alloc-row-value').value) || 0), 0);
+            const remaining = Math.max(100 - dirtyPctSum, 0);
+            const share = Math.round((remaining / autoRows.length) * 100) / 100;
+            // آخر سطر تلقائي بياخد الباقي بالظبط (مش نصيب مقرّب) عشان مجموع النسب يفضل 100% بالظبط
+            // حتى لو القسمة مش مظبوطة (زي 3 مشاريع = 33.33 + 33.33 + 33.34)
+            autoRows.forEach((r, i) => {
+                const value = (i === autoRows.length - 1) ? Math.round((remaining - share * (autoRows.length - 1)) * 100) / 100 : share;
+                r.querySelector('.alloc-row-value').value = value;
+            });
         }
         function collectAllocationRowsFromForm() {
             return [...document.querySelectorAll('#alloc-rows .alloc-row')].map(row => ({
@@ -8587,6 +8626,7 @@
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-target'));
             container.classList.remove('dj-print-hidden'); // نشيل الإخفاء الأول قبل إضافة كلاس الطباعة
             container.classList.add('print-target');
+            preparePrintIsolation(container);
             window.print();
         }
         let __viewingDJId = null;
@@ -8788,6 +8828,7 @@
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-target'));
             container.classList.remove('dj-print-hidden');
             container.classList.add('print-target');
+            preparePrintIsolation(container);
             window.print();
         }
         /* ================= الالتزامات (متابعة وتذكير فقط — بدون أي تأثير مالي) ================= */
@@ -9642,8 +9683,13 @@
                 if (!fundings.length) return '';
                 const projects = [...new Set(fundings.map(f => f.project))].join('، ');
                 const totalFunding = fundings.reduce((s, f) => s + (f.amount || 0), 0);
-                const allProjFunding = db.investorFunding.reduce((s, f) => s + (f.amount || 0), 0);
-                const overallPct = allProjFunding > 0 ? (totalFunding / allProjFunding * 100) : 0;
+                // نسبة المستثمر في كل مشروع = نفس الأساس المستخدم فعلياً في حساب حصته (investorAutoPct)، عشان يتطابق مع عمود "حصته من الربح"
+                const projFundingsMap = {};
+                fundings.forEach(f => { (projFundingsMap[f.project] ||= []).push(f); });
+                const projectPcts = Object.entries(projFundingsMap).map(([pName, fs]) => ({ project: pName, pct: fs.reduce((s, f) => s + investorAutoPct(f), 0) }));
+                const pctText = projectPcts.length === 1
+                    ? (projectPcts[0].pct > 0 ? projectPcts[0].pct.toFixed(1) + '%' : '-')
+                    : projectPcts.map(pp => `${pp.project}: ${pp.pct.toFixed(1)}%`).join('، ');
                 const totalShare = fundings.reduce((s, f) => s + investorShareForProject(f), 0);
                 const totalDistributed = db.profitDistributions.filter(d => d.investor === inv.name).reduce((s, d) => s + d.amount, 0);
                 const remaining = totalShare - totalDistributed;
@@ -9652,7 +9698,7 @@
             <td class="p-3 font-bold">${esc(inv.name)}</td>
             <td class="p-3 text-xs text-slate-500 truncate max-w-[120px]">${esc(projects || '-')}</td>
             <td class="p-3">${totalFunding ? fmt(totalFunding) : '-'}</td>
-            <td class="p-3 font-bold text-emerald-600">${overallPct > 0 ? overallPct.toFixed(1) + '%' : '-'}</td>
+            <td class="p-3 font-bold text-emerald-600 text-xs truncate max-w-[140px]" title="${esc(pctText)}">${esc(pctText)}</td>
             <td class="p-3">${fmt(fundings.reduce((s, f) => s + projectProfitForInvestor(f.project), 0))}</td>
             <td class="p-3 font-bold text-emerald-700">${fmt(totalShare)}</td>
             <td class="p-3">${fmt(totalDistributed)}</td>
