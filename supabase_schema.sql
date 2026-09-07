@@ -7,9 +7,11 @@
 create table if not exists projects (
   code integer primary key,
   name text not null unique,
-  capital numeric, -- إجمالي التمويل المستهدف للمشروع (لحساب نسبة كل مستثمر تلقائياً)
+  capital numeric, -- إجمالي التمويل المستهدف للمشروع (لحساب نسبة كل مستثمر تلقائياً) — منفصل عن قيمة العقد
+  contract_value numeric, -- القيمة الإجمالية لعقد المشروع مع العميل — للتسجيل والمتابعة فقط، مالهاش أي تأثير على حساب نسبة المستثمرين
   status text default 'active' -- active / completed
 );
+alter table projects add column if not exists contract_value numeric; -- لتحديث القواعد القديمة اللي اتعملها الجدول قبل إضافة العمود ده
 
 create table if not exists supplies (
   code integer primary key,
@@ -200,10 +202,12 @@ create table if not exists investor_funding (
   project text not null,
   amount numeric default 0,
   pct numeric default 0,
+  account text, -- الحساب/البنك اللي استلم فيه تمويل المستثمر (اختياري، للتسجيل والفلترة فقط)
   date date default current_date,
   notes text,
   created_at timestamptz not null default now()
 );
+alter table investor_funding add column if not exists account text; -- لتحديث القواعد القديمة اللي اتعملها الجدول قبل إضافة العمود ده
 
 create table if not exists profit_distributions (
   id bigint generated always as identity primary key,

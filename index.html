@@ -654,9 +654,14 @@
                                     id="proc-grand-total" class="text-amber-700 mr-1">0 ج.م</span></div>
                         </div>
 
-                        <button type="submit"
-                            class="w-full md:w-auto md:self-end bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-8 p-2.5 rounded-lg text-sm">حفظ
-                            فاتورة التوريد</button>
+                        <div class="flex gap-2 md:self-end">
+                            <button id="proc-save-btn" type="submit"
+                                class="flex-1 md:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-8 p-2.5 rounded-lg text-sm">حفظ
+                                فاتورة التوريد</button>
+                            <button id="proc-cancel-edit-btn" type="button" onclick="cancelEditProcurement()" style="display:none"
+                                class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold p-2.5 rounded-lg text-sm px-5">إلغاء
+                                التعديل</button>
+                        </div>
                     </form>
                 </div>
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
@@ -975,9 +980,13 @@
                                 class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input id="exp-notes"
                                 type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
                         </div>
-                        <div><button type="submit"
-                                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2.5 rounded-lg text-sm">حفظ
-                                الحركة</button></div>
+                        <div class="flex gap-2"><button id="exp-save-btn" type="submit"
+                                class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-2.5 rounded-lg text-sm">حفظ
+                                الحركة</button>
+                            <button id="exp-cancel-edit-btn" type="button" onclick="cancelEditExpense()" style="display:none"
+                                class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold p-2.5 rounded-lg text-sm px-5">إلغاء
+                                التعديل</button>
+                        </div>
                     </form>
                 </div>
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
@@ -2445,8 +2454,8 @@
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
                         <div>
                             <label class="block text-xs font-bold text-emerald-700 mb-1">نسبة المستثمر % <span
-                                    class="text-slate-400 font-normal">(تلقائية = المبلغ ÷ قيمة عقد المشروع الإجمالية
-                                    المسجلة في دليل الأكواد، وتقدر تعدّلها يدوي)</span></label>
+                                    class="text-slate-400 font-normal">(تلقائية = المبلغ ÷ رأس مال المشروع
+                                    المسجل في دليل الأكواد، وتقدر تعدّلها يدوي)</span></label>
                             <div
                                 class="flex items-center bg-emerald-50 border border-emerald-200 rounded-lg overflow-hidden">
                                 <input id="inv-auto-pct" type="number" step="any" min="0" max="100" placeholder="---"
@@ -2469,6 +2478,10 @@
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">تاريخ الاستثمار</label><input
                                 id="inv-date" type="date"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">الحساب/البنك (اختياري)</label><select
+                                id="inv-account"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        </div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input
                                 id="inv-notes" type="text"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
@@ -2489,6 +2502,8 @@
                                 class="bg-white border border-orange-200 rounded px-2 py-1 text-xs"></select>
                             <select id="filter-inv-project" onchange="renderInvestorFunding()"
                                 class="bg-white border border-orange-200 rounded px-2 py-1 text-xs"></select>
+                            <select id="filter-inv-account" onchange="renderInvestorFunding()"
+                                class="bg-white border border-orange-200 rounded px-2 py-1 text-xs"></select>
                         </div>
                     </div>
                     <div class="overflow-x-auto max-h-64">
@@ -2501,6 +2516,7 @@
                                     <th class="p-3 text-emerald-300">النسبة %</th>
                                     <th class="p-3">صافي ربح المشروع</th>
                                     <th class="p-3 text-orange-300">حصة المستثمر</th>
+                                    <th class="p-3">الحساب/البنك</th>
                                     <th class="p-3">تاريخ الاستثمار</th>
                                     <th class="p-3"></th>
                                 </tr>
@@ -3325,12 +3341,18 @@
                     </div>
                 </div>
                 <div id="master-capital-wrap" class="hidden">
-                    <label class="block text-xs font-bold text-slate-600 mb-1">قيمة العقد الإجمالية للمشروع / رأس
-                        المال (اختياري)</label>
-                    <input id="master-capital" type="number" step="any" placeholder="إجمالي قيمة عقد المشروع، مثال: 55000000"
+                    <label class="block text-xs font-bold text-slate-600 mb-1">رأس مال المشروع (اختياري)</label>
+                    <input id="master-capital" type="number" step="any" placeholder="إجمالي رأس المال/التمويل المستهدف للمشروع، مثال: 55000000"
                         class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
                     <p class="text-[10px] text-slate-400 mt-1">أساس حساب نسبة كل مستثمر تلقائياً في تاب المستثمرين: نسبته
-                        = المبلغ اللي بيموّله ÷ القيمة دي</p>
+                        = المبلغ اللي بيموّله ÷ رأس المال ده (مش قيمة العقد)</p>
+
+                    <label class="block text-xs font-bold text-slate-600 mb-1 mt-3">قيمة عقد المشروع (اختياري)</label>
+                    <input id="master-project-contract" type="number" step="any" placeholder="القيمة الإجمالية لعقد المشروع مع العميل"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
+                    <p class="text-[10px] text-slate-400 mt-1">للتسجيل والمتابعة فقط — منفصلة تمامًا عن رأس المال، ومالهاش أي
+                        تأثير على حساب نسبة المستثمرين</p>
+
                     <label class="block text-xs font-bold text-slate-600 mb-1 mt-3">حالة المشروع</label>
                     <select id="master-project-status"
                         class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
@@ -3482,7 +3504,7 @@
             else if (cat === 'suppliers') item = { code: row.code, name: row.name, items: (row.items && row.items.length) ? row.items : undefined, openingBalance: row.opening_balance || undefined };
             else if (cat === 'supplies') item = { code: row.code, name: row.name, unit: row.unit || undefined };
             else if (cat === 'activities') item = { code: row.code, name: row.name, categories: (row.categories && row.categories.length) ? row.categories : undefined, linkedNames: (row.linked_names && row.linked_names.length) ? row.linked_names : undefined };
-            else if (cat === 'projects') item = { code: row.code, name: row.name, capital: row.capital || undefined, status: row.status || 'active' };
+            else if (cat === 'projects') item = { code: row.code, name: row.name, capital: row.capital || undefined, projectContractValue: row.contract_value || undefined, status: row.status || 'active' };
             else if (cat === 'investors') item = { code: row.code, name: row.name, managementFeePct: row.management_fee_pct || undefined };
             else if (cat === 'accounts') item = { code: row.code, name: row.name, openingBalance: row.opening_balance || 0 };
             else if (cat === 'employees') item = { code: row.code, name: row.name, monthlySalary: row.monthly_salary || 0 };
@@ -3501,7 +3523,7 @@
             if (cat === 'suppliers') return { code: item.code, name: item.name, items: item.items || null, opening_balance: item.openingBalance || null };
             if (cat === 'supplies') return { code: item.code, name: item.name, unit: item.unit || null };
             if (cat === 'activities') return { code: item.code, name: item.name, categories: item.categories || null, linked_names: item.linkedNames || null };
-            if (cat === 'projects') return { code: item.code, name: item.name, capital: item.capital || null, status: item.status || 'active' };
+            if (cat === 'projects') return { code: item.code, name: item.name, capital: item.capital || null, contract_value: item.projectContractValue || null, status: item.status || 'active' };
             if (cat === 'investors') return { code: item.code, name: item.name, management_fee_pct: item.managementFeePct || null };
             if (cat === 'accounts') return { code: item.code, name: item.name, opening_balance: item.openingBalance || 0 };
             if (cat === 'employees') return { code: item.code, name: item.name, monthly_salary: item.monthlySalary || 0 };
@@ -4289,8 +4311,8 @@
         }
 
         /* ================= UTIL ================= */
-        const fmt = n => (Number(n) || 0).toLocaleString('ar-EG') + ' ج.م';
-        const numFmt = n => (Number(n) || 0).toLocaleString('ar-EG');
+        const fmt = n => (Number(n) || 0).toLocaleString('ar-EG', { maximumFractionDigits: 0 }) + ' ج.م';
+        const numFmt = n => (Number(n) || 0).toLocaleString('ar-EG', { maximumFractionDigits: 0 });
         const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -4672,6 +4694,12 @@
                     <span class="text-rose-700 font-bold">المتبقي: ${fmt(remaining)}</span>
                 </div>`;
                     }
+                    if (cat === 'projects' && (it.capital || it.projectContractValue)) {
+                        contractLine = `<div class="w-full flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5 mt-1.5 text-sm gap-2">
+                    <span class="text-slate-600 font-semibold">رأس المال: <b class="text-slate-900">${it.capital ? fmt(it.capital) : '-'}</b></span>
+                    <span class="text-slate-600 font-semibold">قيمة العقد: <b class="text-slate-900">${it.projectContractValue ? fmt(it.projectContractValue) : '-'}</b></span>
+                </div>`;
+                    }
                     if (cat === 'suppliers') {
                         const configItems = it.items || [];
                         const histItems = [...new Set(db.procurements.filter(p => p.supplier === it.name).map(p => p.item))];
@@ -4758,6 +4786,7 @@
             }
             if (cat === 'names' || cat === 'clients') document.getElementById('master-contract').value = item.contractValue || '';
             if (cat === 'projects' && document.getElementById('master-capital')) document.getElementById('master-capital').value = item.capital || '';
+            if (cat === 'projects' && document.getElementById('master-project-contract')) document.getElementById('master-project-contract').value = item.projectContractValue || '';
             if (cat === 'projects' && document.getElementById('master-project-status')) document.getElementById('master-project-status').value = item.status || 'active';
             if (['accounts', 'suppliers', 'names'].includes(cat) && document.getElementById('master-opening-balance')) document.getElementById('master-opening-balance').value = item.openingBalance || '';
             if (cat === 'employees' && document.getElementById('master-salary')) document.getElementById('master-salary').value = item.monthlySalary || '';
@@ -4911,6 +4940,8 @@
             if (type === 'projects') {
                 const cap = Number(document.getElementById('master-capital').value);
                 if (cap > 0) item.capital = cap;
+                const projCv = Number(document.getElementById('master-project-contract').value);
+                if (projCv > 0) item.projectContractValue = projCv;
                 item.status = document.getElementById('master-project-status').value;
             }
             if (type === 'accounts') {
@@ -5071,6 +5102,8 @@
             fillSelect('dist-project', sortedProjects(), 'كل المشاريع');
             fillSelect('filter-inv-project', sortedProjects(), 'كل المشاريع');
             fillSelect('filter-inv-investor', db.investors, 'كل المستثمرين');
+            fillSelect('inv-account', db.accounts);
+            fillSelect('filter-inv-account', db.accounts, 'كل الحسابات/البنوك');
             fillSelect('filter-summary-investor', db.investors, 'كل المستثمرين');
             fillSelect('filter-dist-investor', db.investors, 'كل المستثمرين');
             fillSelect('filter-dist-project', sortedProjects(), 'كل المشاريع');
@@ -5135,16 +5168,65 @@
             const isCash = document.querySelector('input[name="proc-pay-method"]:checked')?.value === 'cash';
             document.getElementById('proc-cash-account-wrap').classList.toggle('hidden', !isCash);
         }
+        /* تعديل فاتورة توريد قائمة: بيحمّل كل أصنافها في نفس الفورم، وبيستبدل كل سطورها القديمة
+           بالسطور المعدّلة عند الحفظ (نفس رقم الفاتورة و group_id) — من غير أي لمس لطريقة/سداد الدفع الأصلية */
+        let editingProcGroupId = null;
+        let editingProcInvoiceNumber = null;
+        function editProcurement(id) {
+            const rec = db.procurements.find(p => p.id === id);
+            if (!rec) return;
+            if (!rec.groupId) { alert('الحركة دي قديمة من غير رقم فاتورة، مينفعش تتعدّل من هنا — احذفها وسجّلها من جديد.'); return; }
+            const lines = db.procurements.filter(p => p.groupId === rec.groupId);
+            editingProcGroupId = rec.groupId;
+            editingProcInvoiceNumber = rec.invoiceNumber;
+            document.getElementById('proc-supplier').value = rec.supplier;
+            document.getElementById('proc-project').value = rec.project;
+            document.getElementById('proc-date').value = rec.date;
+            document.getElementById('proc-notes').value = rec.notes || '';
+            const creditRadio = document.querySelector('input[name="proc-pay-method"][value="credit"]');
+            if (creditRadio) creditRadio.checked = true;
+            toggleProcCashAccount();
+            document.getElementById('proc-lines').innerHTML = '';
+            lines.forEach(l => {
+                addProcLineUI();
+                const row = document.getElementById('proc-lines').lastElementChild;
+                const itemSelect = row.querySelector('.proc-line-item');
+                itemSelect.value = l.item;
+                onProcLineItemChange(itemSelect);
+                row.querySelector('.proc-line-qty').value = l.qty;
+                row.querySelector('.proc-line-price').value = l.price;
+            });
+            updateProcGrandTotal();
+            const saveBtn = document.getElementById('proc-save-btn');
+            const cancelBtn = document.getElementById('proc-cancel-edit-btn');
+            if (saveBtn) saveBtn.innerHTML = '💾 حفظ التعديلات';
+            if (cancelBtn) cancelBtn.style.display = '';
+            document.getElementById('tab-procurement').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        function cancelEditProcurement() {
+            editingProcGroupId = null;
+            editingProcInvoiceNumber = null;
+            document.querySelector('#tab-procurement form')?.reset();
+            document.getElementById('proc-lines').innerHTML = '';
+            updateProcGrandTotal();
+            toggleProcCashAccount();
+            document.getElementById('proc-date').value = todayISO();
+            const saveBtn = document.getElementById('proc-save-btn');
+            const cancelBtn = document.getElementById('proc-cancel-edit-btn');
+            if (saveBtn) saveBtn.innerHTML = 'حفظ فاتورة التوريد';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+        }
         async function addProcurement(e) {
             e.preventDefault();
+            const isEdit = !!editingProcGroupId;
             const supplier = document.getElementById('proc-supplier').value;
             if (!supplier) { alert('اختر المورد'); return; }
             const project = document.getElementById('proc-project').value;
             const date = document.getElementById('proc-date').value || todayISO();
             const notes = document.getElementById('proc-notes').value.trim();
-            const payMethod = document.querySelector('input[name="proc-pay-method"]:checked')?.value || 'credit';
+            const payMethod = isEdit ? 'credit' : (document.querySelector('input[name="proc-pay-method"]:checked')?.value || 'credit');
             const cashAccount = document.getElementById('proc-account')?.value || '';
-            if (payMethod === 'cash' && !cashAccount) { alert('اختر الحساب اللي هيتخصم منه المبلغ الكاش'); return; }
+            if (!isEdit && payMethod === 'cash' && !cashAccount) { alert('اختر الحساب اللي هيتخصم منه المبلغ الكاش'); return; }
 
             const allLines = [...document.querySelectorAll('#proc-lines .proc-line-row')].map(row => ({
                 item: row.querySelector('.proc-line-item')?.value || '',
@@ -5158,6 +5240,33 @@
             const lines = allLines.filter(l => l.item && l.qty && l.price);
 
             if (!lines.length) { alert('أضف صنف واحد على الأقل بكمية وسعر'); return; }
+
+            if (isEdit) {
+                const groupId = editingProcGroupId;
+                const invoiceNumber = editingProcInvoiceNumber;
+                const oldRows = db.procurements.filter(p => p.groupId === groupId);
+                const newRows = lines.map(l => ({
+                    group_id: groupId, invoice_number: invoiceNumber,
+                    item: l.item, supplier, project, qty: l.qty, unit: l.unit, price: l.price,
+                    date, notes
+                }));
+                const ops = [
+                    { table: 'procurements', pk_col: 'group_id', pk_value: groupId, op: 'delete' },
+                    ...newRows.map(row => ({ table: 'procurements', pk_col: 'id', pk_value: null, op: 'insert', row }))
+                ];
+                if (await gateOrRun('update', 'procurement', `${invoiceNumber} - ${supplier} - ${lines.length} صنف`, ops, oldRows)) { cancelEditProcurement(); return; }
+                markSaving();
+                const { error: delErr } = await sb.from('procurements').delete().eq('group_id', groupId);
+                if (delErr) { markSaveError(delErr); return; }
+                const { data, error } = await sb.from('procurements').insert(newRows).select();
+                if (error) { markSaveError(error); return; }
+                db.procurements = db.procurements.filter(p => p.groupId !== groupId).concat(data.map(procRowToRecord));
+                logAudit('update', 'فاتورة شراء', `${invoiceNumber} - ${supplier} - ${lines.length} صنف`, oldRows, { groupId, invoiceNumber, supplier, lines });
+                markSaved();
+                cancelEditProcurement();
+                renderAll();
+                return;
+            }
 
             markSaving();
             const { data: invoiceNumber, error: seqError } = await sb.rpc('next_invoice_number', { prefix: 'PO', seq_name: 'purchase_invoice_seq' });
@@ -5300,6 +5409,7 @@
             <td class="p-3">${fmt(p.price)}</td><td class="p-3 font-bold">${fmt(p.qty * p.price)}</td><td class="p-3">${esc(p.project)}</td><td class="p-3 text-slate-500">${p.date}</td>
             <td class="p-3 flex gap-2">
                 ${p.groupId ? `<button onclick="printPurchaseInvoice('${p.groupId}')" class="text-blue-500 hover:text-blue-700" title="طباعة"><i class="fa-solid fa-print"></i></button>` : ''}
+                <button onclick="editProcurement(${p.id})" class="text-amber-600 hover:text-amber-800" title="تعديل"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="deleteProcurement(${p.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`).join('')
@@ -5640,8 +5750,50 @@
             amounts[n - 1] = Math.round((total - base * (n - 1)) * 100) / 100;
             return amounts;
         }
+        /* تعديل حركة مصروف/راتب/مبيعات/عهدة (سطر واحد بمشروع واحد فقط — لو أصلها كان مقسّم على أكتر
+           من مشروع وقت الإضافة، كل سطر منها بيتعدّل لوحده هنا) */
+        let editingExpenseId = null;
+        function editExpense(id) {
+            const rec = db.expensesData.find(x => x.id === id);
+            if (!rec) return;
+            editingExpenseId = id;
+            document.getElementById('exp-category').value = rec.category;
+            filterExpenseSubFields();
+            if (isContractorCategory(rec.category)) {
+                document.getElementById('exp-activity').value = rec.activity || '';
+                filterBeneficiariesByActivity();
+                document.getElementById('exp-name').value = rec.name || '';
+                document.getElementById('exp-executed').value = rec.executedValue || '';
+            }
+            setProjectMultiSelectValues('exp-project-ms', rec.project ? [rec.project] : []);
+            document.getElementById('exp-paid').value = rec.paid || '';
+            calcContractorRemaining();
+            document.getElementById('exp-date').value = rec.date;
+            if (document.getElementById('exp-account')) document.getElementById('exp-account').value = rec.account || '';
+            document.getElementById('exp-notes').value = rec.notes || '';
+            showContractInfo();
+            const saveBtn = document.getElementById('exp-save-btn');
+            const cancelBtn = document.getElementById('exp-cancel-edit-btn');
+            if (saveBtn) saveBtn.innerHTML = '💾 حفظ التعديلات';
+            if (cancelBtn) cancelBtn.style.display = '';
+            document.getElementById('tab-expenses').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        function cancelEditExpense() {
+            editingExpenseId = null;
+            document.querySelector('#tab-expenses form')?.reset();
+            resetProjectMultiSelect('exp-project-ms');
+            const remEl = document.getElementById('exp-remaining-display');
+            if (remEl) remEl.value = '';
+            document.getElementById('exp-date').value = todayISO();
+            filterExpenseSubFields();
+            const saveBtn = document.getElementById('exp-save-btn');
+            const cancelBtn = document.getElementById('exp-cancel-edit-btn');
+            if (saveBtn) saveBtn.innerHTML = 'حفظ الحركة';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+        }
         async function addExpense(e) {
             e.preventDefault();
+            const isEdit = !!editingExpenseId;
             const cat = document.getElementById('exp-category').value;
             const catPlType = getCategoryPLType(cat);
             if (catPlType === 'revenue' || catPlType === 'other_revenue') {
@@ -5650,9 +5802,43 @@
             }
             const projects = getProjectMultiSelectValues('exp-project-ms');
             if (!projects.length) { alert('اختر مشروع واحد على الأقل تحمّل عليه الحركة'); return; }
+            if (isEdit && projects.length > 1) { alert('التعديل بيشتغل على حركة واحدة بمشروع واحد بس — لو عايز تحمّلها على أكتر من مشروع، احذفها وسجّلها من جديد.'); return; }
             const isContractor = isContractorCategory(cat);
             const paid = Number(document.getElementById('exp-paid')?.value) || 0;
             const executedValue = isContractor ? (Number(document.getElementById('exp-executed')?.value) || 0) : 0;
+
+            if (isEdit) {
+                const old = db.expensesData.find(x => x.id === editingExpenseId);
+                if (!old) { cancelEditExpense(); return; }
+                const project = projects[0];
+                const remaining = isContractor ? Math.max(executedValue - paid, 0) : 0;
+                const row = expenseRecordToRow({
+                    category: cat,
+                    activity: isContractor ? document.getElementById('exp-activity').value : '',
+                    name: isContractor ? document.getElementById('exp-name').value : '',
+                    project,
+                    total: executedValue || paid,
+                    paid,
+                    remaining,
+                    executedValue: executedValue || undefined,
+                    account: document.getElementById('exp-account')?.value || (db.accounts[0] && db.accounts[0].name) || '',
+                    date: document.getElementById('exp-date').value || todayISO(),
+                    notes: document.getElementById('exp-notes').value.trim(),
+                    sourceModule: old.sourceModule || 'expenses'
+                });
+                if (await gateOrRun('update', old.sourceModule || 'expenses', `${cat} - ${row.name || project}`, [{ table: 'expense_entries', pk_col: 'id', pk_value: editingExpenseId, op: 'update', row }], old)) { cancelEditExpense(); return; }
+                markSaving();
+                const { data, error } = await sb.from('expense_entries').update(row).eq('id', editingExpenseId).select().single();
+                if (error) { markSaveError(error); return; }
+                const updatedRec = expenseRowToRecord(data);
+                logAudit('update', 'مصروف/إيراد', `${updatedRec.category} - ${updatedRec.name || updatedRec.project}`, old, updatedRec);
+                db.expensesData = db.expensesData.map(x => x.id === editingExpenseId ? updatedRec : x);
+                markSaved();
+                cancelEditExpense();
+                renderAll();
+                return;
+            }
+
             const n = projects.length;
             const paidSplits = splitAmountEqually(paid, n);
             const executedSplits = splitAmountEqually(executedValue, n);
@@ -5806,7 +5992,7 @@
             <td class="p-3 ${x.remaining > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${x.remaining > 0 ? fmt(x.remaining) : '-'}</td>
             <td class="p-3">${esc(x.project)}</td>
             <td class="p-3 text-slate-500">${x.date}</td>
-            <td class="p-3"><button onclick="deleteExpense(${x.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+            <td class="p-3 flex gap-2"><button onclick="editExpense(${x.id})" class="text-amber-600 hover:text-amber-800" title="تعديل"><i class="fa-solid fa-pen"></i></button><button onclick="deleteExpense(${x.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
         </tr>`).join('')
                 + (rows.length ? `<tr class="bg-slate-50 font-bold border-t-2 border-slate-200">
             <td colspan="3" class="p-3">الإجمالي</td>
@@ -6216,6 +6402,10 @@
             else if (selected.length === 1) label.textContent = selected[0];
             else label.textContent = `${selected.length} مشاريع محددة`;
         }
+        function setProjectMultiSelectValues(prefix, names) {
+            document.querySelectorAll(`.${prefix}-item`).forEach(el => { el.checked = names.includes(el.value); });
+            updateProjectMultiSelectLabel(prefix);
+        }
         function resetProjectMultiSelect(prefix) {
             document.querySelectorAll(`.${prefix}-item`).forEach(el => el.checked = false);
             updateProjectMultiSelectLabel(prefix);
@@ -6585,7 +6775,7 @@
                     const forProject = allForItem.filter(p => p.project === fp);
                     const qtyP = forProject.reduce((s, p) => s + p.qty, 0);
                     const valP = forProject.reduce((s, p) => s + (p.qty * p.price), 0);
-                    projectBlock = `<div class="flex justify-between border-b border-indigo-100 pb-1 mb-1"><span>في مشروع "${esc(fp)}" فقط</span><span class="font-bold">${qtyP.toLocaleString('ar-EG')} ${unit} — ${fmt(valP)}</span></div>`;
+                    projectBlock = `<div class="flex justify-between border-b border-indigo-100 pb-1 mb-1"><span>في مشروع "${esc(fp)}" فقط</span><span class="font-bold">${numFmt(qtyP)} ${unit} — ${fmt(valP)}</span></div>`;
                 }
 
                 const supplierNames = [...new Set(allForItem.map(p => p.supplier))];
@@ -6597,7 +6787,7 @@
                 summaryEl.innerHTML = `
             <div class="font-bold text-indigo-800 mb-2">${esc(fItem)}</div>
             ${projectBlock}
-            <div class="flex justify-between"><span>في كل المشاريع</span><span class="font-bold">${totalQtyAll.toLocaleString('ar-EG')} ${unit} — ${fmt(totalValueAll)}</span></div>
+            <div class="flex justify-between"><span>في كل المشاريع</span><span class="font-bold">${numFmt(totalQtyAll)} ${unit} — ${fmt(totalValueAll)}</span></div>
             ${dueSuppliers.length
                         ? `<div class="mt-2 text-xs text-rose-700">مدفوعات آجلة مستحقة لموردي هذا الصنف (رصيد كل مورد الكلي شامل كل مشترياته): ${dueSuppliers.join('، ')}</div>`
                         : `<div class="mt-2 text-xs text-emerald-700">لا توجد مدفوعات آجلة مستحقة لموردي هذا الصنف</div>`}
@@ -7626,14 +7816,14 @@
             if (!confirm(`ترحيل رواتب ${rows.length} موظف لشهر ${month} كمصروف "أجور"، موزّعة على مشاريع كل موظف؟${unallocatedWarning}`)) return;
             const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
             const dateStr = `${month}-${String(lastDay).padStart(2, '0')}`;
-            const activityName = db.activities[0] ? db.activities[0].name : 'رواتب';
             const batchId = crypto.randomUUID();
             const newRows = rows.flatMap(r => {
                 const totalShares = r.projectShares.reduce((s, p) => s + p.amount, 0);
                 return r.projectShares.map(share => {
                     const proportion = totalShares > 0 ? (share.amount / totalShares) : (1 / r.projectShares.length);
                     const row = {
-                        category: 'أجور', activity: activityName, name: r.employee, project: share.project,
+                        // مفيش نشاط مربوط بالرواتب — الرواتب تبويب مستقل وميتحمّلش على أي نشاط
+                        category: 'أجور', activity: '', name: r.employee, project: share.project,
                         total: r.grossSalary * proportion, paid: share.amount, remaining: 0,
                         date: dateStr, notes: `راتب شهر ${month}`, source_module: 'payroll'
                     };
@@ -9281,7 +9471,7 @@
             return r ? r.profitBeforeTax : 0;
         }
 
-        // نسبة المستثمر = المبلغ اللي موّله ÷ قيمة العقد الإجمالية للمشروع المسجلة في دليل الأكواد (إلا لو فيه نسبة يدوية مسجلة على الربط)
+        // نسبة المستثمر = المبلغ اللي موّله ÷ رأس مال المشروع المسجل في دليل الأكواد (إلا لو فيه نسبة يدوية مسجلة على الربط)
         function investorAutoPct(funding) {
             if (funding.pct) return funding.pct;
             const project = db.projects.find(p => p.name === funding.project);
@@ -9324,7 +9514,7 @@
             const capital = projectRec?.capital || 0;
             const pct = capital > 0 ? (amount / capital * 100) : 0;
             pctEl.value = pct > 0 ? pct.toFixed(1) : '';
-            if (!capital) { if (shareEl) shareEl.textContent = 'سجّل قيمة العقد الإجمالية لهذا المشروع في دليل الأكواد أولاً'; return; }
+            if (!capital) { if (shareEl) shareEl.textContent = 'سجّل رأس مال هذا المشروع في دليل الأكواد أولاً'; return; }
             if (shareEl) {
                 const profit = projectProfitForInvestor(project);
                 shareEl.textContent = profit > 0 ? fmt(profit * (pct / 100)) : '-';
@@ -9355,7 +9545,7 @@
             if (!investor || !project) { alert('اختر المستثمر والمشروع'); return; }
             if (!amount) { alert('أدخل مبلغ التمويل'); return; }
 
-            // احسب النسبة التلقائية (نفس منطق calcInvAutoPct: المبلغ ÷ قيمة عقد المشروع) عشان نعرف هل المستخدم عدّلها يدوي ولا سايبها زي ما هي
+            // احسب النسبة التلقائية (نفس منطق calcInvAutoPct: المبلغ ÷ رأس مال المشروع) عشان نعرف هل المستخدم عدّلها يدوي ولا سايبها زي ما هي
             const projectRec = db.projects.find(p => p.name === project);
             const capital = projectRec?.capital || 0;
             const autoPct = capital > 0 ? (amount / capital * 100) : 0;
@@ -9364,6 +9554,7 @@
 
             const row = {
                 investor, project, amount,
+                account: document.getElementById('inv-account')?.value || null,
                 date: document.getElementById('inv-date')?.value || todayISO(),
                 notes: document.getElementById('inv-notes').value.trim()
             };
@@ -9668,7 +9859,8 @@
         function renderInvestorFunding() {
             const fp = document.getElementById('filter-inv-project')?.value || 'ALL';
             const fi = document.getElementById('filter-inv-investor')?.value || 'ALL';
-            const rows = db.investorFunding.filter(f => (fp === 'ALL' || f.project === fp) && (fi === 'ALL' || f.investor === fi));
+            const fa = document.getElementById('filter-inv-account')?.value || 'ALL';
+            const rows = db.investorFunding.filter(f => (fp === 'ALL' || f.project === fp) && (fi === 'ALL' || f.investor === fi) && (fa === 'ALL' || (f.account || '') === fa));
             const totalFunding = rows.reduce((s, f) => s + (f.amount || 0), 0);
             const totalShare = rows.reduce((s, f) => s + investorShareForProject(f), 0);
             document.getElementById('tbody-investor-funding').innerHTML =
@@ -9685,6 +9877,7 @@
                 <td class="p-3 font-bold text-emerald-600">${pct > 0 ? pct.toFixed(1) + '%' : '-'}</td>
                 <td class="p-3 ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${fmt(profit)}</td>
                 <td class="p-3 font-bold ${share >= 0 ? 'text-orange-600' : 'text-rose-600'}">${fmt(share)}</td>
+                <td class="p-3 text-slate-500">${esc(f.account || '-')}</td>
                 <td class="p-3 text-slate-500">${f.date || ''}</td>
                 <td class="p-3"><button onclick="deleteInvestorFunding(${f.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
             </tr>`;
@@ -9694,8 +9887,8 @@
             <td class="p-3 text-orange-700">${fmt(totalFunding)}</td>
             <td></td><td></td>
             <td class="p-3 text-orange-700">${fmt(totalShare)}</td>
-            <td colspan="2"></td></tr>`: '')
-                || '<tr><td colspan="8" class="p-4 text-center text-slate-400">لا يوجد ربط — أضف من الفورم أعلاه</td></tr>';
+            <td colspan="3"></td></tr>`: '')
+                || '<tr><td colspan="9" class="p-4 text-center text-slate-400">لا يوجد ربط — أضف من الفورم أعلاه</td></tr>';
         }
 
         function renderInvestorSummary() {
