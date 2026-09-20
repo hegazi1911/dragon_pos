@@ -3461,12 +3461,18 @@
         };
 
         // مصدر الحقيقة الوحيد لتحديد plType لأي تصنيف — حماية صريحة غير قابلة للكسر:
-        // أي حركة category==='إيراد' هي إيراد رئيسي دايمًا، بغض النظر عن أي تعديل قد
+        // أي حركة بتصنيف إيراد/مبيعات هي إيراد رئيسي دايمًا، بغض النظر عن أي تعديل قد
         // يحصل بالغلط على plType بتاعها في دليل الأكواد.
+        const REVENUE_CATEGORY_NAMES = new Set(['إيراد', 'إيرادات', 'مبيعات', 'إيراد مبيعات', 'revenue', 'إيرادات أعمال', 'إيراد أعمال']);
         function getCategoryPLType(categoryName) {
-            if (categoryName === 'إيراد') return 'revenue';
+            if (!categoryName) return 'operating';
+            if (REVENUE_CATEGORY_NAMES.has(categoryName.trim())) return 'revenue';
             const catDef = db.expenses.find(c => c.name === categoryName);
-            return catDef ? catDef.plType : 'operating';
+            if (catDef) return catDef.plType;
+            // fallback: لو الاسم نفسه يحتوي كلمة إيراد أو مبيعات → revenue
+            const lower = categoryName.trim();
+            if (lower.includes('إيراد') || lower.includes('مبيعات') || lower.includes('revenue')) return 'revenue';
+            return 'operating';
         }
 
         function seedDb() {
@@ -6489,8 +6495,26 @@
             });
 
             // أ. الإيرادات الرئيسية (أعمال)
+            // أولاً: إيرادات من expense_entries (فواتير مسجّلة كإيراد)
             const revenueLines = Object.entries(catGroups).filter(([, v]) => v.plType === 'revenue')
                 .map(([k, v]) => ({ num: num(), label: k, value: v.total }));
+
+            // ثانياً: تحقق من جدول sales مباشرة — لو فيه مبيعات مسجّلة وليها قيد في expense_entries نتجنّب التكرار
+            // نجمع IDs القيود المرتبطة بـ sales لتجنب تكرار عرضها
+            const saleLinkedIds = new Set(db.expensesData.filter(x => x.saleId).map(x => x.saleId));
+            // حساب مبيعات من جدول sales مباشرة بدون قيود إيراد مرتبطة (للتحقق والعرض التفصيلي)
+            const directSalesRevenue = (db.sales || []).filter(s => {
+                if (!match({ project: s.project, date: s.date })) return false;
+                // لو القيد موجود في expensesData (saleId) ما بنحسبهاش مرتين
+                return !saleLinkedIds.has(s.groupId);
+            });
+            if (directSalesRevenue.length > 0) {
+                const directSalesTotal = directSalesRevenue.reduce((s, r) => s + (r.total || 0), 0);
+                if (directSalesTotal > 0) {
+                    revenueLines.push({ num: num(), label: 'إيرادات مبيعات (مباشرة)', value: directSalesTotal });
+                }
+            }
+
             const revenueTotal = revenueLines.reduce((s, l) => s + l.value, 0);
 
             // أ2. الإيرادات الأخرى (غير تشغيلية)
@@ -9570,12 +9594,31 @@
             if (error) { markSaveError(error); return; }
             db.investorFunding.push(data);
 
+            // تحديث رأس مال المشروع تلقائيًا بعد إضافة تمويل المستثمر
+            await syncProjectCapital(project);
+
             e.target.reset();
             if (document.getElementById('inv-date')) document.getElementById('inv-date').value = todayISO();
             if (document.getElementById('inv-auto-pct')) document.getElementById('inv-auto-pct').value = '';
             markSaved();
             renderAll();
             initDropdowns();
+        }
+
+        // ======= مزامنة رأس مال المشروع من تمويلات المستثمرين =======
+        async function syncProjectCapital(projectName) {
+            // نجمع كل تمويلات هذا المشروع ونحدّث حقل capital في projects
+            const totalFunding = (db.investorFunding || []).filter(f => f.project === projectName)
+                .reduce((s, f) => s + (f.amount || 0), 0);
+            const projIdx = db.projects.findIndex(p => p.name === projectName);
+            if (projIdx === -1) return;
+            const projCode = db.projects[projIdx].code;
+            // لو رأس المال المحسوب يختلف عن المحفوظ نحدّثه
+            if (db.projects[projIdx].capital === totalFunding) return;
+            const { error } = await sb.from('projects').update({ capital: totalFunding }).eq('code', projCode);
+            if (error) { console.warn('تعذّر تحديث رأس مال المشروع:', error.message); return; }
+            db.projects[projIdx].capital = totalFunding;
+            console.log(`تم تحديث رأس مال المشروع "${projectName}" → ${totalFunding}`);
         }
 
         async function deleteInvestorFunding(id) {
@@ -9586,6 +9629,10 @@
             const { error } = await sb.from('investor_funding').delete().eq('id', id);
             if (error) { markSaveError(error); return; }
             db.investorFunding = db.investorFunding.filter(f => f.id !== id);
+
+            // تحديث رأس مال المشروع بعد حذف التمويل
+            if (old && old.project) await syncProjectCapital(old.project);
+
             markSaved();
             renderAll();
         }
