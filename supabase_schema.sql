@@ -34,6 +34,33 @@ create table if not exists expense_categories (
   name_type text default 'any' -- من يظهر في حقل "المستفيد" لهذا التبويب: names / clients / any
 );
 
+-- هيكل التكاليف والمصروفات بقى مستقل لكل مشروع: كل مشروع له نسخته الخاصة من بنود "التبويبات
+-- الرئيسية"، مقفولة عنه ومش بتتأثر بتعديل نفس البند في مشروع تاني. '__TEMPLATE__' هو القالب
+-- الافتراضي اللي بينسخ تلقائيًا لأي مشروع جديد وقت إنشائه.
+alter table expense_categories add column if not exists project text;
+update expense_categories set project = '__TEMPLATE__' where project is null;
+alter table expense_categories alter column project set not null;
+alter table expense_categories drop constraint if exists expense_categories_name_key;
+alter table expense_categories drop constraint if exists expense_categories_project_name_key;
+alter table expense_categories add constraint expense_categories_project_name_key unique (project, name);
+
+-- ترحيل لمرة واحدة (آمن يتكرر تشغيله): كل مشروع حالي ياخد نسخة من القائمة العامة الحالية،
+-- والقائمة العامة الحالية تفضل "القالب الافتراضي" لأي مشروع جديد بعد كده.
+do $$
+declare proj record; cat record; next_code integer;
+begin
+  select coalesce(max(code), 3999) + 1 into next_code from expense_categories;
+  for proj in select code, name from projects loop
+    for cat in select * from expense_categories where project = '__TEMPLATE__' loop
+      if not exists (select 1 from expense_categories where project = proj.name and name = cat.name) then
+        insert into expense_categories (code, name, pl_type, pl_bucket, name_type, project)
+        values (next_code, cat.name, cat.pl_type, cat.pl_bucket, cat.name_type, proj.name);
+        next_code := next_code + 1;
+      end if;
+    end loop;
+  end loop;
+end $$;
+
 create table if not exists activities (
   code integer primary key,
   name text not null unique,
@@ -194,6 +221,35 @@ create table if not exists refunds (
   date date not null default current_date,
   notes text,
   created_at timestamptz not null default now()
+);
+
+-- خصم مورد/مقاول كحركة منفصلة: خصم يُكتشف بعد سداد الفاتورة/العقد، من غير أي حركة نقدية فعلية
+-- (على عكس refunds اللي فيها استرداد نقدي حقيقي) — بيقلل المستحق له في كشف حسابه فقط
+create table if not exists party_discounts (
+  id bigint generated always as identity primary key,
+  party_type text not null check (party_type in ('supplier','contractor')),
+  name text not null,
+  project text not null,
+  linked_ref text, -- رقم فاتورة/عقد مرتبط (اختياري، نص حر)
+  amount numeric not null default 0,
+  date date not null default current_date,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+-- تحويل صنف مخزون بين مشروعين (بلوكات) — بيخصم الكمية والقيمة من المشروع المصدر ويضيفها للمستقبل
+create table if not exists inventory_transfers (
+  id bigint generated always as identity primary key,
+  item text not null,
+  from_project text not null,
+  to_project text not null,
+  qty numeric not null check (qty > 0),
+  unit_price numeric not null default 0,
+  value numeric not null default 0, -- qty * unit_price بمتوسط التكلفة وقت التحويل (محسوبة من الواجهة ومحفوظة تاريخيًا)
+  date date not null default current_date,
+  notes text,
+  created_at timestamptz not null default now(),
+  check (from_project <> to_project)
 );
 
 create table if not exists investor_funding (
@@ -509,6 +565,7 @@ begin
       ('payments','payments', true),
       ('contractor_payments','payments', true),
       ('refunds','payments', false),
+      ('party_discounts','payments', true),
       ('obligations','payments', false),
       ('investor_funding','investors', true),
       ('profit_distributions','investors', true),
@@ -520,7 +577,7 @@ begin
       ('projects','masterdata', false), -- المشروع نفسه ليه سياسة خاصة تحت (بالكود مش بالاسم)
       ('supplies','masterdata', false),
       ('suppliers','masterdata', false),
-      ('expense_categories','masterdata', false),
+      ('expense_categories','masterdata', true), -- بقى فيه عمود project (النسخة المستقلة لكل مشروع) — القالب '__TEMPLATE__' متاح للأدمن بس لأنه مش بيطابق أي مشروع حقيقي
       ('activities','masterdata', false),
       ('names','masterdata', false),
       ('clients','masterdata', false),
@@ -582,6 +639,17 @@ begin
   execute 'create policy "delete_module" on expense_entries for delete using (has_permission(source_module, ''delete'') and has_project_access(project));';
 end $$;
 
+-- inventory_transfers: ليها عمودين مشروع (from_project/to_project) فمش بتنفع تنضم للحلقة العامة
+-- اللي بتفترض عمود project واحد بس — لازم صلاحية الوصول على المشروعين الاتنين مع بعض.
+alter table inventory_transfers enable row level security;
+drop policy if exists "select_active" on inventory_transfers;
+drop policy if exists "insert_module" on inventory_transfers;
+drop policy if exists "update_module" on inventory_transfers;
+drop policy if exists "delete_module" on inventory_transfers;
+create policy "select_active" on inventory_transfers for select using (is_active_user() and has_project_access(from_project) and has_project_access(to_project));
+create policy "insert_module" on inventory_transfers for insert with check (has_permission('inventory','edit') and has_project_access(from_project) and has_project_access(to_project));
+create policy "delete_module" on inventory_transfers for delete using (has_permission('inventory','delete') and has_project_access(from_project) and has_project_access(to_project));
+
 -- employee_project_allocations: إعداد إداري لتوزيع الرواتب — مربوط بصلاحية تبويب "الرواتب" العادية
 -- (view/edit/delete)، من غير تقييد مشروع إضافي (هو أصلاً بيوصف العلاقة موظف↔مشروع نفسها).
 alter table employee_project_allocations enable row level security;
@@ -629,7 +697,7 @@ begin
     'projects','supplies','suppliers','expense_categories','activities',
     'names','clients','investors','accounts','employees','asset_types','taxes','units',
     'procurements','sales','expense_entries','payments','contractor_payments',
-    'refunds','investor_funding','profit_distributions','investor_liabilities',
+    'refunds','party_discounts','inventory_transfers','investor_funding','profit_distributions','investor_liabilities',
     'manager_liabilities','manager_payments','custodies','employee_advances',
     'attendance','assets','daily_journals','obligations','external_investments',
     'audit_log','app_settings','employee_project_allocations'
@@ -674,7 +742,7 @@ do $$
 declare
   t text;
   tables_all text[] := array[
-    'procurements','sales','expense_entries','payments','contractor_payments','refunds',
+    'procurements','sales','expense_entries','payments','contractor_payments','refunds','party_discounts','inventory_transfers',
     'custodies','employee_advances','attendance','assets','daily_journals','obligations',
     'investor_funding','profit_distributions','investor_liabilities','manager_liabilities',
     'manager_payments','external_investments','taxes',

@@ -318,6 +318,10 @@
                     class="tab-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
                     <i class="fa-solid fa-cart-shopping text-amber-500 w-5"></i><span>توريدات</span>
                 </button>
+                <button onclick="switchTab('inventory')" id="btn-inventory"
+                    class="tab-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-right-left text-orange-400 w-5"></i><span>تحويل مخزون بين المشاريع</span>
+                </button>
                 <button onclick="switchTab('sales')" id="btn-sales"
                     class="tab-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white">
                     <i class="fa-solid fa-file-invoice-dollar text-lime-500 w-5"></i><span>مستخلصات العملاء</span>
@@ -712,6 +716,80 @@
                 </div>
             </div>
 
+            <!-- INVENTORY TRANSFER TAB (تحويل صنف بين مشروعين/بلوكات) -->
+            <div id="tab-inventory" class="tab-content flex-col gap-6">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-slate-900 mb-1"><i
+                            class="fa-solid fa-right-left text-orange-400"></i> تحويل صنف بين مشروعين (بلوكات)</h3>
+                    <p class="text-xs text-slate-500 mb-4">بيخصم الكمية والقيمة من المشروع المصدر ويضيفها للمشروع
+                        المستقبل — ومينفعش تحوّل كمية أكبر من المتاح فعليًا في المشروع المصدر</p>
+                    <form onsubmit="addInventoryTransfer(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">الصنف</label>
+                            <select id="tr-item" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        </div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">من مشروع (المصدر)</label>
+                            <select id="tr-from-project" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        </div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">إلى مشروع (المستقبل)</label>
+                            <select id="tr-to-project" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        </div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">الكمية</label>
+                            <input id="tr-qty" type="number" step="any" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">التاريخ</label>
+                            <input id="tr-date" type="date" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div class="md:col-span-2"><label class="block text-xs font-bold text-slate-600 mb-1">البيان</label>
+                            <input id="tr-notes" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                        <div><button type="submit"
+                                class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold p-2.5 rounded-lg text-sm">تسجيل التحويل</button></div>
+                    </form>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-slate-900 mb-3">الرصيد الحالي</h3>
+                    <div class="flex flex-wrap gap-3 mb-3">
+                        <select id="inv-mv-filter-item" onchange="renderInventoryMovement()" class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                        <select id="inv-mv-filter-project" onchange="renderInventoryMovement()" class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                    </div>
+                    <div class="overflow-x-auto max-h-64">
+                        <table class="w-full text-sm text-right">
+                            <thead class="bg-slate-100 sticky top-0">
+                                <tr>
+                                    <th class="p-3">المشروع</th>
+                                    <th class="p-3">الصنف</th>
+                                    <th class="p-3">الكمية المتاحة</th>
+                                    <th class="p-3">متوسط سعر الوحدة</th>
+                                    <th class="p-3">القيمة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-stock-summary"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <span class="font-bold text-slate-800">حركة المخزون</span>
+                        <button onclick="printCurrentTab()" class="text-sm font-bold text-slate-600 hover:text-slate-900"><i class="fa-solid fa-print"></i> طباعة</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-right">
+                            <thead class="bg-slate-100 sticky top-0">
+                                <tr>
+                                    <th class="p-3">التاريخ</th>
+                                    <th class="p-3">الاتجاه</th>
+                                    <th class="p-3">البيان</th>
+                                    <th class="p-3">الصنف</th>
+                                    <th class="p-3">المشروع</th>
+                                    <th class="p-3">الكمية</th>
+                                    <th class="p-3">القيمة</th>
+                                    <th class="p-3">الرصيد بعدها</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-inventory-movement"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
             <!-- SALES TAB -->
             <div id="tab-sales" class="tab-content flex-col gap-6">
@@ -1654,6 +1732,7 @@
                                 <tr>
                                     <th class="p-3">المشروع</th>
                                     <th class="p-3">الحالة</th>
+                                    <th class="p-3">رأس المال المستثمر</th>
                                     <th class="p-3">إجمالي الإيرادات</th>
                                     <th class="p-3">إجمالي التكاليف</th>
                                     <th class="p-3 text-emerald-300">صافي الربح</th>
@@ -1692,6 +1771,10 @@
                     <button onclick="switchPayTab('refunds')" id="ptab-refunds"
                         class="pay-subtab flex-1 text-sm font-bold py-2 px-4 rounded-lg text-slate-500 hover:text-slate-800">
                         <i class="fa-solid fa-rotate-left text-emerald-500 mr-1"></i> استرداد
+                    </button>
+                    <button onclick="switchPayTab('discounts')" id="ptab-discounts"
+                        class="pay-subtab flex-1 text-sm font-bold py-2 px-4 rounded-lg text-slate-500 hover:text-slate-800">
+                        <i class="fa-solid fa-tag text-amber-500 mr-1"></i> خصم مورد/مقاول
                     </button>
                 </div>
 
@@ -2071,6 +2154,85 @@
                                     </tr>
                                 </thead>
                                 <tbody id="tbody-refunds"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PARTY DISCOUNTS PANEL (خصم مورد/مقاول يُكتشف بعد سداد الفاتورة، بدون حركة نقدية) -->
+                <div id="ppanel-discounts" class="hidden flex-col gap-6">
+                    <div class="bg-white p-5 rounded-xl border border-amber-200 shadow-sm">
+                        <h3 class="font-bold text-slate-900 mb-1"><i
+                                class="fa-solid fa-tag text-amber-500"></i> خصم مورد/مقاول</h3>
+                        <p class="text-xs text-slate-500 mb-4">سجّل هنا خصم وافق عليه المورد أو المقاول بعد ما كانت
+                            فاتورته/عقده اتسدد بالفعل — بيقلل المستحق له من غير أي حركة نقدية فعلية</p>
+                        <form onsubmit="addPartyDiscount(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">النوع</label>
+                                <select id="pd-type" onchange="fillPartyDiscountNames(); showPartyDiscountBalance();"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
+                                    <option value="supplier">مورد</option>
+                                    <option value="contractor">مقاول</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">الاسم</label>
+                                <select id="pd-name" required onchange="showPartyDiscountBalance()"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">المشروع</label>
+                                <select id="pd-project" required
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                            </div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">مبلغ الخصم</label><input
+                                    id="pd-amount" type="number" step="any" required
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                            <div class="md:col-span-4" id="pd-balance-info" style="display:none">
+                                <div
+                                    class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm flex flex-wrap gap-4">
+                                    <span>الرصيد الحالي: <b id="pd-info-remaining"></b></span>
+                                </div>
+                            </div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">التاريخ</label><input
+                                    id="pd-date" type="date" required
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">رقم فاتورة/عقد مرتبط
+                                    (اختياري)</label><input id="pd-linked-ref" type="text"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                            <div class="md:col-span-2"><label
+                                    class="block text-xs font-bold text-slate-600 mb-1">البيان</label><input
+                                    id="pd-notes" type="text"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
+                            <div class="flex gap-2"><button type="submit" id="pd-save-btn"
+                                    class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold p-2.5 rounded-lg text-sm">تسجيل
+                                    الخصم</button>
+                                <button type="button" id="pd-cancel-edit-btn" onclick="cancelEditPartyDiscount()" style="display:none"
+                                    class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold p-2.5 rounded-lg text-sm whitespace-nowrap">إلغاء</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div
+                            class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                            <span class="font-bold text-slate-800">سجل الخصومات</span>
+                        </div>
+                        <div class="overflow-x-auto max-h-64">
+                            <table class="w-full text-sm text-right">
+                                <thead class="bg-slate-100 sticky top-0">
+                                    <tr>
+                                        <th class="p-3">النوع</th>
+                                        <th class="p-3">الاسم</th>
+                                        <th class="p-3">المشروع</th>
+                                        <th class="p-3">المبلغ</th>
+                                        <th class="p-3">التاريخ</th>
+                                        <th class="p-3">فاتورة/عقد</th>
+                                        <th class="p-3">البيان</th>
+                                        <th class="p-3"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-discounts"></tbody>
                             </table>
                         </div>
                     </div>
@@ -2485,8 +2647,10 @@
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">ملاحظات</label><input
                                 id="inv-notes" type="text"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></div>
-                        <div><button type="submit"
+                        <div class="flex gap-2"><button type="submit" id="inv-save-btn"
                                 class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold p-2.5 rounded-lg text-sm">حفظ</button>
+                            <button type="button" id="inv-cancel-edit-btn" onclick="cancelEditInvestorFunding()" style="display:none"
+                                class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold p-2.5 rounded-lg text-sm whitespace-nowrap">إلغاء</button>
                         </div>
                     </form>
                 </div>
@@ -3296,6 +3460,11 @@
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">الاسم</label><input id="master-name"
                         type="text" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm">
                 </div>
+                <div id="master-expense-project-wrap" class="hidden">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">المشروع (البند ده خاص بيه بس)</label>
+                    <select id="master-expense-project" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
+                    <p class="text-[11px] text-slate-400 mt-1">كل مشروع له نسخته المستقلة من هيكل التكاليف — تعديل بند هنا ميأثرش على نفس البند في مشروع تاني. اختر "📋 القالب الافتراضي" عشان تعدّل القالب اللي بينسخ تلقائيًا لأي مشروع جديد.</p>
+                </div>
                 <div id="master-unit-wrap" class="hidden">
                     <label class="block text-xs font-bold text-slate-600 mb-1">وحدة القياس الافتراضية</label>
                     <select id="master-unit" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm"></select>
@@ -3464,10 +3633,12 @@
         // أي حركة بتصنيف إيراد/مبيعات هي إيراد رئيسي دايمًا، بغض النظر عن أي تعديل قد
         // يحصل بالغلط على plType بتاعها في دليل الأكواد.
         const REVENUE_CATEGORY_NAMES = new Set(['إيراد', 'إيرادات', 'مبيعات', 'إيراد مبيعات', 'revenue', 'إيرادات أعمال', 'إيراد أعمال']);
-        function getCategoryPLType(categoryName) {
+        function getCategoryPLType(categoryName, project) {
             if (!categoryName) return 'operating';
             if (REVENUE_CATEGORY_NAMES.has(categoryName.trim())) return 'revenue';
-            const catDef = db.expenses.find(c => c.name === categoryName);
+            // هيكل التكاليف بقى مستقل لكل مشروع — نجرب مطابقة المشروع الأول، وإلا نرجع لأي نسخة بنفس الاسم
+            const catDef = (project && db.expenses.find(c => c.name === categoryName && c.project === project))
+                || db.expenses.find(c => c.name === categoryName);
             if (catDef) return catDef.plType;
             // fallback: لو الاسم نفسه يحتوي كلمة إيراد أو مبيعات → revenue
             const lower = categoryName.trim();
@@ -3481,8 +3652,9 @@
                 procurements: [], expensesData: [], payments: [], sales: [],
                 taxes: [], investors: [], investorFunding: [], profitDistributions: [], investorLiabilities: [],
                 custodies: [], accounts: [], employees: [], attendance: [], auditLog: [], assets: [], assetTypes: [], units: [], employeeAllocations: [],
-                contractorPayments: [], refunds: [], employeeAdvances: [],
+                contractorPayments: [], refunds: [], partyDiscounts: [], employeeAdvances: [],
                 managerLiabilities: [], managerPayments: [], dailyJournals: [], obligations: [], externalInvestments: [],
+                inventoryTransfers: [],
                 pendingChanges: []
             };
         }
@@ -3504,7 +3676,7 @@
 
         function masterRowToItem(cat, row) {
             let item;
-            if (cat === 'expenses') item = { code: row.code, name: row.name, plType: row.pl_type, plBucket: row.pl_bucket || undefined, nameType: row.name_type || 'any' };
+            if (cat === 'expenses') item = { code: row.code, name: row.name, plType: row.pl_type, plBucket: row.pl_bucket || undefined, nameType: row.name_type || 'any', project: row.project || '__TEMPLATE__' };
             else if (cat === 'names') item = { code: row.code, name: row.name, contractValue: row.contract_value || undefined, activities: (row.activities && row.activities.length) ? row.activities : undefined, activityCodes: (row.activity_codes && row.activity_codes.length) ? row.activity_codes : undefined, openingBalance: row.opening_balance || undefined, executedOverride: (row.executed_override != null ? row.executed_override : undefined) };
             else if (cat === 'clients') item = { code: row.code, name: row.name, contractValue: row.contract_value || undefined, activities: (row.activities && row.activities.length) ? row.activities : undefined };
             else if (cat === 'suppliers') item = { code: row.code, name: row.name, items: (row.items && row.items.length) ? row.items : undefined, openingBalance: row.opening_balance || undefined };
@@ -3523,7 +3695,7 @@
             return item;
         }
         function masterItemToRow(cat, item) {
-            if (cat === 'expenses') return { code: item.code, name: item.name, pl_type: item.plType, pl_bucket: item.plBucket || null, name_type: item.nameType || 'any' };
+            if (cat === 'expenses') return { code: item.code, name: item.name, pl_type: item.plType, pl_bucket: item.plBucket || null, name_type: item.nameType || 'any', project: item.project || '__TEMPLATE__' };
             if (cat === 'names') return { code: item.code, name: item.name, contract_value: item.contractValue || null, activities: item.activities || null, activity_codes: item.activityCodes || null, opening_balance: item.openingBalance || null, executed_override: (item.executedOverride != null ? item.executedOverride : null) };
             if (cat === 'clients') return { code: item.code, name: item.name, contract_value: item.contractValue || null, activities: item.activities || null };
             if (cat === 'suppliers') return { code: item.code, name: item.name, items: item.items || null, opening_balance: item.openingBalance || null };
@@ -3550,6 +3722,8 @@
         }
         function paymentRowToRecord(row) { return { ...row, items: (row.items && row.items.length) ? row.items : undefined }; }
         function refundRowToRecord(row) { return { ...row, partyType: row.party_type }; }
+        function partyDiscountRowToRecord(row) { return { ...row, partyType: row.party_type, linkedRef: row.linked_ref ?? undefined }; }
+        function transferRowToRecord(row) { return { ...row, fromProject: row.from_project, toProject: row.to_project, unitPrice: row.unit_price }; }
         function custodyRowToRecord(row) { return { ...row, spentAmount: row.spent_amount ?? undefined, returnedAmount: row.returned_amount ?? undefined }; }
         function advanceRowToRecord(row) { return { ...row, deductedAmount: row.deducted_amount || 0, settlements: row.settlements || [], settledDate: row.settled_date ?? undefined }; }
         function attendanceRowToRecord(row) { return { ...row, timeIn: row.time_in ?? '', timeOut: row.time_out ?? '' }; }
@@ -3684,6 +3858,24 @@
                     const { error: batchColErr } = await sb.from('expense_entries').select('payroll_batch_id').limit(1);
                     payrollBatchIdSupported = !batchColErr;
                 } catch (e) { payrollBatchIdSupported = false; }
+                // نفس المبدأ: جدول خصم مورد/مقاول لسه محتاج migration منفصل
+                try {
+                    const { data: pdData, error: pdError } = await sb.from('party_discounts').select('*').order('id');
+                    if (pdError) throw pdError;
+                    db.partyDiscounts = pdData.map(partyDiscountRowToRecord);
+                } catch (pdErr) {
+                    console.warn('جدول خصم مورد/مقاول مش موجود لسه على قاعدة البيانات (شغّل migration الإضافة):', pdErr.message || pdErr);
+                    db.partyDiscounts = [];
+                }
+                // نفس المبدأ: جدول تحويل المخزون بين المشاريع لسه محتاج migration منفصل
+                try {
+                    const { data: trData, error: trError } = await sb.from('inventory_transfers').select('*').order('id');
+                    if (trError) throw trError;
+                    db.inventoryTransfers = trData.map(transferRowToRecord);
+                } catch (trErr) {
+                    console.warn('جدول تحويل المخزون بين المشاريع مش موجود لسه على قاعدة البيانات (شغّل migration الإضافة):', trErr.message || trErr);
+                    db.inventoryTransfers = [];
+                }
                 applyProjectAccessFilter();
                 markSaved();
             } catch (err) {
@@ -3717,6 +3909,8 @@
             db.dailyJournals = db.dailyJournals.filter(r => keep(r.project));
             db.externalInvestments = db.externalInvestments.filter(r => keep(r.project));
             db.assets = db.assets.filter(r => keep(r.location)); // الأصول مربوطة بـ"الموقع" مش عمود مشروع منفصل
+            db.partyDiscounts = (db.partyDiscounts || []).filter(r => keep(r.project));
+            db.inventoryTransfers = (db.inventoryTransfers || []).filter(r => keep(r.fromProject) && keep(r.toProject));
         }
 
         async function logAudit(action, entity, entityName, oldValue, newValue) {
@@ -3763,7 +3957,10 @@
             });
             if (error) { markSaveError(error); return true; }
             markSaved();
-            alert('تم إرسال طلبك لموافقة المدير ✅\nهيتنفذ تلقائيًا بمجرد الموافقة عليه، ومش هيظهر كحركة فعلية لحد ما يتم اعتماده.');
+            const msg = module === 'masterdata'
+                ? `⏳ لسه محفوظتش: "${entityName}" في دليل الأكواد محتاج موافقة المدير الأول.\nهيتحفظ تلقائيًا فور ما المدير يوافق عليه — مش هيظهر في القايمة قبل كده. تقدر تتابع حالته من "طلباتي المعلّقة".`
+                : 'تم إرسال طلبك لموافقة المدير ✅\nهيتنفذ تلقائيًا بمجرد الموافقة عليه، ومش هيظهر كحركة فعلية لحد ما يتم اعتماده.';
+            alert(msg);
             if (typeof renderMyPendingRequests === 'function') renderMyPendingRequests();
             return true;
         }
@@ -3857,6 +4054,7 @@
             {
                 key: 'dailyentry', label: 'تسجيل يومي', tabs: [
                     { id: 'procurement', label: 'التوريدات' },
+                    { id: 'inventory', label: 'تحويل مخزون بين المشاريع' },
                     { id: 'sales', label: 'المبيعات' },
                     { id: 'expenses', label: 'المصروفات' },
                     { id: 'payroll', label: 'الرواتب' },
@@ -4358,6 +4556,34 @@
             if ([...el.options].some(o => o.value === prev)) el.value = prev;
         }
 
+        // بنود هيكل التكاليف بقت نسخة مستقلة لكل مشروع (ممكن نفس الاسم يتكرر بكود مختلف لكل مشروع) —
+        // القوائم العامة (زي فلتر التقارير) بتعرض كل اسم مرة واحدة بس بصرف النظر عن المشروع
+        function dedupedExpenseCategories() {
+            const seen = new Set();
+            return db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue' && !seen.has(c.name) && seen.add(c.name));
+        }
+        // فورم تسجيل المصروف: التبويبات المتاحة تتحدد حسب المشروع (المشاريع) المختارة —
+        // كل مشروع له نسخته المستقلة، فلو الحركة موزّعة على أكتر من مشروع لازم التبويب يكون موجود في كل المشاريع المختارة
+        function refreshExpenseCategoryOptions() {
+            const el = document.getElementById('exp-category');
+            if (!el) return;
+            const prev = el.value;
+            const selectedProjects = getProjectMultiSelectValues('exp-project-ms');
+            const pool = selectedProjects.length ? selectedProjects : db.projects.map(p => p.name);
+            const eligible = db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue'
+                && pool.every(proj => db.expenses.some(x => x.project === proj && x.name === c.name)));
+            const seen = new Set();
+            const deduped = eligible.filter(c => !seen.has(c.name) && seen.add(c.name));
+            if (deduped.length) {
+                fillSelect('exp-category', deduped);
+                if ([...el.options].some(o => o.value === prev)) el.value = prev;
+            } else {
+                el.innerHTML = selectedProjects.length > 1
+                    ? '<option value="">-- لا توجد تبويبات مشتركة بين المشاريع المختارة --</option>'
+                    : '<option value="">-- مفيش تبويبات لسه لهذا المشروع --</option>';
+            }
+        }
+
         /* ================= AUDIT LOG (سجل التعديلات) ================= */
         function renderAuditLog() {
             const tbody = document.getElementById('tbody-audit');
@@ -4593,6 +4819,8 @@
             renderSupplierAccounts();
             renderContractorAccounts();
             renderRefunds();
+            renderPartyDiscounts();
+            renderInventoryMovement();
             renderTreasury();
             renderPL();
             renderTaxTable();
@@ -4656,6 +4884,7 @@
             if (tabId === 'balance') { renderBalanceSheet(); renderTrialBalance(); }
             if (tabId === 'cashflow') { renderCashFlow(); }
             if (tabId === 'investors') { renderAllProjectProfits(); renderManagementFees(); renderManagerLiabilities(); }
+            if (tabId === 'inventory') { renderInventoryMovement(); }
         }
 
         /* ================= MASTER DATA ================= */
@@ -4674,13 +4903,15 @@
             units: { label: '12. وحدات القياس', color: 'bg-sky-100 text-sky-800' },
         };
 
+        let masterExpensesProjectFilter = '__TEMPLATE__';
         function renderMasterData() {
             const container = document.getElementById('master-lists');
             const term = document.getElementById('search-masterdata')?.value || '';
             container.innerHTML = '';
             Object.keys(MASTER_META).forEach(cat => {
                 const meta = MASTER_META[cat];
-                const items = [...db[cat]].filter(it => textMatch([it.name, it.code], term)).sort((a, b) => a.code - b.code);
+                const items = (cat === 'expenses' ? db.expenses.filter(it => it.project === masterExpensesProjectFilter) : [...db[cat]])
+                    .filter(it => textMatch([it.name, it.code], term)).sort((a, b) => a.code - b.code);
                 let rows = items.map(it => {
                     let badge = '';
                     let contractLine = '';
@@ -4744,11 +4975,17 @@
             </div>`;
                 }).join('') || '<p class="text-sm text-slate-400 text-center py-3">لا توجد بنود</p>';
 
+                const expenseProjectSelector = cat === 'expenses' ? `
+            <select onchange="masterExpensesProjectFilter=this.value; renderMasterData();" class="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs mb-2">
+                <option value="__TEMPLATE__" ${masterExpensesProjectFilter === '__TEMPLATE__' ? 'selected' : ''}>📋 القالب الافتراضي (لمشاريع جديدة)</option>
+                ${sortedProjects().map(p => `<option value="${esc(p.name)}" ${masterExpensesProjectFilter === p.name ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
+            </select>` : '';
                 container.innerHTML += `<div class="border border-slate-200 rounded-lg p-3 bg-slate-50 flex flex-col">
             <h4 class="font-bold text-base text-slate-800 border-b border-slate-200 pb-2 mb-2 flex items-center justify-between">
                 <span>${meta.label}</span>
                 <span class="${meta.color} text-sm px-2.5 py-0.5 rounded-full font-bold">${items.length}</span>
             </h4>
+            ${expenseProjectSelector}
             <div class="flex flex-col gap-2 max-h-[28rem] overflow-y-auto pr-1">${rows}</div>
         </div>`;
             });
@@ -4803,6 +5040,9 @@
             if (cat === 'supplies') {
                 document.getElementById('master-unit').value = item.unit || 'بند';
             }
+            if (cat === 'expenses') {
+                document.getElementById('master-expense-project').value = item.project || '__TEMPLATE__';
+            }
             if (cat === 'suppliers') {
                 const checks = document.querySelectorAll('.supplier-item-check');
                 const assigned = item.items || [];
@@ -4836,6 +5076,14 @@
             const type = document.getElementById('master-type').value;
             document.getElementById('master-unit-wrap').classList.toggle('hidden', type !== 'supplies');
             if (type === 'supplies') fillSelect('master-unit', db.units);
+            document.getElementById('master-expense-project-wrap')?.classList.toggle('hidden', type !== 'expenses');
+            if (type === 'expenses') {
+                const sel = document.getElementById('master-expense-project');
+                const current = sel.value;
+                sel.innerHTML = '<option value="__TEMPLATE__">📋 القالب الافتراضي (لمشاريع جديدة)</option>'
+                    + sortedProjects().map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+                sel.value = current || masterExpensesProjectFilter;
+            }
             document.getElementById('master-pltype-wrap').classList.toggle('hidden', type !== 'expenses');
             const plType = document.getElementById('master-pltype').value;
             document.getElementById('master-plbucket-wrap').classList.toggle('hidden', !(type === 'expenses' && plType === 'operating'));
@@ -4875,7 +5123,9 @@
             if (type === 'activities') {
                 const list = document.getElementById('master-activity-cats-list');
                 const currentChecked = [...list.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
-                list.innerHTML = db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue').map(c => `
+                const seenCatNames = new Set();
+                const uniqueCats = db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue' && !seenCatNames.has(c.name) && seenCatNames.add(c.name));
+                list.innerHTML = uniqueCats.map(c => `
             <label class="flex items-center gap-1.5 text-xs bg-white border border-slate-200 rounded px-2 py-1 cursor-pointer hover:bg-slate-50">
                 <input type="checkbox" value="${esc(c.name)}" ${currentChecked.includes(c.name) ? 'checked' : ''} class="activity-cat-check">
                 <span>${esc(c.name)}</span>
@@ -4915,6 +5165,8 @@
                 item.unit = document.getElementById('master-unit').value;
             }
             if (type === 'expenses') {
+                item.project = document.getElementById('master-expense-project').value;
+                if (!item.project) { alert('اختر المشروع (أو القالب الافتراضي)'); return; }
                 item.plType = document.getElementById('master-pltype').value;
                 if (name === 'إيراد' && item.plType !== 'revenue') {
                     if (!confirm('تحذير: تصنيف "إيراد" محجوز لمبيعات العملاء ولازم يفضل plType=إيرادات رئيسية. تغييره ممكن يسبب أخطاء في قائمة الدخل. متأكد إنك عايز تكمل؟')) return;
@@ -4992,6 +5244,17 @@
                 if (error) { markSaveError(error); return; }
                 db[type].push(item);
                 logAudit('create', 'دليل الأكواد', name, null, item);
+
+                // مشروع جديد: انسخ له تلقائيًا القالب الافتراضي لهيكل التكاليف (نسخة مستقلة خاصة بيه بس)
+                if (type === 'projects') {
+                    const templateCats = db.expenses.filter(c => c.project === '__TEMPLATE__');
+                    for (const tc of templateCats) {
+                        const newItem = { code: nextCode('expenses'), name: tc.name, plType: tc.plType, plBucket: tc.plBucket, nameType: tc.nameType, project: item.name };
+                        const { error: seedErr } = await sb.from('expense_categories').insert(masterItemToRow('expenses', newItem));
+                        if (seedErr) { console.warn('تعذّر نسخ بند هيكل تكاليف للمشروع الجديد:', seedErr.message); continue; }
+                        db.expenses.push(newItem);
+                    }
+                }
             }
             markSaved();
             renderMasterData();
@@ -5071,12 +5334,19 @@
             fillSelect('filter-proc-supplier', db.suppliers, 'كل الموردين');
             fillSelect('filter-proc-item', db.supplies, 'كل الأصناف');
 
+            fillSelect('tr-item', db.supplies);
+            fillSelect('tr-from-project', sortedProjects());
+            fillSelect('tr-to-project', sortedProjects());
+            if (document.getElementById('tr-date') && !document.getElementById('tr-date').value) document.getElementById('tr-date').value = todayISO();
+            fillSelect('inv-mv-filter-item', db.supplies, 'كل الأصناف');
+            fillSelect('inv-mv-filter-project', sortedProjects(), 'كل المشاريع');
+
             // الإيرادات مكانها الوحيد "مستخلصات العملاء" — أي تصنيف إيراد (revenue/other_revenue) ميظهرش هنا خالص عشان منسجلش نفس الإيراد مرتين
-            fillSelect('exp-category', db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue'));
+            refreshExpenseCategoryOptions();
             renderProjectMultiSelectOptions('exp-project-ms');
             fillSelect('alloc-employee', db.employees);
             fillSelect('filter-exp-project', sortedProjects(), 'كل المشاريع');
-            fillSelect('filter-exp-category', db.expenses.filter(c => c.plType !== 'revenue' && c.plType !== 'other_revenue'), 'كل التبويبات');
+            fillSelect('filter-exp-category', dedupedExpenseCategories(), 'كل التبويبات');
             fillSelect('filter-exp-name', [...db.names, ...db.clients], 'كل الأسماء');
 
             fillSelect('filter-coll-client', db.clients, 'كل العملاء');
@@ -5092,6 +5362,9 @@
             fillSelect('filter-cpay-name', db.names, 'كل المقاولين');
             if (document.getElementById('refund-type')) fillRefundNames();
             if (document.getElementById('refund-date') && !document.getElementById('refund-date').value) document.getElementById('refund-date').value = todayISO();
+            if (document.getElementById('pd-type')) fillPartyDiscountNames();
+            fillSelect('pd-project', sortedProjects());
+            if (document.getElementById('pd-date') && !document.getElementById('pd-date').value) document.getElementById('pd-date').value = todayISO();
 
             fillSelect('treasury-filter-project', sortedProjects(), 'كل المشاريع');
             fillSelect('pl-filter-project', sortedProjects(), 'إجمالي كل المشاريع');
@@ -5705,6 +5978,127 @@
         </tr>`).join('') : (ghostHtml ? '' : '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا توجد دفعات مسجلة</td></tr>'))
                 + (rows.length ? `<tr class="bg-slate-50 font-bold"><td class="p-3">الإجمالي</td><td class="p-3 text-cyan-700">${fmt(total)}</td><td class="p-3 text-emerald-700">${totalDiscount ? fmt(totalDiscount) : '-'}</td><td colspan="4"></td></tr>` : '');
         }
+        // رصيد صنف مخزون (كمية + قيمة) داخل مشروع (بلوك) معيّن = المشترى له في المشروع ده
+        // + المحوّل إليه من مشاريع تانية - المحوّل منه لمشاريع تانية. متوسط التكلفة بيشمل التحويلات
+        // الداخلة عشان لو الكمية دي اتحوّلت تاني يكون ليها أساس تكلفة صحيح.
+        function itemProjectStock(item, project) {
+            const procIn = db.procurements.filter(p => p.item === item && p.project === project);
+            const qtyIn = procIn.reduce((s, p) => s + p.qty, 0);
+            const valueIn = procIn.reduce((s, p) => s + p.qty * p.price, 0);
+            const transfersIn = (db.inventoryTransfers || []).filter(t => t.item === item && t.toProject === project);
+            const transfersOut = (db.inventoryTransfers || []).filter(t => t.item === item && t.fromProject === project);
+            const qty = qtyIn + transfersIn.reduce((s, t) => s + t.qty, 0) - transfersOut.reduce((s, t) => s + t.qty, 0);
+            const value = valueIn + transfersIn.reduce((s, t) => s + t.value, 0) - transfersOut.reduce((s, t) => s + t.value, 0);
+            return { qty, value, avgUnitPrice: qty > 0 ? value / qty : 0 };
+        }
+
+        /* ================= تحويل مخزون بين مشروعين (بلوكات) ================= */
+        async function addInventoryTransfer(e) {
+            e.preventDefault();
+            if (!db.inventoryTransfers) db.inventoryTransfers = [];
+            const item = document.getElementById('tr-item').value;
+            const fromProject = document.getElementById('tr-from-project').value;
+            const toProject = document.getElementById('tr-to-project').value;
+            const qty = Number(document.getElementById('tr-qty').value) || 0;
+            if (!item || !fromProject || !toProject) { alert('اختر الصنف والمشروع المصدر والمشروع المستقبل'); return; }
+            if (fromProject === toProject) { alert('لازم يكون المشروع المصدر مختلف عن المشروع المستقبل'); return; }
+            if (qty <= 0) { alert('أدخل كمية صحيحة'); return; }
+            const stock = itemProjectStock(item, fromProject);
+            if (qty > stock.qty + 1e-9) { alert(`الكمية المتاحة من "${item}" في مشروع "${fromProject}" هي ${numFmt(stock.qty)} فقط`); return; }
+            const unitPrice = stock.avgUnitPrice;
+            const row = {
+                item, from_project: fromProject, to_project: toProject, qty, unit_price: unitPrice, value: qty * unitPrice,
+                date: document.getElementById('tr-date').value || todayISO(),
+                notes: document.getElementById('tr-notes').value.trim()
+            };
+            if (await gateOrRun('create', 'inventory', `${item}: ${fromProject} → ${toProject}`, [{ table: 'inventory_transfers', pk_col: 'id', pk_value: null, op: 'insert', row }])) {
+                e.target.reset();
+                document.getElementById('tr-date').value = todayISO();
+                return;
+            }
+            markSaving();
+            const { data, error } = await sb.from('inventory_transfers').insert(row).select().single();
+            if (error) { markSaveError(error); return; }
+            const rec = transferRowToRecord(data);
+            db.inventoryTransfers.push(rec);
+            logAudit('create', 'تحويل مخزون', `${item}: ${fromProject} → ${toProject}`, null, rec);
+            e.target.reset();
+            document.getElementById('tr-date').value = todayISO();
+            markSaved();
+            renderAll();
+        }
+        async function deleteInventoryTransfer(id) {
+            if (!confirm('هل تريد حذف عملية التحويل دي؟ الكمية والقيمة هترجع للمشروع المصدر.')) return;
+            const old = (db.inventoryTransfers || []).find(t => t.id === id);
+            if (await gateOrRun('delete', 'inventory', old ? old.item : '', [{ table: 'inventory_transfers', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
+            markSaving();
+            const { error } = await sb.from('inventory_transfers').delete().eq('id', id);
+            if (error) { markSaveError(error); return; }
+            db.inventoryTransfers = (db.inventoryTransfers || []).filter(t => t.id !== id);
+            logAudit('delete', 'تحويل مخزون', old ? old.item : '', old, null);
+            markSaved();
+            renderAll();
+        }
+        function renderInventoryMovement() {
+            const tbody = document.getElementById('tbody-inventory-movement');
+            const summaryEl = document.getElementById('inventory-stock-summary');
+            if (!tbody || !summaryEl) return;
+            const fItem = document.getElementById('inv-mv-filter-item')?.value || 'ALL';
+            const fProject = document.getElementById('inv-mv-filter-project')?.value || 'ALL';
+
+            // سجل الحركة: كل مشتريات + كل تحويلات داخلة/خارجة، مفلترة بالصنف والمشروع المختارين
+            const events = [];
+            db.procurements.forEach(p => {
+                if (fItem !== 'ALL' && p.item !== fItem) return;
+                if (fProject !== 'ALL' && p.project !== fProject) return;
+                events.push({ date: p.date, type: 'in', desc: `شراء من ${p.supplier}`, item: p.item, project: p.project, qty: p.qty, value: p.qty * p.price, unit: p.unit });
+            });
+            (db.inventoryTransfers || []).forEach(t => {
+                if (fItem !== 'ALL' && t.item !== fItem) return;
+                if (fProject === 'ALL' || t.fromProject === fProject) {
+                    events.push({ date: t.date, type: 'out', desc: `تحويل إلى ${t.toProject}`, item: t.item, project: t.fromProject, qty: t.qty, value: t.value, unit: '' });
+                }
+                if (fProject === 'ALL' || t.toProject === fProject) {
+                    events.push({ date: t.date, type: 'in', desc: `تحويل من ${t.fromProject}`, item: t.item, project: t.toProject, qty: t.qty, value: t.value, unit: '' });
+                }
+            });
+            events.sort((a, b) => a.date.localeCompare(b.date));
+            let running = 0;
+            const rows = events.map(ev => {
+                running += ev.type === 'in' ? ev.qty : -ev.qty;
+                return `<tr class="border-b border-slate-50 hover:bg-slate-50">
+            <td class="p-3 text-slate-500">${ev.date}</td>
+            <td class="p-3">${ev.type === 'in' ? '<span class="text-emerald-600 font-bold">داخل</span>' : '<span class="text-rose-600 font-bold">خارج</span>'}</td>
+            <td class="p-3">${esc(ev.desc)}</td>
+            <td class="p-3">${esc(ev.item)}</td>
+            <td class="p-3">${esc(ev.project)}</td>
+            <td class="p-3">${ev.type === 'in' ? '+' : '-'}${numFmt(ev.qty)} ${esc(ev.unit || '')}</td>
+            <td class="p-3">${fmt(ev.value)}</td>
+            <td class="p-3 font-bold">${numFmt(running)}</td>
+        </tr>`;
+            }).reverse();
+            tbody.innerHTML = rows.join('') || '<tr><td colspan="8" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>';
+
+            // ملخص الرصيد الحالي: كل صنف له رصيد غير صفري في المشروع/المشاريع المختارة
+            const projectsToShow = fProject === 'ALL' ? db.projects.map(p => p.name) : [fProject];
+            const itemsToShow = fItem === 'ALL' ? db.supplies.map(s => s.name) : [fItem];
+            const summaryRows = [];
+            projectsToShow.forEach(proj => {
+                itemsToShow.forEach(itm => {
+                    const stock = itemProjectStock(itm, proj);
+                    if (Math.abs(stock.qty) > 1e-9) summaryRows.push({ project: proj, item: itm, ...stock });
+                });
+            });
+            summaryEl.innerHTML = summaryRows.length ? summaryRows.map(r => `
+        <tr class="border-b border-slate-50 hover:bg-slate-50">
+            <td class="p-3">${esc(r.project)}</td>
+            <td class="p-3 font-semibold">${esc(r.item)}</td>
+            <td class="p-3 font-bold">${numFmt(r.qty)}</td>
+            <td class="p-3">${fmt(r.avgUnitPrice)}</td>
+            <td class="p-3 font-bold">${fmt(r.value)}</td>
+        </tr>`).join('') : '<tr><td colspan="5" class="p-4 text-center text-slate-400">لا يوجد رصيد حالي</td></tr>';
+        }
+
         function supplierBalance(name) {
             const sup = db.suppliers.find(s => s.name === name) || {};
             const openingBalance = sup.openingBalance || 0;
@@ -5713,7 +6107,9 @@
             // الخصم المكتسب بيسدد جزء من الفاتورة زي الكاش بالظبط — لازم يتخصم من المستحق، وإلا هيفضل ظاهر كأنه لسه مديون بيه (وده اللي بيكسر توازن ميزان المراجعة)
             const totalDiscount = db.payments.filter(pay => pay.supplier === name).reduce((a, pay) => a + (pay.discount || 0), 0);
             const totalRefunded = (db.refunds || []).filter(r => r.partyType === 'supplier' && r.name === name).reduce((a, r) => a + r.amount, 0);
-            return { totalInvoices, totalPaid, discount: totalDiscount, refunded: totalRefunded, openingBalance, remaining: openingBalance + totalInvoices - totalPaid - totalDiscount + totalRefunded };
+            // خصم مسجّل كحركة منفصلة (اتكتشف بعد السداد) — بيقلل المستحق زي أي خصم تاني
+            const totalPartyDiscount = (db.partyDiscounts || []).filter(d => d.partyType === 'supplier' && d.name === name).reduce((a, d) => a + d.amount, 0);
+            return { totalInvoices, totalPaid, discount: totalDiscount, partyDiscount: totalPartyDiscount, refunded: totalRefunded, openingBalance, remaining: openingBalance + totalInvoices - totalPaid - totalDiscount - totalPartyDiscount + totalRefunded };
         }
         function filterAccountRows(rows, status) {
             if (status === 'CASH') return rows.filter(r => r.remaining <= 0);
@@ -5959,7 +6355,7 @@
 
             const rows = db.expensesData.filter(x => {
                 // تحصيلات العملاء ليها سجلها الخاص تحت "مستخلصات العملاء" — أي حركة تصنيفها إيراد (بأي اسم) متتكررش هنا
-                const plType = getCategoryPLType(x.category);
+                const plType = getCategoryPLType(x.category, x.project);
                 if (plType === 'revenue' || plType === 'other_revenue') return false;
                 if (fp !== 'ALL' && fp && x.project !== fp) return false;
                 if (fc !== 'ALL' && fc && x.category !== fc) return false;
@@ -6257,7 +6653,7 @@
                     return s + Math.max(totalSold - totalCollected, 0);
                 }, 0);
                 return {
-                    name: p.name, status: p.status || 'active',
+                    name: p.name, status: p.status || 'active', capital: p.capital || 0,
                     revenue: pl.revenueTotal + pl.otherRevenueTotal,
                     cost: pl.directTotal + pl.operatingTotal,
                     profit: pl.profitBeforeTax,
@@ -6273,12 +6669,13 @@
                 ? rows.map(r => `<tr class="border-b border-slate-50 hover:bg-slate-50 ${r.status === 'completed' ? 'opacity-60' : ''}">
             <td class="p-3 font-bold">${esc(r.name)}</td>
             <td class="p-3 text-center"><span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:bold;background:${r.status === 'completed' ? '#e2e8f0' : '#d1fae5'};color:${r.status === 'completed' ? '#475569' : '#065f46'}">${r.status === 'completed' ? 'مكتمل' : 'نشط'}</span></td>
+            <td class="p-3 text-orange-700 font-bold">${fmt(r.capital)}</td>
             <td class="p-3">${fmt(r.revenue)}</td>
             <td class="p-3">${fmt(r.cost)}</td>
             <td class="p-3 font-bold ${r.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${fmt(r.profit)}</td>
             <td class="p-3">${fmt(r.clientReceivable)}</td>
         </tr>`).join('')
-                : '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد مشاريع مسجّلة</td></tr>';
+                : '<tr><td colspan="7" class="p-4 text-center text-slate-400">لا توجد مشاريع مسجّلة</td></tr>';
         }
         function renderUnifiedAlerts() {
             const listEl = document.getElementById('unified-alerts-list');
@@ -6402,11 +6799,14 @@
         }
         function updateProjectMultiSelectLabel(prefix) {
             const label = document.getElementById(prefix + '-label');
-            if (!label) return;
-            const selected = getProjectMultiSelectValues(prefix);
-            if (!selected.length) label.textContent = prefix === 'payroll-project-ms' ? 'حمّل على مشروع...' : 'اختر مشروع أو أكتر';
-            else if (selected.length === 1) label.textContent = selected[0];
-            else label.textContent = `${selected.length} مشاريع محددة`;
+            if (label) {
+                const selected = getProjectMultiSelectValues(prefix);
+                if (!selected.length) label.textContent = prefix === 'payroll-project-ms' ? 'حمّل على مشروع...' : 'اختر مشروع أو أكتر';
+                else if (selected.length === 1) label.textContent = selected[0];
+                else label.textContent = `${selected.length} مشاريع محددة`;
+            }
+            // فورم المصروفات: التبويبات المتاحة بتتغيّر حسب المشروع/المشاريع المختارة (هيكل تكاليف مستقل لكل مشروع)
+            if (prefix === 'exp-project-ms' && typeof refreshExpenseCategoryOptions === 'function') refreshExpenseCategoryOptions();
         }
         function setProjectMultiSelectValues(prefix, names) {
             document.querySelectorAll(`.${prefix}-item`).forEach(el => { el.checked = names.includes(el.value); });
@@ -6487,8 +6887,8 @@
             // Group expensesData by category name
             const catGroups = {};
             db.expensesData.filter(x => match(x)).forEach(x => {
-                const plType = getCategoryPLType(x.category);
-                const catDef = db.expenses.find(c => c.name === x.category);
+                const plType = getCategoryPLType(x.category, x.project);
+                const catDef = db.expenses.find(c => c.name === x.category && c.project === x.project) || db.expenses.find(c => c.name === x.category);
                 const plBucket = catDef ? catDef.plBucket : 'other_operating';
                 if (!catGroups[x.category]) catGroups[x.category] = { plType, plBucket, total: 0 };
                 catGroups[x.category].total += x.total;
@@ -6520,16 +6920,25 @@
             // أ2. الإيرادات الأخرى (غير تشغيلية)
             const otherRevenueLines = Object.entries(catGroups).filter(([, v]) => v.plType === 'other_revenue')
                 .map(([k, v]) => ({ num: num(), label: k, value: v.total }));
-            // خصومات مكتسبة من الموردين/المقاولين وقت السداد — إيراد إضافي منفصل، مش تخفيض في المستحق الأصلي
+            // خصومات مكتسبة من الموردين/المقاولين وقت السداد، أو كحركة "خصم" منفصلة لاحقة — إيراد إضافي منفصل، مش تخفيض في المستحق الأصلي
             const purchaseDiscountEarned = db.payments.filter(p => match(p)).reduce((s, p) => s + (p.discount || 0), 0)
-                + (db.contractorPayments || []).filter(p => match(p)).reduce((s, p) => s + (p.discount || 0), 0);
+                + (db.contractorPayments || []).filter(p => match(p)).reduce((s, p) => s + (p.discount || 0), 0)
+                + (db.partyDiscounts || []).filter(d => match(d)).reduce((s, d) => s + (d.amount || 0), 0);
             if (purchaseDiscountEarned > 0) {
                 otherRevenueLines.push({ num: num(), label: 'خصومات مكتسبة من الموردين', value: purchaseDiscountEarned });
             }
             const otherRevenueTotal = otherRevenueLines.reduce((s, l) => s + l.value, 0);
 
             // ب. تكاليف العقود (مواد + أي تصنيف "تكلفة مباشرة")
-            const materialsCost = db.procurements.filter(p => match(p)).reduce((s, p) => s + (p.qty * p.price), 0);
+            // تحويل مخزون بين مشروعين (بلوكات): بينقل القيمة من تكلفة المشروع المصدر لتكلفة المشروع المستقبل —
+            // محايد تمامًا على مستوى الشركة ككل (لما projectFilter='ALL' كل تحويلة بتتقابل في الاتجاهين وتتلغي)
+            const transfersInMatch = (db.inventoryTransfers || []).filter(t =>
+                (projectFilter === 'ALL' || !projectFilter || t.toProject === projectFilter) && matchDate(t));
+            const transfersOutMatch = (db.inventoryTransfers || []).filter(t =>
+                (projectFilter === 'ALL' || !projectFilter || t.fromProject === projectFilter) && matchDate(t));
+            const materialsCost = db.procurements.filter(p => match(p)).reduce((s, p) => s + (p.qty * p.price), 0)
+                + transfersInMatch.reduce((s, t) => s + t.value, 0)
+                - transfersOutMatch.reduce((s, t) => s + t.value, 0);
             const directLines = [];
             directLines.push({ num: num(), label: 'تكلفة مباشرة / بضاعة (توريدات)', value: materialsCost });
             Object.entries(catGroups).filter(([, v]) => v.plType === 'direct').forEach(([k, v]) => {
@@ -6781,11 +7190,21 @@
             rows.sort((a, b) => b.date.localeCompare(a.date));
             const searchTerm = document.getElementById('search-ledger')?.value || '';
             const filteredRows = rows.filter(r => textMatch([r.type, r.desc, r.project, r.party, r.date], searchTerm));
+            // إجمالي: الإيراد (تصنيف "إيراد") دائن، وأي حركة تانية (شراء/مصروف) مدين — والرصيد النهائي = دائن - مدين
+            const totalCredit = filteredRows.filter(r => r.type === 'إيراد').reduce((s, r) => s + r.value, 0);
+            const totalDebit = filteredRows.filter(r => r.type !== 'إيراد').reduce((s, r) => s + r.value, 0);
+            const netBalance = totalCredit - totalDebit;
+            const totalsRow = filteredRows.length ? `
+        <tr class="bg-slate-100 font-bold border-t-2 border-slate-300">
+            <td class="p-3" colspan="4">الإجمالي (${filteredRows.length} حركة)</td>
+            <td class="p-3 text-emerald-700">دائن: ${fmt(totalCredit)} / مدين: ${fmt(totalDebit)}</td>
+            <td class="p-3 ${netBalance >= 0 ? 'text-emerald-700' : 'text-rose-700'}">الرصيد: ${fmt(netBalance)}</td>
+        </tr>` : '';
             document.getElementById('tbody-ledger').innerHTML = filteredRows.map(r => `
         <tr class="border-b border-slate-50 hover:bg-slate-50">
             <td class="p-3 text-slate-500">${r.date}</td><td class="p-3">${esc(r.type)}</td><td class="p-3">${esc(r.desc)}</td>
             <td class="p-3">${esc(r.project)}</td><td class="p-3">${esc(r.party)}</td><td class="p-3 font-bold">${fmt(r.value)}</td>
-        </tr>`).join('') || '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>';
+        </tr>`).join('') + totalsRow || '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد حركات</td></tr>';
 
             const summaryEl = document.getElementById('ledger-item-summary');
             if (hasItem) {
@@ -6835,11 +7254,13 @@
             // الخصم المكتسب بيسدد جزء من المستحق زي الكاش بالظبط — لازم يتخصم برضه، وإلا هيفضل ظاهر كأنه لسه مديون بيه (وده اللي بيكسر توازن ميزان المراجعة)
             const totalDiscount = (db.contractorPayments || []).filter(p => p.name === name).reduce((a, p) => a + (p.discount || 0), 0);
             const totalRefunded = (db.refunds || []).filter(r => r.partyType === 'contractor' && r.name === name).reduce((a, r) => a + r.amount, 0);
+            // خصم مسجّل كحركة منفصلة (اتكتشف بعد السداد) — بيقلل المستحق زي أي خصم تاني
+            const totalPartyDiscount = (db.partyDiscounts || []).filter(d => d.partyType === 'contractor' && d.name === name).reduce((a, d) => a + d.amount, 0);
             const totalPaid = paidFromExp + paidFromCpay - totalRefunded;
             const openingBalance = nameRec.openingBalance || 0;
-            const balance = openingBalance + totalExecuted - totalPaid - totalDiscount; // موجب = مستحق له، سالب = رصيد ليّ عنده
+            const balance = openingBalance + totalExecuted - totalPaid - totalDiscount - totalPartyDiscount; // موجب = مستحق له، سالب = رصيد ليّ عنده
             const cv = nameRec.contractValue || 0;
-            return { contractValue: cv, totalExecuted, paid: totalPaid, discount: totalDiscount, refunded: totalRefunded, openingBalance, balance };
+            return { contractValue: cv, totalExecuted, paid: totalPaid, discount: totalDiscount, partyDiscount: totalPartyDiscount, refunded: totalRefunded, openingBalance, balance };
         }
 
         /* ================= استرداد مبلغ من مورد/مقاول ================= */
@@ -6918,6 +7339,133 @@
             <td class="p-3"><button onclick="deleteRefund(${r.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
         </tr>`).join('') : '<tr><td colspan="6" class="p-4 text-center text-slate-400">لا توجد عمليات استرداد مسجلة</td></tr>')
                 + (rows.length ? `<tr class="bg-slate-50 font-bold"><td colspan="2" class="p-3">الإجمالي</td><td class="p-3 text-emerald-700">${fmt(total)}</td><td colspan="3"></td></tr>` : '');
+        }
+
+        /* ================= خصم مورد/مقاول (حركة منفصلة، من غير حركة نقدية) ================= */
+        let editingPartyDiscountId = null;
+        function fillPartyDiscountNames() {
+            const type = document.getElementById('pd-type').value;
+            fillSelect('pd-name', type === 'supplier' ? db.suppliers : db.names);
+        }
+        function showPartyDiscountBalance() {
+            const type = document.getElementById('pd-type').value;
+            const name = document.getElementById('pd-name').value;
+            const box = document.getElementById('pd-balance-info');
+            if (!name) { if (box) box.style.display = 'none'; return; }
+            const { remaining } = refundPartyBalance(type, name);
+            document.getElementById('pd-info-remaining').innerHTML = remaining < 0
+                ? `<span class="text-emerald-600 font-bold">↩️ ${fmt(-remaining)} ليّك عنده</span>`
+                : `<span class="text-rose-600 font-bold">${fmt(remaining)} مستحق عليك</span>`;
+            box.style.display = 'block';
+        }
+        function editPartyDiscount(id) {
+            const rec = (db.partyDiscounts || []).find(d => d.id === id);
+            if (!rec) return;
+            editingPartyDiscountId = id;
+            document.getElementById('pd-type').value = rec.partyType;
+            fillPartyDiscountNames();
+            document.getElementById('pd-name').value = rec.name;
+            document.getElementById('pd-project').value = rec.project;
+            document.getElementById('pd-amount').value = rec.amount;
+            document.getElementById('pd-date').value = rec.date;
+            document.getElementById('pd-linked-ref').value = rec.linkedRef || '';
+            document.getElementById('pd-notes').value = rec.notes || '';
+            showPartyDiscountBalance();
+            const saveBtn = document.getElementById('pd-save-btn');
+            const cancelBtn = document.getElementById('pd-cancel-edit-btn');
+            if (saveBtn) saveBtn.innerHTML = '💾 حفظ التعديلات';
+            if (cancelBtn) cancelBtn.style.display = '';
+            document.getElementById('ppanel-discounts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        function cancelEditPartyDiscount() {
+            editingPartyDiscountId = null;
+            document.querySelector('#ppanel-discounts form')?.reset();
+            document.getElementById('pd-date').value = todayISO();
+            document.getElementById('pd-balance-info').style.display = 'none';
+            const saveBtn = document.getElementById('pd-save-btn');
+            const cancelBtn = document.getElementById('pd-cancel-edit-btn');
+            if (saveBtn) saveBtn.innerHTML = 'تسجيل الخصم';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+        }
+        async function addPartyDiscount(e) {
+            e.preventDefault();
+            if (!db.partyDiscounts) db.partyDiscounts = [];
+            const isEdit = !!editingPartyDiscountId;
+            const partyType = document.getElementById('pd-type').value;
+            const name = document.getElementById('pd-name').value;
+            const project = document.getElementById('pd-project').value;
+            const amount = Number(document.getElementById('pd-amount').value) || 0;
+            if (!name || !project) { alert('اختر الاسم والمشروع'); return; }
+            if (amount <= 0) { alert('أدخل مبلغ الخصم'); return; }
+            const row = {
+                party_type: partyType, name, project,
+                linked_ref: document.getElementById('pd-linked-ref').value.trim() || null,
+                amount, date: document.getElementById('pd-date').value || todayISO(),
+                notes: document.getElementById('pd-notes').value.trim()
+            };
+
+            if (isEdit) {
+                const old = (db.partyDiscounts || []).find(d => d.id === editingPartyDiscountId);
+                if (!old) { cancelEditPartyDiscount(); return; }
+                if (await gateOrRun('update', 'payments', `${name} - ${fmt(amount)}`, [{ table: 'party_discounts', pk_col: 'id', pk_value: editingPartyDiscountId, op: 'update', row }], old)) { cancelEditPartyDiscount(); return; }
+                markSaving();
+                const { data, error } = await sb.from('party_discounts').update(row).eq('id', editingPartyDiscountId).select().single();
+                if (error) { markSaveError(error); return; }
+                const updated = partyDiscountRowToRecord(data);
+                db.partyDiscounts = db.partyDiscounts.map(d => d.id === editingPartyDiscountId ? updated : d);
+                logAudit('update', 'خصم مورد/مقاول', `${name} - ${fmt(amount)}`, old, updated);
+                markSaved();
+                cancelEditPartyDiscount();
+                renderPartyDiscounts();
+                renderAll();
+                return;
+            }
+
+            if (await gateOrRun('create', 'payments', `${name} - ${fmt(amount)}`, [{ table: 'party_discounts', pk_col: 'id', pk_value: null, op: 'insert', row }])) {
+                cancelEditPartyDiscount();
+                return;
+            }
+            markSaving();
+            const { data, error } = await sb.from('party_discounts').insert(row).select().single();
+            if (error) { markSaveError(error); return; }
+            const rec = partyDiscountRowToRecord(data);
+            db.partyDiscounts.push(rec);
+            logAudit('create', 'خصم مورد/مقاول', `${name} - ${fmt(amount)}`, null, rec);
+            markSaved();
+            cancelEditPartyDiscount();
+            renderPartyDiscounts();
+            renderAll();
+        }
+        async function deletePartyDiscount(id) {
+            if (!confirm('هل تريد حذف عملية الخصم دي؟')) return;
+            const old = (db.partyDiscounts || []).find(d => d.id === id);
+            if (await gateOrRun('delete', 'payments', old ? old.name : '', [{ table: 'party_discounts', pk_col: 'id', pk_value: id, op: 'delete' }], old)) return;
+            markSaving();
+            const { error } = await sb.from('party_discounts').delete().eq('id', id);
+            if (error) { markSaveError(error); return; }
+            db.partyDiscounts = (db.partyDiscounts || []).filter(d => d.id !== id);
+            logAudit('delete', 'خصم مورد/مقاول', old ? old.name : '', old, null);
+            markSaved();
+            renderPartyDiscounts();
+            renderAll();
+        }
+        function renderPartyDiscounts() {
+            const tbody = document.getElementById('tbody-discounts');
+            if (!tbody) return;
+            const rows = [...(db.partyDiscounts || [])].reverse();
+            const total = rows.reduce((s, d) => s + d.amount, 0);
+            tbody.innerHTML = (rows.length ? rows.map(d => `
+        <tr class="border-b border-slate-50 hover:bg-slate-50"${auditAttr(d)}>
+            <td class="p-3">${d.partyType === 'supplier' ? 'مورد' : 'مقاول'}</td>
+            <td class="p-3 font-semibold">${esc(d.name)}</td>
+            <td class="p-3">${esc(d.project)}</td>
+            <td class="p-3 font-bold text-emerald-700">${fmt(d.amount)}</td>
+            <td class="p-3 text-slate-500">${d.date}</td>
+            <td class="p-3 text-slate-500">${esc(d.linkedRef || '')}</td>
+            <td class="p-3 text-slate-500">${esc(d.notes || '')}</td>
+            <td class="p-3 flex items-center gap-2"><button onclick="editPartyDiscount(${d.id})" class="text-blue-500 hover:text-blue-700" title="تعديل"><i class="fa-solid fa-pen"></i></button><button onclick="deletePartyDiscount(${d.id})" class="text-red-500 hover:text-red-700" title="حذف"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>`).join('') : '<tr><td colspan="8" class="p-4 text-center text-slate-400">لا توجد عمليات خصم مسجلة</td></tr>')
+                + (rows.length ? `<tr class="bg-slate-50 font-bold"><td colspan="3" class="p-3">الإجمالي</td><td class="p-3 text-emerald-700">${fmt(total)}</td><td colspan="4"></td></tr>` : '');
         }
 
         function showContractorBalance() {
@@ -7053,7 +7601,7 @@
         }
 
         function switchPayTab(panel) {
-            ['suppliers', 'contractors', 'obligations', 'refunds'].forEach(p => {
+            ['suppliers', 'contractors', 'obligations', 'refunds', 'discounts'].forEach(p => {
                 const el = document.getElementById('ppanel-' + p);
                 const btn = document.getElementById('ptab-' + p);
                 if (!el || !btn) return;
@@ -7070,6 +7618,7 @@
             if (panel === 'contractors') { renderContractorAccounts(); renderContractorPaymentsTable(); }
             if (panel === 'obligations') { renderObligations(); }
             if (panel === 'refunds') { renderRefunds(); }
+            if (panel === 'discounts') { renderPartyDiscounts(); }
         }
         // فلتر عرض كشف الحساب المركب — يعرض الثلاثة معاً أو واحد بس بعرض كامل
         function filterPartyAccountsView() {
@@ -9561,8 +10110,38 @@
             }).join('');
         }
 
+        let editingInvestorFundingId = null;
+        function editInvestorFunding(id) {
+            const rec = (db.investorFunding || []).find(f => f.id === id);
+            if (!rec) return;
+            editingInvestorFundingId = id;
+            document.getElementById('inv-investor').value = rec.investor;
+            document.getElementById('inv-project').value = rec.project;
+            onInvProjectChange();
+            document.getElementById('inv-amount').value = rec.amount;
+            document.getElementById('inv-auto-pct').value = rec.pct != null ? rec.pct : '';
+            document.getElementById('inv-account').value = rec.account || '';
+            document.getElementById('inv-date').value = rec.date;
+            document.getElementById('inv-notes').value = rec.notes || '';
+            const saveBtn = document.getElementById('inv-save-btn');
+            const cancelBtn = document.getElementById('inv-cancel-edit-btn');
+            if (saveBtn) saveBtn.innerHTML = '💾 حفظ التعديلات';
+            if (cancelBtn) cancelBtn.style.display = '';
+            document.getElementById('tab-investors')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        function cancelEditInvestorFunding() {
+            editingInvestorFundingId = null;
+            document.querySelector('#inv-investor')?.closest('form')?.reset();
+            if (document.getElementById('inv-date')) document.getElementById('inv-date').value = todayISO();
+            if (document.getElementById('inv-auto-pct')) document.getElementById('inv-auto-pct').value = '';
+            const saveBtn = document.getElementById('inv-save-btn');
+            const cancelBtn = document.getElementById('inv-cancel-edit-btn');
+            if (saveBtn) saveBtn.innerHTML = 'حفظ';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+        }
         async function addInvestorFunding(e) {
             e.preventDefault();
+            const isEdit = !!editingInvestorFundingId;
             const investor = document.getElementById('inv-investor').value;
             const project = document.getElementById('inv-project').value;
             const amount = Number(document.getElementById('inv-amount').value) || 0;
@@ -9583,6 +10162,28 @@
                 notes: document.getElementById('inv-notes').value.trim()
             };
             if (isManualOverride) row.pct = enteredPct; // نسبة ثابتة يدوية بدل النسبة التلقائية من التمويل
+
+            if (isEdit) {
+                const old = (db.investorFunding || []).find(f => f.id === editingInvestorFundingId);
+                if (!old) { cancelEditInvestorFunding(); return; }
+                if (await gateOrRun('update', 'investors', investor, [{ table: 'investor_funding', pk_col: 'id', pk_value: editingInvestorFundingId, op: 'update', row }], old)) { cancelEditInvestorFunding(); return; }
+                markSaving();
+                const { data, error } = await sb.from('investor_funding').update(row).eq('id', editingInvestorFundingId).select().single();
+                if (error) { markSaveError(error); return; }
+                db.investorFunding = db.investorFunding.map(f => f.id === editingInvestorFundingId ? data : f);
+                logAudit('update', 'تمويل مستثمر', investor, old, data);
+
+                // حدّث رأس مال المشروعين (القديم لو اتغيّر، والجديد) بعد التعديل
+                await syncProjectCapital(project);
+                if (old.project && old.project !== project) await syncProjectCapital(old.project);
+
+                cancelEditInvestorFunding();
+                markSaved();
+                renderAll();
+                initDropdowns();
+                return;
+            }
+
             if (await gateOrRun('create', 'investors', investor, [{ table: 'investor_funding', pk_col: 'id', pk_value: null, op: 'insert', row }])) {
                 e.target.reset();
                 if (document.getElementById('inv-date')) document.getElementById('inv-date').value = todayISO();
@@ -9593,6 +10194,7 @@
             const { data, error } = await sb.from('investor_funding').insert(row).select().single();
             if (error) { markSaveError(error); return; }
             db.investorFunding.push(data);
+            logAudit('create', 'تمويل مستثمر', investor, null, data);
 
             // تحديث رأس مال المشروع تلقائيًا بعد إضافة تمويل المستثمر
             await syncProjectCapital(project);
@@ -9926,7 +10528,7 @@
                 <td class="p-3 font-bold ${share >= 0 ? 'text-orange-600' : 'text-rose-600'}">${fmt(share)}</td>
                 <td class="p-3 text-slate-500">${esc(f.account || '-')}</td>
                 <td class="p-3 text-slate-500">${f.date || ''}</td>
-                <td class="p-3"><button onclick="deleteInvestorFunding(${f.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button></td>
+                <td class="p-3 flex items-center gap-2"><button onclick="editInvestorFunding(${f.id})" class="text-blue-500 hover:text-blue-700" title="تعديل"><i class="fa-solid fa-pen"></i></button><button onclick="deleteInvestorFunding(${f.id})" class="text-red-500 hover:text-red-700" title="حذف"><i class="fa-solid fa-trash"></i></button></td>
             </tr>`;
                 }).join('')
                 + (rows.length ? `<tr class="bg-orange-50 font-bold border-t-2 border-orange-200">
