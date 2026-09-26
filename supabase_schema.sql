@@ -614,15 +614,15 @@ begin
   execute 'drop policy if exists "update_module" on projects;';
   execute 'drop policy if exists "delete_module" on projects;';
   execute $q$create policy "select_active" on projects for select using (
-    is_active_user() and (is_admin_user() or code = any((select allowed_projects from profiles where id = auth.uid())))
+    is_active_user() and (is_admin_user() or code = any((select unnest(allowed_projects) from profiles where id = auth.uid())))
   );$q$;
   execute $q$create policy "update_module" on projects for update using (
-    has_permission('masterdata','edit') and (is_admin_user() or code = any((select allowed_projects from profiles where id = auth.uid())))
+    has_permission('masterdata','edit') and (is_admin_user() or code = any((select unnest(allowed_projects) from profiles where id = auth.uid())))
   ) with check (
-    has_permission('masterdata','edit') and (is_admin_user() or code = any((select allowed_projects from profiles where id = auth.uid())))
+    has_permission('masterdata','edit') and (is_admin_user() or code = any((select unnest(allowed_projects) from profiles where id = auth.uid())))
   );$q$;
   execute $q$create policy "delete_module" on projects for delete using (
-    has_permission('masterdata','delete') and (is_admin_user() or code = any((select allowed_projects from profiles where id = auth.uid())))
+    has_permission('masterdata','delete') and (is_admin_user() or code = any((select unnest(allowed_projects) from profiles where id = auth.uid())))
   );$q$;
 
   -- expense_entries: مشترك بين 4 تبويبات (مصروفات/رواتب/مبيعات/عهد) — الصلاحية
